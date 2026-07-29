@@ -77,5 +77,6 @@ Output locations (under `nugraph-sample-v3/`):
 | `data-10evt/` | 10-evt data (evt 269774 file): `mabc.zip`, `nugraph.h5` |
 | `data/`, `mc-10evt/` | 1-evt data smoke; 10-evt MC from the older round1 sample |
 
-Bee (10-event MC, v10_14_02_03):
-https://www.phy.bnl.gov/twister/bee/set/d82a3ae7-927e-478f-a8e5-d06ec74b0254/event/list/
+Bee (10-event, full `.../event/list/` URLs):
+- MC (v10_14_02_03): https://www.phy.bnl.gov/twister/bee/set/d82a3ae7-927e-478f-a8e5-d06ec74b0254/event/list/
+- data (evt-269774 file, DATA mode — reco clustering/matching, no truth sed sets): https://www.phy.bnl.gov/twister/bee/set/2cec32d7-b760-4d67-acbe-ea32f97f37f4/event/list/
