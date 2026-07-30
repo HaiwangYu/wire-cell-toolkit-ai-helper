@@ -50,19 +50,38 @@ per-set total = the candidate-point count, identical across the three taggers):
 Out-of-window mains and non-main clusters are omitted, so each set is just the
 beam-window candidates. Fired: STM 1 MC evt; TGM 2 MC + 2 data; FC 5 data.
 
+### All 48 data events (2026-07-30, per-event, all `RC=0`)
+The full evt-269774 data file (`Events` = 48), one `lar -n 1 --nskip K` per event
+(K=0..47), two parallel worker loops. Candidate-only 0/1 aggregate:
+
+| set | data 48-evt (0/1) | tagged in |
+|---|---|---|
+| `tagger_stm` | 421465 / — | 0/48 |
+| `tagger_tgm` | 378688 / **42777** | 5/48 |
+| `tagger_fc`  | 228115 / **193350** | 22/48 |
+
+Two events needed a retry (both then clean, `RC=0`):
+- **evt29** hung in *imaging* (`MaskSlice`, before clustering) for >10 min — a
+  data-dependent imaging hang, not the tagger. Killed and retried under
+  `timeout 300`; completed in < 5 min.
+- **evt30** crashed on HDF5 finalize (`truncate ... Disk quota exceeded`,
+  errno 122) because the `yuhw` cephfs quota (60 GiB) filled mid-run; events
+  31–47 then failed to write. Freed space (removed superseded intermediate run
+  dirs + per-event `nugraph.h5`/`trash-all-apa.tar.gz`) and re-ran 29–47.
+
 ## Outputs (absolute paths)
-- Per-event dirs: `tagger_bee/mc_pe4/evt{0..9}/mabc.zip`,
+- 10-evt per-event dirs: `tagger_bee/mc_pe4/evt{0..9}/mabc.zip`,
   `tagger_bee/data_pe4/evt{0..9}/mabc.zip`
+- 48-evt data per-event dirs: `tagger_bee/data_48/evt{0..47}/mabc.zip`
 - Merged (BEE-uploaded): `tagger_bee/tagger_mc_10evt.zip`,
-  `tagger_bee/tagger_data_10evt.zip`
-- Batch-crash evidence: `tagger_bee/mc10/lar-mc10.log` (SIGSEGV on 3rd event),
-  `tagger_bee/data10/lar-data10.log` (6th event)
+  `tagger_bee/tagger_data_10evt.zip`, `tagger_bee/tagger_data_48evt.zip`
 
 Merge = renumber each per-event zip's index dir `0 → K` and combine
 (`prefix/K/K-<set>.json`); BEE lists events by the real RSE inside each JSON.
 
 ## BEE (full `.../event/list/` URLs, candidate-only 0/1)
-- MC 10-evt:   https://www.phy.bnl.gov/twister/bee/set/169bdddf-0f71-44ab-aab1-47a896316040/event/list/
-- data 10-evt: https://www.phy.bnl.gov/twister/bee/set/98263fdf-53ac-491d-84cf-c4dca3522606/event/list/
+- MC 10-evt:     https://www.phy.bnl.gov/twister/bee/set/169bdddf-0f71-44ab-aab1-47a896316040/event/list/
+- data 10-evt:   https://www.phy.bnl.gov/twister/bee/set/98263fdf-53ac-491d-84cf-c4dca3522606/event/list/
+- data 48-evt:   https://www.phy.bnl.gov/twister/bee/set/7d081fbf-b08f-4dbd-9c47-cd73a7c98472/event/list/
 
 Related: `issues/2-tagger-bee-sets.md`.

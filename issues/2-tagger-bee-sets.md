@@ -131,22 +131,32 @@ Benefit: `clus.jsonnet` is clustering+matching only; the entry config owns the
 larwirecell labeler + PR follow-up. Validated byte-for-byte equivalent to the
 previous in-`clus.jsonnet` wiring (same mabc.zip sizes, same tagged counts).
 
-## ⚠ Operational finding — taggers must run **per-event**
+## ⚠ Operational findings — bulk running
 
-Running the PR tagger chain **inline over a multi-event `lar` job crashes**
-(SIGSEGV inside the tagger/steiner patrec — the known data-dependent patrec
-instability, *not* an issue-#2 bug): a 10-event MC batch died on the 3rd event,
-a 10-event data batch on the 6th. This is why the standalone nusel tagger step
-runs one event per process. **Bulk tagger production must be per-event**
-(one `lar -n 1 --nskip K` per event), then merge the per-event BEE zips.
+- **Taggers must run per-event.** Running the PR tagger chain **inline over a
+  multi-event `lar` job crashes** (SIGSEGV inside the tagger/steiner patrec — the
+  known data-dependent patrec instability, *not* an issue-#2 bug): a 10-event MC
+  batch died on the 3rd event, a 10-event data batch on the 6th. This is why the
+  standalone nusel tagger step runs one event per process. **Bulk tagger
+  production must be per-event** (one `lar -n 1 --nskip K` per event), then merge
+  the per-event BEE zips.
+- **Cap each event with a timeout.** Rare data events hang in *imaging*
+  (`MaskSlice`, before clustering) — the 48-event data run had one (evt29) freeze
+  for >10 min. Wrap each per-event `lar` in `timeout 300` so a hang can't stall a
+  batch; the retried evt29 then completed cleanly in < 5 min.
+- **Watch the cephfs quota.** The per-event `nugraph.h5` + `trash-all-apa.tar.gz`
+  are byproducts not needed for the tagger BEE; on a tight user quota (`yuhw` is
+  60 GiB) they exhaust it mid-run (HDF5 `truncate ... Disk quota exceeded`,
+  errno 122 → the run's tail fails). Delete `nugraph.h5`/`trash-all-apa.tar.gz`
+  per event (keep only `mabc.zip`).
 
-## Local edits (not yet pushed)
+## Local edits (pushed 2026-07-30)
 
-| repo | branch | file | state |
+| repo | branch | file | commit |
 |---|---|---|---|
-| larwirecell (MRB `srcs/larwirecell`) | `dev-v10_14_02_02` | `aiml/TensorSetLabeler.{cxx,h}` | modified, built, `libWireCellAIML.so` hand-copied to `opt` |
-| wire-cell-toolkit | `master` | `cfg/pgrapher/experiment/sbnd/clus.jsonnet` | modified — labeler/PR tail removed, primitives exposed (jsonnet, no build) |
-| wcp-porting-img | — | `sbnd/wcls-img-clus-matching-xin.jsonnet` | modified — assembles MABC→pr→labeler→dump |
+| larwirecell | `dev-v10_14_02_02` (`HaiwangYu/larwirecell`) | `aiml/TensorSetLabeler.{cxx,h}` | `4143d3e` (built, `libWireCellAIML.so` hand-copied to `opt`) |
+| wire-cell-toolkit | `master` (`WireCell/wire-cell-toolkit`) | `cfg/pgrapher/experiment/sbnd/clus.jsonnet` | `cdca41c0` — labeler/PR tail removed, primitives exposed |
+| wcp-porting-validation | `main` | `sbnd/wcls-img-clus-matching-xin.jsonnet` | `6402808` — assembles MABC→pr→labeler→dump |
 
 ## Validation
 
@@ -165,8 +175,17 @@ See `runs/2026-07-29-tagger-bee-sets.md`. Summary:
   | `tagger_fc`  | 32852 / — | 51891 / **38381** |
 
   (Fired: STM 1 MC evt; TGM 2 MC + 2 data; FC 5 data.)
+- **All 48 data events** (the full evt-269774 file), per-event, all `RC=0`
+  (evt29 needed a retry after an imaging hang; evt30 after a quota-exhaustion
+  crash — both then clean):
+
+  | set | data 48-evt (0/1) | tagged in |
+  |---|---|---|
+  | `tagger_stm` | 421465 / — | 0/48 |
+  | `tagger_tgm` | 378688 / **42777** | 5/48 |
+  | `tagger_fc`  | 228115 / **193350** | 22/48 |
 
 BEE (full `.../event/list/` URLs, candidate-only 0/1):
-- MC 1-evt smoke: (see run doc)
-- MC 10-evt: https://www.phy.bnl.gov/twister/bee/set/169bdddf-0f71-44ab-aab1-47a896316040/event/list/
+- MC 10-evt:   https://www.phy.bnl.gov/twister/bee/set/169bdddf-0f71-44ab-aab1-47a896316040/event/list/
 - data 10-evt: https://www.phy.bnl.gov/twister/bee/set/98263fdf-53ac-491d-84cf-c4dca3522606/event/list/
+- **data 48-evt**: https://www.phy.bnl.gov/twister/bee/set/7d081fbf-b08f-4dbd-9c47-cd73a7c98472/event/list/
