@@ -41,28 +41,37 @@ written in **both realities** (MC and data).
   split — the **truth** sets stay inside `if (is_sim)`, the **tagger** sets are
   written whenever `m_bee_sink` exists (both realities).
 
-### 2. `cfg/pgrapher/experiment/sbnd/clus.jsonnet` (WCT, wiring)
-The tag flags are produced by the STM/TGM/FC **PR tagger pass** (the same
-pipeline the standalone nusel step runs). The labeler only reads flags, so the
-PR pass must run **before** it. Added a `run_taggers` path:
-- `clus_maker.all_apa(..., run_taggers=false)`: when `true`, build a `pr_node`
-  from `clus_pr(...)` (pipeline
-  `switch_scope, unmerge_bundle, unmerge_assoc, steiner, fiducialutils,
-  tagger_check_tgm, tagger_check_stm, tagger_check_fc`, `dump=false`,
-  `particle_dataset`/`extra_uses` from `particle_dataset.jsonnet`) and pass it
-  into `clus_all_apa` as `pr_node`.
-- `clus_all_apa(..., pr_node=null)`: splices `pr_node` between the all-APA MABC
-  and the labeler — `pipeline([mabc, pr_node, labeler, sink])`.
+### 2. `cfg/pgrapher/experiment/sbnd/clus.jsonnet` (WCT) — clustering+matching ONLY
+The follow-up tail (PR taggers + labeler + dump) was **removed** from
+`clus.jsonnet` so the toolkit maker does only clustering + matching:
+- `clus_all_apa` no longer takes `run_labeler`/`pr_node`, no longer defines the
+  `wclsTensorSetLabeler` node, and returns just the all-APA MABC
+  (`pipeline([mabc])`, or `[mabc, sink]` when `dump=true`).
+- The maker `all_apa()` method dropped `run_taggers`/`pr_node`.
+- New maker primitives are exposed so the **entry** can build the labeler node
+  with the exact same config: `pc_transforms(dv)`, `sce_field_fwd`,
+  `drift_speed`, `time_offset`, `fiducial_box()` (and the existing
+  `detector_volumes(anodes, face)`). The `pr()` method (SBND production tagger
+  operating point) was already exposed.
 
-This is **functionally equivalent** to "move the labeler to the entry jsonnet
-and wire `pr()` before it": the graph is `MABC → PR(taggers) → labeler → sink`
-either way. It is kept inside `clus.jsonnet` (gated by the flag) because jsonnet
-top-level `local`s are not mutually recursive — `clus_all_apa` (defined early)
-cannot reference `clus_pr` (defined later); building `pr_node` inside the maker
-method (the final expression, which *can* see `clus_pr`) sidesteps that.
+### 3. `sbnd/wcls-img-clus-matching-xin.jsonnet` (entry, wcp-porting-img) — assembles the tail
+The tagger PR pass, the `wclsTensorSetLabeler`, and the terminal `TensorFileSink`
+are now built **here** and wired in `g.intern`:
+```
+matching_joint → clus_all_apa(MABC, dump=false) → pr_node → labeler → tail_dump
+```
+- `clus_all_apa = clus_maker.all_apa(..., dump=false)` — clustering+matching, no sink.
+- `pr_node = clus_maker.pr(..., pipeline_names=[switch_scope, unmerge_bundle,
+  unmerge_assoc, steiner, fiducialutils, tagger_check_tgm/stm/fc],
+  particle_dataset/extra_uses from particle_dataset.jsonnet)` — the STM/TGM/FC pass.
+- `labeler` = the `wclsTensorSetLabeler` `g.pnode`, built from the exposed
+  `clus_maker` primitives. **Node name kept `clus_all_apa`** so the fcl inputer
+  `wclsTensorSetLabeler:clus_all_apa` still resolves (no fcl change).
+- `tail_dump` = `TensorFileSink` (`dump_mode=false`, the labeled-pctree tarball).
 
-### 3. `sbnd/wcls-img-clus-matching-xin.jsonnet` (entry, wcp-porting-img)
-`clus_maker.all_apa(..., run_taggers=true)`.
+Benefit: `clus.jsonnet` is clustering+matching only; the entry config owns the
+larwirecell labeler + PR follow-up. Validated byte-for-byte equivalent to the
+previous in-`clus.jsonnet` wiring (same mabc.zip sizes, same tagged counts).
 
 ## ⚠ Operational finding — taggers must run **per-event**
 
@@ -78,8 +87,8 @@ runs one event per process. **Bulk tagger production must be per-event**
 | repo | branch | file | state |
 |---|---|---|---|
 | larwirecell (MRB `srcs/larwirecell`) | `dev-v10_14_02_02` | `aiml/TensorSetLabeler.cxx` | modified, built, `libWireCellAIML.so` hand-copied to `opt` |
-| wire-cell-toolkit | `master` | `cfg/pgrapher/experiment/sbnd/clus.jsonnet` | modified (jsonnet, no build) |
-| wcp-porting-img | — | `sbnd/wcls-img-clus-matching-xin.jsonnet` | modified |
+| wire-cell-toolkit | `master` | `cfg/pgrapher/experiment/sbnd/clus.jsonnet` | modified — labeler/PR tail removed, primitives exposed (jsonnet, no build) |
+| wcp-porting-img | — | `sbnd/wcls-img-clus-matching-xin.jsonnet` | modified — assembles MABC→pr→labeler→dump |
 
 ## Validation
 
@@ -91,6 +100,6 @@ See `runs/2026-07-29-tagger-bee-sets.md`. Summary:
   `cluster_id=1` in its own set (MC evt9 STM=2545 pts; data evt1 TGM=2332 +
   FC=3546 pts).
 
-BEE (10 events each, full `.../event/list/` URLs):
-- MC: https://www.phy.bnl.gov/twister/bee/set/2d09d17e-0696-45da-872b-91b7a7b9340f/event/list/
-- data: https://www.phy.bnl.gov/twister/bee/set/7937d2e8-5d4a-4f8a-9dda-cab7a2d166fb/event/list/
+BEE (10 events each, refactored chain, full `.../event/list/` URLs):
+- MC: https://www.phy.bnl.gov/twister/bee/set/f6ef5933-a0e3-4d6a-940e-a218631b5049/event/list/
+- data: https://www.phy.bnl.gov/twister/bee/set/bc0319b5-8b29-49aa-8dc2-12f8357d793b/event/list/

@@ -1,9 +1,16 @@
 # Run: STM/TGM/FC tagger BEE sets — 2026-07-29
 
 Validation of issue #2 (`tagger_stm` / `tagger_tgm` / `tagger_fc` in
-`wclsTensorSetLabeler`). The tagger PR pass runs between the all-APA MABC and
-the labeler (`run_taggers=true`), so the labeler reads the `flag_STM/TGM/FC`
-cluster flags and emits one tagged/not-tagged BEE set per tagger.
+`wclsTensorSetLabeler`). The graph is `MABC → pr(taggers) → labeler → dump`,
+assembled in the **entry** jsonnet (`wcls-img-clus-matching-xin.jsonnet`);
+`clus.jsonnet` does clustering+matching only. The labeler reads the
+`flag_STM/TGM/FC` cluster flags set by the PR pass and emits one
+tagged/not-tagged BEE set per tagger.
+
+(Results below are from the refactored entry-assembled chain; they are
+byte-for-byte identical — same mabc.zip sizes, same tagged counts — to the
+earlier in-`clus.jsonnet` `run_taggers` wiring, confirming the move is
+behavior-preserving.)
 
 Work area: `/exp/sbnd/app/users/yuhw/wcp-porting-img/sbnd/TensorSetLabeler/tagger_bee/`
 
@@ -45,8 +52,8 @@ Spot-checks (per-event zips):
   stm all 0 (matches `TGM: cluster 6 → true`, `FC: cluster 19 → true`).
 
 ## Outputs (absolute paths)
-- Per-event dirs: `tagger_bee/mc_pe/evt{0..9}/mabc.zip`,
-  `tagger_bee/data_pe/evt{0..9}/mabc.zip`
+- Per-event dirs: `tagger_bee/mc_pe2/evt{0..9}/mabc.zip`,
+  `tagger_bee/data_pe2/evt{0..9}/mabc.zip`
 - Merged (BEE-uploaded): `tagger_bee/tagger_mc_10evt.zip` (36 MB),
   `tagger_bee/tagger_data_10evt.zip` (11 MB)
 - Batch-crash evidence: `tagger_bee/mc10/lar-mc10.log` (SIGSEGV on 3rd event),
@@ -56,7 +63,7 @@ Merge = renumber each per-event zip's index dir `0 → K` and combine
 (`prefix/K/K-<set>.json`); BEE lists events by the real RSE inside each JSON.
 
 ## BEE
-- MC (10 evt): https://www.phy.bnl.gov/twister/bee/set/2d09d17e-0696-45da-872b-91b7a7b9340f/event/list/
-- data (10 evt): https://www.phy.bnl.gov/twister/bee/set/7937d2e8-5d4a-4f8a-9dda-cab7a2d166fb/event/list/
+- MC (10 evt): https://www.phy.bnl.gov/twister/bee/set/f6ef5933-a0e3-4d6a-940e-a218631b5049/event/list/
+- data (10 evt): https://www.phy.bnl.gov/twister/bee/set/bc0319b5-8b29-49aa-8dc2-12f8357d793b/event/list/
 
 Related: `issues/2-tagger-bee-sets.md`.
