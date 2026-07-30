@@ -3,25 +3,28 @@
 Status: **done & validated** (2026-07-29).
 
 Add three BEE point sets — `tagger_stm`, `tagger_tgm`, `tagger_fc` — to
-`wclsTensorSetLabeler` (larwirecell `aiml/`), each sharing `clustering_global`'s
-coordinates and charge, colored by a 4-case tagger state.
+`wclsTensorSetLabeler` (larwirecell `aiml/`). Each set contains **only the
+clusters the corresponding tagger actually evaluates** — the beam-window
+candidates — sharing `clustering_global`'s coordinates and charge, colored by the
+tagger verdict.
 
 ## What the sets contain
 
 | field | value |
 |---|---|
-| `x,y,z` | **same points AND same corrected coords as `clustering_global`** — data `x_t0cor/y_cor/z_cor`, sim `x_sce/y_sce/z_sce` (see "coordinates" below) |
+| points | **only beam-window candidate clusters** (`main_cluster` with `cluster_t0 ∈ [0.2,2.2) µs`); out-of-window mains and non-mains are omitted |
+| `x,y,z` | **same corrected coords as `clustering_global`** — data `x_t0cor/y_cor/z_cor`, sim `x_sce/y_sce/z_sce` (see "coordinates" below) |
 | `q` | **same as `clustering_global`** (`point_charge`) |
-| `cluster_id` | **4-case tagger state 0/1/2/3** (see "4-case encoding" below) |
+| `cluster_id` | **0 = not tagged, 1 = tagged** (`flag_STM/TGM/FC` set) |
 | `real_cluster_id` | written as `0` everywhere (see note) |
 
 Note on "no real_cluster_id": `Bee::Points::append()` always emits a
 `real_cluster_id` array, so it is present but **all-zero**. Because BEE colors by
 `real_cluster_id` only when it is `> 0` (`sst.js:150-154`, see
 `questions/cluster_id-vs-real_cluster_id.md`), an all-zero array makes BEE fall
-back to coloring by **`cluster_id`** — i.e. exactly the tagger-state split we
-want. So functionally there is "no real_cluster_id" coloring; the state drives
-the color.
+back to coloring by **`cluster_id`** — i.e. exactly the tagged/not-tagged split
+we want. So functionally there is "no real_cluster_id" coloring; the verdict
+drives the color.
 
 Unlike the truth sets (`mc`, `truth_*`, `sed-*`, sim-only), the tagger sets are
 written in **both realities** (MC and data).
@@ -42,20 +45,23 @@ flags the main of **every** matched flash bundle. In SBND essentially every
 cluster matches a flash, so almost every cluster is a main — which is why the
 "not-main" case (code 0 below) is rare in practice.
 
-## 4-case encoding (`cluster_id`)
+## Candidate-only + verdict coloring (`cluster_id`)
 
-Two axes — is it a main_cluster (QLMatching), and if so is it an in-beam-window
-candidate the tagger evaluated / tagged:
+To keep the display focused, the tagger sets contain **only the beam-window
+candidates** — a cluster is dumped iff it is a `flag_main_cluster` (QLMatching
+flags the main of every matched flash bundle) **and** its `cluster_t0` is in the
+beam gate `[0.2, 2.2) µs`. Out-of-window mains and non-main (associated /
+unmatched) clusters are dropped entirely. The surviving points are colored:
 
-| code | meaning |
+| `cluster_id` | meaning |
 |---|---|
-| 0 | not a `main_cluster` (associated / unmatched) — rare in SBND |
-| 1 | main, **out of beam window** — never evaluated by the tagger |
-| 2 | main, **in beam window**, evaluated but **not tagged** |
-| 3 | main, **in beam window**, **tagged** (`flag_STM/TGM/FC` set) |
+| 0 | candidate evaluated, **not tagged** |
+| 1 | candidate **tagged** (`flag_STM/TGM/FC` set) |
 
-The labeler derives this per cluster from `flag_main_cluster`, `cluster_t0` vs
-the beam gate, and `flag_STM/TGM/FC`.
+The labeler gates on `flag_main_cluster` + `cluster_t0` vs the beam gate, then
+colors by `flag_STM/TGM/FC`. (An earlier revision kept all clusters with a 4-case
+code 0/1/2/3 = not-main / out-of-window / in-window-untagged / in-window-tagged;
+this was narrowed to candidate-only 0/1 for a cleaner display.)
 
 ## Coordinates
 
@@ -72,8 +78,9 @@ deposit positions, not reco clusters.
 - Declare three `Bee::Points` (`tagger_stm/tgm/fc`) with the event RSE, next to
   the existing `bpts_unlab`.
 - In the per-cluster loop, read from the cluster's `cluster_scalar` local PC:
-  `flag_main_cluster`, `cluster_t0` (double), and `flag_STM/TGM/FC`, and compute
-  the 4-case `cluster_id` code (0/1/2/3) using the beam gate.
+  `flag_main_cluster`, `cluster_t0` (double), and `flag_STM/TGM/FC`. A cluster is
+  a tagger **candidate** iff `flag_main_cluster && cluster_t0 ∈ [low,high)`; only
+  candidates are appended, with `cluster_id = flag_STM/TGM/FC ? 1 : 0`.
 - New config params:
   - `tagger_coords` (3 strings): the corrected coord array names for the tagger
     sets (data `x_t0cor/y_cor/z_cor`, sim `x_sce/y_sce/z_sce`); empty → raw
@@ -81,8 +88,8 @@ deposit positions, not reco clusters.
   - `beam_window` (2 doubles, internal units, default `[0.2, 2.2] µs`): the
     in-window test; MUST match the tagger's `beam_window`. (`Units.h` added to
     the header for the default.)
-- In the blob dump, append every point to all three tagger sets with the
-  corrected coords + the 4-case code: `append(pt, q, code_xxx, 0)`.
+- In the blob dump, append points to the three tagger sets **only for candidate
+  clusters**, with corrected coords + the 0/1 verdict: `append(pt, q, tag_xxx, 0)`.
 - Gate: the blob-dump / write blocks that were `if (is_sim && m_bee_sink)` are
   split — the **truth** sets stay inside `if (is_sim)` (raw coords), the
   **tagger** sets are written whenever `m_bee_sink` exists (both realities).
@@ -144,24 +151,22 @@ runs one event per process. **Bulk tagger production must be per-event**
 ## Validation
 
 See `runs/2026-07-29-tagger-bee-sets.md`. Summary:
-- Smoke (1 MC + 1 data, evt 269774): both `RC=0`. Coordinate fix confirmed —
-  `tagger_fc` x-mean tracks `clustering_global` (data −12.8 vs −13.0; sim
-  likewise), not the raw truth coords (−91). 4-case confirmed — data evt 269774
-  `tagger_fc` = `{1: 11843, 2: 16, 3: 9689}` (cluster 13 FC-tagged → code 3).
-- 10 MC + 10 data, **per-event**: all 20 `RC=0`, no segfaults. 4-case aggregate:
+- Smoke (1 MC + 1 data, evt 269774): both `RC=0`. Candidate-only confirmed — MC
+  tagger sets 1818 pts (vs 22009 in `clustering-global`), all `cluster_id=0`;
+  data `tagger_fc` = `{0: 16, 1: 9689}` (cluster 13 FC-tagged). Coordinate fix
+  confirmed — coords track `clustering_global`, not raw truth.
+- 10 MC + 10 data, **per-event**: all 20 `RC=0`, no segfaults. 0/1 aggregate
+  (per-set point total = the candidate count, same across the three taggers):
 
-  | set | MC (0/1/2/3) | data (0/1/2/3) |
+  | set | MC (0/1) | data (0/1) |
   |---|---|---|
-  | `tagger_stm` | 1:254013, 2:30307, **3:2545** | 1:278702, 2:90272 |
-  | `tagger_tgm` | 1:254013, 2:13879, **3:18973** | 1:278702, 2:75568, **3:14704** |
-  | `tagger_fc`  | 1:254013, 2:32852 | 1:278702, 2:51891, **3:38381** |
+  | `tagger_stm` | 30307 / **2545** | 90272 / — |
+  | `tagger_tgm` | 13879 / **18973** | 75568 / **14704** |
+  | `tagger_fc`  | 32852 / — | 51891 / **38381** |
 
-  (No code 0 — QLMatching flags every matched cluster a main. The large code-1
-  bucket is out-of-window cosmic mains, cleanly separated from the in-window
-  candidates in codes 2/3.)
+  (Fired: STM 1 MC evt; TGM 2 MC + 2 data; FC 5 data.)
 
-BEE (full `.../event/list/` URLs):
-- MC 1-evt smoke: https://www.phy.bnl.gov/twister/bee/set/3b6ccf2b-a99a-4795-a031-3cef27bea31d/event/list/
-- data 1-evt smoke: https://www.phy.bnl.gov/twister/bee/set/5e4a6fa2-6547-4c2d-af9d-a3a0303eafcc/event/list/
-- MC 10-evt: https://www.phy.bnl.gov/twister/bee/set/32520625-3ffe-4804-8eda-0e72b906f5b7/event/list/
-- data 10-evt: https://www.phy.bnl.gov/twister/bee/set/01532c4a-b363-45ab-9374-247da14819b6/event/list/
+BEE (full `.../event/list/` URLs, candidate-only 0/1):
+- MC 1-evt smoke: (see run doc)
+- MC 10-evt: https://www.phy.bnl.gov/twister/bee/set/169bdddf-0f71-44ab-aab1-47a896316040/event/list/
+- data 10-evt: https://www.phy.bnl.gov/twister/bee/set/98263fdf-53ac-491d-84cf-c4dca3522606/event/list/
