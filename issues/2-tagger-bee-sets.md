@@ -185,7 +185,18 @@ See `runs/2026-07-29-tagger-bee-sets.md`. Summary:
   | `tagger_tgm` | 378688 / **42777** | 5/48 |
   | `tagger_fc`  | 228115 / **193350** | 22/48 |
 
-BEE (full `.../event/list/` URLs, candidate-only 0/1):
+BEE (full `.../event/list/` URLs, candidate-only 0/1).
+
+**FINAL — with the issue-#3 provenance fix (per_apa `save_assoc_id` + all_apa
+`save_real/assoc_cluster_id`) and sim `use_sce=false` (MC in x_t0cor, matches
+sbnd_xin).** These verdicts reproduce sbnd_xin's 2-step exactly (MC = doc 67;
+data = per-event identical over all 48). Use these:
+- MC 10-evt:   https://www.phy.bnl.gov/twister/bee/set/dc21c124-64dd-4fae-9d0e-10bba7c2cff6/event/list/
+- data 10-evt: https://www.phy.bnl.gov/twister/bee/set/30f01a7b-2f3e-4d33-bf8c-e96d8902be72/event/list/
+- data 48-evt: https://www.phy.bnl.gov/twister/bee/set/4f8443a2-5e7e-4ae4-84b3-f87f016fa561/event/list/
+
+Superseded (pre-provenance-fix, un-split mains — verdicts wrong on any event
+needing an unmerge):
 - MC 10-evt:   https://www.phy.bnl.gov/twister/bee/set/169bdddf-0f71-44ab-aab1-47a896316040/event/list/
 - data 10-evt: https://www.phy.bnl.gov/twister/bee/set/98263fdf-53ac-491d-84cf-c4dca3522606/event/list/
-- **data 48-evt**: https://www.phy.bnl.gov/twister/bee/set/7d081fbf-b08f-4dbd-9c47-cd73a7c98472/event/list/
+- data 48-evt: https://www.phy.bnl.gov/twister/bee/set/7d081fbf-b08f-4dbd-9c47-cd73a7c98472/event/list/

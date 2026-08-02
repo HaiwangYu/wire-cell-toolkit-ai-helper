@@ -155,6 +155,12 @@ With the complete provenance fix + sim `use_sce=false`, ran all three chains
 **No differences remain** between the 1-step production chain and Xin's 2-step
 reference, on either MC or data.
 
+### BEE — final 1-step tagger sets (provenance fix + sim use_sce=false)
+
+- MC 10-evt:   https://www.phy.bnl.gov/twister/bee/set/dc21c124-64dd-4fae-9d0e-10bba7c2cff6/event/list/
+- data 10-evt: https://www.phy.bnl.gov/twister/bee/set/30f01a7b-2f3e-4d33-bf8c-e96d8902be72/event/list/
+- data 48-evt: https://www.phy.bnl.gov/twister/bee/set/4f8443a2-5e7e-4ae4-84b3-f87f016fa561/event/list/
+
 ### Note on running Xin's 2-step here
 
 Xin's `/nfs/data/1/xqian/toolkit-dev` isn't reachable on the gpvm, so the 2-step
