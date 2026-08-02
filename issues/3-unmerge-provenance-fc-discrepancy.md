@@ -98,3 +98,71 @@ wasn't setting them.
   to load `WireCellRoot` (which registers `SCEFieldTH3`, pulled in by
   `pctransforms`' `sce_field`; the PR jsonnet otherwise only loads WireCellRoot
   under `save_stm_fit`).
+
+---
+
+## Part 2 — the fix was INCOMPLETE for the isolated grouping (2026-07-31)
+
+The all_apa fix above (`save_real_cluster_id`/`save_assoc_cluster_id`) fixed the
+**flash-merge** provenance (`unmerge_bundle`, `real_cluster_id`), which all_apa's
+own `examine_bundles` creates. But it did **not** fix the **isolated-grouping**
+provenance (`unmerge_assoc`, `assoc_cluster_id`), which is created one stage
+earlier — by `clustering_isolated` in the **per-APA** step (`cm.isolated(...)`).
+
+Symptom: MC **32-10-10** (2nd event of the first round1-qlmatch file). Our 1-step
+gave `STM=0`, but the 2-step and Xin (doc 67 §10.3) give **STM=1**. The 1-step
+logged `ClusteringUnmergeBundle:prassoc … unmerged 0 main clusters` — the isolated
+split found no provenance, so the STM main stayed un-refined (148 blobs vs the
+132-blob split → wrong verdict).
+
+### Completing fix (per_apa)
+
+The per-APA MABC needs `save_assoc_id=true` to homogenize `assoc_cluster_id` so it
+survives serialization out of the per-APA node (otherwise dropped before
+`matching_joint`, so the all-APA `save_assoc_cluster_id` has nothing to preserve):
+
+```jsonnet
+clus_maker.per_apa(tools.anodes[n], dump=false, bee_sink=bee_shared, save_assoc_id=true)
+```
+
+Verified: `prassoc cluster 22: 148 → main 132 + 16` (= 2-step), `STM=1`. Data
+evt 46363 still `FC=true` (main further refined). Commit `96c760d`
+(wcp-porting-validation).
+
+## Part 3 — sim `use_sce=false` to match Xin, and the full cross-check
+
+Xin runs MC in the **T0-corrected reco scope** (`x_t0cor`), not SCE true space.
+Set the sim reco toggle `use_sce: true → false` in `clus.jsonnet` (WCT `master`
+commit `d53ba3f9`); data was already `use_sce=false`. This closed the last
+residual: with SCE **on**, our 2-step gave 32-10-10 main length **99.0 cm** vs
+Xin's 92.9; with SCE **off** we get **92.9 cm** — an exact match.
+
+### Cross-check: our 1-step vs our 2-step vs Xin's doc 67
+
+With the complete provenance fix + sim `use_sce=false`, ran all three chains
+(the 2-step = sbnd_xin scripts, doc-59 `NUF` production flags, against our
+`master` build):
+
+- **MC (the doc-67 ten: 32-10-{6,10,13,14,16,21,39,43}, 31-88-{5,12})** —
+  our 1-step == our 2-step == **doc 67 §10.3, exactly**: STM on
+  **32-10-10, 32-10-21, 31-88-12**; TGM on **32-10-13** (501.9 cm); the rest
+  nu-candidate; 32-10-6 / 32-10-43 have no in-beam bundle. Main lengths match to
+  0.1 cm (92.9 / 501.9 / 53.9 / 116.1 / 74.9 / 263.9 / 126.6 / 234.0 / 192.8).
+- **DATA (all 48 events)** — our 1-step == our 2-step, **per-event identical**
+  (0 disagreements): STM 0/48, TGM 6/48
+  (10550, 116962, 271851, 360535, 389538, 444187), FC 33/48.
+
+**No differences remain** between the 1-step production chain and Xin's 2-step
+reference, on either MC or data.
+
+### Note on running Xin's 2-step here
+
+Xin's `/nfs/data/1/xqian/toolkit-dev` isn't reachable on the gpvm, so the 2-step
+ran the sbnd_xin scripts against **our** `master` build (same taggers). MC needs
+a scratch-copied dump jsonnet overriding the wire/badmask/summary products to the
+MC tags (`simtpc2d`/`DetSim` vs data `sptpc2d`/`Reco1`); opflash is the same.
+Run per-event (not `all`) with a `/home/xqian/tmp` bind-mount and `-stm-fit`
+(loads `WireCellRoot` for `SCEFieldTH3`); the doc-59 `NUF` flags +
+`SBND_SAVE_ASSOC=1` are required to match production.
+
+Status: **CLOSED — 1-step now reproduces the 2-step / Xin on MC and data.**
