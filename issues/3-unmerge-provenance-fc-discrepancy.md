@@ -161,6 +161,26 @@ reference, on either MC or data.
 - data 10-evt: https://www.phy.bnl.gov/twister/bee/set/30f01a7b-2f3e-4d33-bf8c-e96d8902be72/event/list/
 - data 48-evt: https://www.phy.bnl.gov/twister/bee/set/4f8443a2-5e7e-4ae4-84b3-f87f016fa561/event/list/
 
+### Direct BEE-to-BEE check vs Xin's OWN 10-MC set
+
+Xin's own 2-step BEE set (`ac51d469`, doc 67 §10.5) downloaded and compared
+layer-by-layer to our final 1-step MC set (`dc21c124`), event data fetched via
+`…/set/<uuid>/event/<idx>/<layer>/` (bee3 `events/views.py:data`):
+
+- **Event list**: identical order — idx 0..9 = 32-10-{6,10,13,14,16,21,39,43},
+  31-88-{5,12}.
+- **`clustering-global`**: **byte-identical every event** — same npts / #clusters
+  / x-range (e.g. 32-10-10 = 18223 pts / 14 cl; 32-10-13 = 55011 / 12; both sets
+  666189 vs 666187 B). Our 1-step clusters exactly as his 2-step.
+- **STM verdicts match**: our `tagger_stm` tags **32-10-10, 32-10-21, 31-88-12**
+  (793 / 2636 / 2536 pts) = doc 67 §10.3's three STM events.
+- **Display-layer difference (not a physics difference)**: his set carries
+  `stm_fit-global` (the STM fit *trajectories*, drawn for every evaluated main —
+  8 events, so its presence is NOT the STM verdict) and no tagger/truth layers;
+  ours carries `tagger_stm/tgm/fc` (verdict-colored point sets) plus the truth
+  layers (`mc`, `truth_trackid_labeled`, `sed-*`). Same clustering + same STM
+  verdicts, different overlays.
+
 ### Note on running Xin's 2-step here
 
 Xin's `/nfs/data/1/xqian/toolkit-dev` isn't reachable on the gpvm, so the 2-step
