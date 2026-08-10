@@ -16,6 +16,10 @@
 *.gz
 *.db
 
+# --- python bytecode ---
+__pycache__/
+*.pyc
+
 # --- logs ---
 *.log
 

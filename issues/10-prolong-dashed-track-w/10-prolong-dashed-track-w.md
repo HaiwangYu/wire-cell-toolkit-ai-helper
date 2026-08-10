@@ -45,6 +45,7 @@ Same tooling as `wcp-porting-img/sbnd/standalone-sample/w-gap`
 |---|---|---|---|---|
 | **5010** | `data/evt-270-6-46.root` (production reco1) | dnnsp | simchannel | production dnnsp vs truth |
 | **5011** | `data/evt-270-6-46_sp.root` (detsim+SP re-run) | gauss | dnnsp | SP-stage comparison |
+| **5012** | `data/magnify-270-6-46.root` (Magnify) | — | — | **all 12 SP stages** (see below) |
 
 ```bash
 # started with:
@@ -230,6 +231,43 @@ Also note: `outputers` must match the graph — with `roi:"trad"` there is no
 DNNROI branch, so `wclsFrameSaver:dnnsaver` must be removed or the job dies with
 a `FactoryException` on `IArtEventVisitor` at construction.
 
+## Magnify viewer (port 5012)
+
+`scripts/magnify_viewer.py` + `serve-magnify-viewer.sh` — a second Bokeh app,
+built for the Magnify file:
+
+- **top**: file path text box + **Load** (any Magnify file, not just this one)
+- **left**: 2D image, **channel on X, tick on Y**, for the selected
+  *stage / plane / APA*.  The stage defaults to `dnnsp` if present, else
+  `gauss` (Magnify files from the `roi=trad` job have no dnnsp).  Re-rendered
+  server-side on zoom with sign-preserving max-|v| pooling, so single-tick
+  spikes never vanish.  **Click it to pick a channel.**
+- **colour limits**: `color min` / `color max` text boxes, pre-filled with
+  **60 % of the selected stage's full min/max** and re-defaulted whenever the
+  stage/plane/APA/file changes; edit either box to rescale (zooming keeps
+  whatever you typed).  e.g. `gauss` w/APA1 spans 0 … 4.598e4 → boxes start at
+  0 … 2.759e4.
+- **right**: 1D waveforms of that channel for **every** stage at once.
+  **Click a legend entry to hide/show** a curve.  A `normalize 1D` checkbox
+  rescales all curves to a common range — useful because the stages differ by
+  ~50x (`orig`/`raw` are ADC ~1e3, decon/ROI stages ~1e4–1e5).
+
+```bash
+scripts/serve-magnify-viewer.sh 5012 [magnify.root]
+ssh -L 5012:localhost:5012 <user>@sbndbuild03.fnal.gov
+# http://localhost:5012/magnify_viewer
+```
+
+Implementation notes (bit us during development):
+- `h.GetArray()` returns a `cppyy.LowLevelView` with **no `SetSize()`** in this
+  ROOT build; read it with `np.frombuffer(view, dtype, count=n)` and reshape
+  `(ny+2, nx+2)` (ROOT flat bin = `binx + (nx+2)*biny`), then strip over/underflow.
+- `DataRange1d.start/end` reject `None` and report **NaN** before the first
+  renderer exists — always assign numbers (`reset_ranges()`) and treat
+  non-finite as "full extent".
+- The module guards `main()` behind `MAGNIFY_NO_SERVE` so the data layer can be
+  imported and tested headlessly.
+
 ## Next steps
 
 - [ ] Interactive pass in the viewer: find the W channels of the dashed track,
@@ -254,6 +292,8 @@ scripts/make-magnify-cfg.sh       generate cfg/ override enabling the magnify si
 scripts/magnify-dump.fcl          magnify job (roi=trad, save_simdigits=true)
 scripts/run-magnify-dump.sh       run it -> data/magnify-270-6-46.root
 cfg/pgrapher/experiment/sbnd/     the generated override (2 patched jsonnets)
+scripts/magnify_viewer.py         Bokeh Magnify browser (2D stage + 1D all-stage)
+scripts/serve-magnify-viewer.sh   run it (port 5012)
 scripts/orient.py                 channel decode + BEE cluster gap scan
 data/                             (gitignored) extracted event, SP re-run,
                                   BEE json, logs
