@@ -1,0 +1,30 @@
+# Convention (2026-08-10): issues/<n>-<slug>/ work folders hold the .md doc,
+# debugging scripts, and results.  Track ONLY documents + scripts.
+# Data files, logs and figures stay local (force-add a figure with `git add -f`
+# when it is explicitly requested for the issue write-up).
+
+# --- data / heavy artifacts ---
+*.root
+*.h5
+*.npz
+*.npy
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.bz2
+*.gz
+*.db
+
+# --- logs ---
+*.log
+
+# --- figures (force-add on request) ---
+*.png
+*.pdf
+*.jpg
+*.jpeg
+*.svg
+
+# --- scratch data dirs inside issue folders ---
+issues/*/data/

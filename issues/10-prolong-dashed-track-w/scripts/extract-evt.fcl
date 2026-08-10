@@ -1,0 +1,14 @@
+# Extract ONE event (run 270 / subrun 6 / event 46 = entry 11) from the
+# MCP2025C reco1 file into a small local file, so the Bokeh waveform viewer
+# does not have to stream 319 MB from /pnfs on every load.
+#
+#   lar -c extract-evt.fcl -s <reco1.root> -n 1 --nskip 11
+#
+# Keeps every product (recob::Wires_simtpc2d_dnnsp_DetSim, the
+# sim::SimChannels truth, gaushit, SimEnergyDeposits, ...).
+process_name: EXTRACT
+source:  { module_type: RootInput  maxEvents: -1 }
+outputs: { out1: { module_type: RootOutput
+                   fileName: "evt-270-6-46.root" } }
+physics: { stream1: [ out1 ]
+           end_paths: [ stream1 ] }

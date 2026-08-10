@@ -1,0 +1,198 @@
+# Issue 10 — dashed (broken-up) track on the W plane, BEE evt 29
+
+Status: **debug environment ready — Bokeh waveform server running, awaiting
+interactive investigation.**
+
+## Symptom
+
+In the 1-step clustering BEE set, event index **29** shows a track that renders
+as a **dashed line** (a series of short segments with gaps) instead of a
+continuous track — the orange, near-vertical track circled in red in the upper
+panel.
+
+- BEE set/event: <https://www.phy.bnl.gov/twister/bee/set/84854901-3b51-4f71-81a7-1f041ad4d867/event/29/>
+- Related: HaiwangYu/wire-cell-toolkit-ai-helper#4 (the 100-file MC eval that
+  produced this set).
+
+## Event identification
+
+| item | value |
+|---|---|
+| BEE event index | 29 (0-based) |
+| Run / SubRun / Event | **270 / 6 / 46** |
+| reco1 file | `/pnfs/sbn/data_add/sbn_nd/poms_production/mc/MCP2025C_FallProduction/v10_14_02/prodgenie_corsika_proton_rockbox0p1_sbnd/CV/reco1/a5/gen_g4_detsim_reco1-a5f42e7e-aae1-243a-11b2-fad9417d6ce0.root` |
+| entry in that file | **11** (`lar -n 1 --nskip 11`) |
+| local single-event extract | `data/evt-270-6-46.root` (22 MB, all products) |
+
+Cross-check: BEE `clustering-global` for idx 29 reports `eventNo=46`, and the
+ordered file list of the first-30 comparison (`first30_filelist.tsv` row 29)
+says `270-6-46` from `...a5f42e7e...root`; the file's `EventAuxiliary` confirms
+entry 11 = 270/6/46.
+
+### Products available in reco1 (relevant to this study)
+- `recob::Wires_simtpc2d_dnnsp_DetSim` — **dnnsp only**
+- `sim::SimChannels_simtpc2d_simpleSC_DetSim` — truth (ionization electrons)
+- `sim::SimEnergyDeposits_ionandscint_priorSCE_G4`, `recob::Hits_gaushit__Reco1`
+- **No `raw::RawDigit`** (dropped in reco1) → `gauss` / `wiener` are *not*
+  available without re-running detsim+SP from the upstream gen/g4 stage.
+
+## Debug setup (Bokeh waveform viewer)
+
+Same tooling as `wcp-porting-img/sbnd/standalone-sample/w-gap`
+(`compare_wires_viewer.py`). **Two servers are running on sbndbuild03:**
+
+| port | file | A | B | use |
+|---|---|---|---|---|
+| **5010** | `data/evt-270-6-46.root` (production reco1) | dnnsp | simchannel | production dnnsp vs truth |
+| **5011** | `data/evt-270-6-46_sp.root` (detsim+SP re-run) | gauss | dnnsp | SP-stage comparison |
+
+```bash
+# started with:
+scripts/serve-viewer.sh 5010
+scripts/serve-viewer.sh 5011 data/evt-270-6-46_sp.root data/evt-270-6-46_sp.root gauss dnnsp
+```
+Connect from a laptop (tunnel both):
+```bash
+ssh -L 5010:localhost:5010 -L 5011:localhost:5011 <user>@sbndbuild03.fnal.gov
+# then open:  http://localhost:5010/compare_wires_viewer
+#             http://localhost:5011/compare_wires_viewer
+```
+In the 5011 file the tag `dnnsp` exists from **two** processes (`DetSim` =
+production, `ReDetSim` = re-run); the viewer prefers the re-processed one, so
+type the tag as needed to switch between SP stages.
+The viewer gives: 3 linked 2D panels (A, B, A−B; channel × tick, bipolar
+colormap), click a channel → 1D waveforms with the **simchannel truth overlay
+always on**, APA/plane selectors, a clickable top-|A−B| table, and zoom-range
+charge integrals with A/sim and B/sim ratios. `recob::Wire` values are ×50 →
+electrons so dnnsp and simchannel are directly comparable.
+
+Restart gotcha (from the w-gap study): `pgrep -f 'bokeh serve'`, then `kill`
+the pids in a **separate** shell call.
+
+## Orientation / first findings (automated, before interactive work)
+
+**1. The largest dnnsp−truth discrepancies are all on the W (collection) plane**
+— matching the "dashed track on W" symptom:
+
+| channel | decode | note |
+|---|---|---|
+| 9677 | APA1 **w**-plane wire 71 | largest \|A−B\| |
+| 10628 | APA1 **w**-plane wire 1022 | |
+| 9664 | APA1 **w**-plane wire 58 | |
+| 4723 | APA0 **w**-plane wire 755 | |
+
+**2. dnnsp is losing most of the charge on those channels.** Viewer report for
+channel 9677 over the full readout:
+```
+integrated charge: simchannel=84090.4  A(dnnsp)=20368   ->  A/sim = 0.24
+```
+i.e. only ~24 % of the true ionization charge survives into dnnsp on that wire —
+the signature of ROI truncation / dropped ROIs rather than a clustering problem.
+
+**3. Dashed-looking clusters in the BEE event** (gap structure along each
+cluster's principal axis; `scripts/orient.py`):
+
+| cid | npts | length [cm] | max gap [cm] | gaps >1 cm | gaps >3 cm | gap fraction |
+|---|---|---|---|---|---|---|
+| **5** | 354 | 95.6 | 25.5 | 10 | 6 | **0.84** |
+| **11** | 511 | 125.2 | 19.6 | 12 | 9 | **0.57** |
+| 8 | 320 | 36.2 | 10.3 | 4 | 2 | 0.51 |
+| 14 | 1205 | 470.6 | 347.4 | 1 | 1 | 0.74 (one big split, not "dashed") |
+| others (2,3,4,7,9,12,13) | — | — | ≤0.6 | 0 | 0 | 0.000 |
+
+Only a handful of clusters are gappy at all; **cid 5 and cid 11** are the
+dashed-track candidates. Bounding boxes (cm):
+
+| cid | x | y | z | sum q |
+|---|---|---|---|---|
+| 5  | −53.5 … −2.5 | 32.4 … 116.9 | 207.0 … 265.5 | 4.2e6 |
+| 11 | 80.4 … 201.4 | −17.8 … 32.0 | 96.6 … 165.9 | 3.7e6 |
+
+## Working hypothesis
+
+The dashes are **not** a clustering/imaging artifact but missing charge on the
+**W plane** at the signal-processing stage: dnnsp (DNNROI) drops or truncates
+ROIs along the track, so the 3-view coincidence needed to form blobs fails in
+those stretches and the track breaks into segments. This is the same family of
+effect documented in the **w-gap study**
+(`wcp-porting-img/sbnd/standalone-sample/w-gap/W-GAP-STUDY.md`: DNNROI
+truncation, charge bias / inefficiency, SP rebaselining).
+
+To confirm and localise, use the viewer to walk the W channels along cid 5 /
+cid 11 and compare dnnsp vs simchannel per channel — the truncated ROIs should
+line up with the visual gaps.
+
+## detsim + SP re-run (done) — getting gauss / wiener
+
+**Why:** MCP2025C ran a single chained `gen_g4_detsim_reco1_reco2_caf` job — SAM
+shows the only parent is the generator fcl, so **no intermediate g4/detsim file
+exists**, and reco1 keeps **no `raw::RawDigit`**. But reco1 *does* keep
+`sim::SimEnergyDeposits_ionandscint_priorSCE_G4`, which is exactly what the
+sim job reads (`params.inputTag = "ionandscint:priorSCE"`), so drift +
+digitization + SP can be redone from the same true depositions.
+
+```bash
+scripts/rerun-detsim-sp.sh          # ~3.5 min wall, ~6.6 GB peak RSS, 1 event
+# -> data/evt-270-6-46_sp.root (28 MB)
+```
+
+Products in the re-run output (both the **original** and the **re-run** SP):
+
+| product | meaning |
+|---|---|
+| `recob::Wires_simtpc2d_gauss_ReDetSim` | gauss (traditional SP) |
+| `recob::Wires_simtpc2d_wiener_ReDetSim` | wiener |
+| `recob::Wires_simtpc2d_dnnsp_ReDetSim` | DNNROI, re-run |
+| `recob::Wires_simtpc2d_dnnsp_DetSim` | **DNNROI as produced in production** |
+| `sim::SimChannels_simtpc2d_simpleSC_{ReDetSim,DetSim}` | re-run / original truth |
+
+**CAVEAT:** drift, electronics and **noise are re-simulated**, so the re-run
+dnnsp is not bit-identical to production dnnsp. The value is the
+self-consistent gauss vs wiener vs dnnsp vs truth comparison on the same track;
+the production dnnsp is preserved in the same file for reference.
+
+### Gotchas hit while building this (all fixed in `scripts/rerun-detsim-sp.sh`)
+
+1. **`set -e` before `source`** — the ups/setup scripts return non-zero on their
+   last command, so the script aborted *silently* (empty log, no output).
+   Source first, then `set -e`.
+2. **The local sbndcode checkout is stale.** `setup-local-opt.sh` puts
+   `/exp/.../sbndcode/sbndcode/WireCell/cfg` on `WIRECELL_PATH`, and its
+   `params.jsonnet` asks for `sbnd-wires-geometry-v0202.json.bz2`, which exists
+   nowhere → `WireSchemaFile` gets an empty filename and the job dies at module
+   construction with `Persist.cxx: "no such file: ."`. Fix: prepend the **CVMFS**
+   cfg of the version actually in use
+   (`sbndcode/v10_14_02_03/wire-cell-cfg`, wires **v0206**). This supersedes the
+   older "prepend the local sbndcode cfg" note for the `elec.gain` problem.
+3. **`save_track_id: "true"` requires a product reco1 dropped.** The sim jsonnet
+   does `sed_label: if (savetid == 'true') then 'ionandscint' else ''`, and
+   `DepoFluxWriter` then hard-fails on the *SCE-applied* `ionandscint` instance —
+   reco1 keeps only `ionandscint:priorSCE`. Fix: `save_track_id: "false"`; the
+   SimChannel truth (`simchan_label: 'simpleSC'`) is still written, which is what
+   the viewer's truth overlay needs. (Cost: no per-SimChannel track ids in the
+   re-run truth — not needed for a waveform/charge comparison.)
+
+## Next steps
+
+- [ ] Interactive pass in the viewer: find the W channels of the dashed track,
+      confirm ROI truncation against truth (port 5010 for production dnnsp).
+- [ ] On port 5011, compare **gauss vs wiener vs dnnsp** on those same W
+      channels: if gauss/wiener hold the charge where dnnsp does not, the loss
+      is in DNNROI; if all three are short, it is upstream (decon/rebaseline).
+- [ ] Check whether the W-plane dead/shorted-wire map overlaps the gap
+      positions.
+
+## Files in this folder
+
+```
+10-prolong-dashed-track-w.md      this document
+scripts/extract-evt.fcl|.sh       extract run270/6/46 (entry 11) -> data/
+scripts/detsim-sp-rerun.fcl       detsim+SP job (from the w-gap fcl; simdigits on,
+                                  save_track_id off, fixed output name)
+scripts/rerun-detsim-sp.sh        run it (WIRECELL_PATH fixes inside)
+scripts/compare_wires_viewer.py   Bokeh viewer (copy of the w-gap tool)
+scripts/serve-viewer.sh           launch a server (port 5010 / 5011)
+scripts/orient.py                 channel decode + BEE cluster gap scan
+data/                             (gitignored) extracted event, SP re-run,
+                                  BEE json, logs
+```
