@@ -172,6 +172,64 @@ the production dnnsp is preserved in the same file for reference.
    the viewer's truth overlay needs. (Cost: no per-SimChannel track ids in the
    re-run truth — not needed for a waveform/charge comparison.)
 
+## Magnify dump — every SP intermediate stage (done)
+
+`data/magnify-270-6-46.root` (600 MB) holds **72 TH2F** = 3 planes × 2 APAs ×
+**12 stages**, x = channel, y = tick:
+
+```
+orig  raw  tight_lf  loose_lf  decon_charge  break_roi_1st  break_roi_2nd
+shrink_roi  extend_roi  cleanup_roi  gauss  wiener
+```
+named `h<plane><stage><apa>`, e.g. `hw_tight_lf1`, `hw_gauss1`.
+
+```bash
+scripts/make-magnify-cfg.sh     # generate the local cfg override (once)
+scripts/run-magnify-dump.sh     # ~4 min -> data/magnify-270-6-46.root
+# view:
+python3 ../../../wcp-porting-img/sbnd/standalone-sample/w-gap/vis_waveforms.py \
+        -f data/magnify-270-6-46.root -c <channel>
+```
+
+This is the tool for the core question of this issue: walk a W channel of the
+dashed track through `orig → raw → tight_lf/loose_lf → decon_charge →
+break_roi → shrink/extend/cleanup_roi → gauss/wiener` and see **exactly which
+ROI step drops the charge**.
+
+### How this recipe works (it was previously undocumented)
+
+`w-gap/sbnd-data-check.root` was made the same way in Jun 2026 but the recipe
+was lost: the sink lines were uncommented in-place in the sbndcode checkout and
+reverted the next day. Here the edit is kept **local and reproducible** —
+`make-magnify-cfg.sh` copies the two CVMFS jsonnets into `cfg/` and patches them;
+the shared sbndcode tree is untouched.
+
+Four things must all line up, and each one silently produces *nothing* if wrong:
+
+1. **The sinks are commented out by default.** `wcls-sim-drift-depoflux-nf-sp.jsonnet`
+   builds `sinks = magnify(tools, magoutput)` but every `//sinks.*_pipe[n]` is
+   commented. `magoutput` is hard-coded (`'sbnd-data-check.root'` upstream; we
+   rename it) and is written **relative to the CWD**.
+2. **Only the `roi=="trad"` graph branch has all four sink slots** (orig, raw,
+   decon, **debug**). `roi=="both"` is a `g.intern` with explicit edges and no
+   sink slots; the `multipass2` block has no debug slot. So use `roi: "trad"`.
+3. **`save_simdigits` selects the graph**:
+   `else if save_simdigits=="true" then graph1_trad else graph2_trad` — and only
+   **`graph1_trad`** contains `fanpipe` (= the `nfsp_pipes` with the sinks).
+   With `save_simdigits:"false"` the job runs `graph2_trad`, never touches the
+   sinks, and exits 0 having written no magnify file at all. It also then needs
+   `"wclsFrameSaver:simdigits"` in `outputers`.
+4. **Tags must stay non-empty.** The `roi=="both"` override blanks
+   `tight_lf_tag`, `cleanup_roi_tag`, `break_roi_loop*_tag`, `shrink_roi_tag`,
+   `extend_roi_tag`; the `roi=="trad"` override is just `{sparse:true}` so
+   `sp.jsonnet`'s defaults survive. We add `use_roi_debug_mode: true` (default
+   false) to actually emit the debug traces, and add `decon_charge<n>` to the
+   `magdebug` frame list (the stock list omits it).
+
+Also note: `outputers` must match the graph — with `roi:"trad"` there is no
+DNNROI branch, so `wclsFrameSaver:dnnsaver` must be removed or the job dies with
+a `FactoryException` on `IArtEventVisitor` at construction.
+
 ## Next steps
 
 - [ ] Interactive pass in the viewer: find the W channels of the dashed track,
@@ -192,6 +250,10 @@ scripts/detsim-sp-rerun.fcl       detsim+SP job (from the w-gap fcl; simdigits o
 scripts/rerun-detsim-sp.sh        run it (WIRECELL_PATH fixes inside)
 scripts/compare_wires_viewer.py   Bokeh viewer (copy of the w-gap tool)
 scripts/serve-viewer.sh           launch a server (port 5010 / 5011)
+scripts/make-magnify-cfg.sh       generate cfg/ override enabling the magnify sinks
+scripts/magnify-dump.fcl          magnify job (roi=trad, save_simdigits=true)
+scripts/run-magnify-dump.sh       run it -> data/magnify-270-6-46.root
+cfg/pgrapher/experiment/sbnd/     the generated override (2 patched jsonnets)
 scripts/orient.py                 channel decode + BEE cluster gap scan
 data/                             (gitignored) extracted event, SP re-run,
                                   BEE json, logs
