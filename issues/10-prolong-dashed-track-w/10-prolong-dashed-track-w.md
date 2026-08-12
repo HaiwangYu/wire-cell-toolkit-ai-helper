@@ -1,7 +1,46 @@
 # Issue 10 — dashed (broken-up) track on the W plane, BEE evt 29
 
-Status: **debug environment ready — Bokeh waveform server running, awaiting
-interactive investigation.**
+Status: **four fixes shipped and validated on 10 MC + 10 data events**
+(2026-08-12). The prolonged-W-signal defect is fixed end to end; two of the
+three originally dashed clusters remain unexplained (see Next steps). All
+toolkit/config changes are **uncommitted, awaiting review** — this repo holds
+only the documentation and scripts.
+
+## BEE sets
+
+Every set below shares the same index order, so **index *n* is the same physical
+event in all four** — open ours and production at the same index to compare.
+
+| set | link |
+|---|---|
+| MC, **ours** (all four fixes) | <https://www.phy.bnl.gov/twister/bee/set/f21829e8-4e3e-427c-bdaa-9e871ce727b3/event/list/> |
+| MC, **production** (pre-fix) | <https://www.phy.bnl.gov/twister/bee/set/ad1f4703-a047-46b2-be3f-d0eea8d69721/event/list/> |
+| data, **ours** (all four fixes) | <https://www.phy.bnl.gov/twister/bee/set/03b41975-7f1b-4069-976c-33ba7e9e8b30/event/list/> |
+| data, **production** (pre-fix) | <https://www.phy.bnl.gov/twister/bee/set/19951d4e-03bb-4b66-82d7-fcb9d2bfa1f4/event/list/> |
+
+idx 0–9, MC: 270/6/{11,12,13,14,30,33,34,37,38,46} —
+data: 18259/1/{107100,107386,107694,107716,107738,107892,108882,109762,109960,110026}.
+
+Earlier single-event A/B sets from the NF investigation:
+with-NF `8db09746-6cfc-46a1-bde9-4f79ef864666`, no-NF
+`528e80f1-489d-41f9-ae11-d1168fcba5ba`, all-fixes
+`9d174713-c6da-4e30-b386-778c814fb823` (all index 0 = run 270/6/46), and the
+original symptom set `84854901-3b51-4f71-81a7-1f041ad4d867` event 29.
+
+## The four fixes, in one place
+
+| # | change | file | why |
+|---|---|---|---|
+| 1 | `partial_enable: false` | `sbnd/nf.jsonnet` (sim) | disables the IS_RC false positive; keeps RC-RC deconvolution on every channel |
+| 1b | `partial_enable: false` | `sbnd/nf-data.jsonnet` (**sbndcode only**) | same, for the data chain — a *different* file from nf.jsonnet |
+| 2 | `max_rms_cut: 30 → 100` (W) | `sbnd/chndb-base.jsonnet` | **required**: without it the un-flattened signal trips `NoisyFilterAlg` and the channel is zeroed |
+| 3 | `roi_mad_rms: true` | `sbnd/sp.jsonnet` | MAD-based `ROI_formation::cal_RMS` |
+| 4 | `r_break_roi_loop_planes: [2,2,0]` | `sbnd/sp.jsonnet` | no BreakROI on collection |
+
+Plus `Microboone.{h,cxx}`: `OneChannelNoise` becomes `IConfigurable`
+(`partial_enable`, `partial_signal_blind`, `partial_nfreqs`, `partial_maxpower`)
+and records a `partial` mask on all planes. 3 and 4 already existed upstream
+(Xin's PDHD commit `50239595`) and were simply never enabled for SBND.
 
 ## Symptom
 
@@ -268,8 +307,530 @@ Implementation notes (bit us during development):
 - The module guards `main()` behind `MAGNIFY_NO_SERVE` so the data layer can be
   imported and tested headlessly.
 
+## NF investigation — state, and how to resume
+
+**Status: the NF defect is diagnosed and reproduced; the fix in
+`wire-cell-toolkit/sigproc/src/Microboone.cxx` is NOT written yet.**
+The RC-RC deconvolution in NF is wanted, so the NF must stay — only the
+`IS_RC`/adaptive-baseline branch needs fixing.
+
+### The defect
+`Microboone::OneChannelNoise::apply(int ch, signal_t&)` (~line 918):
+
+```cpp
+bool is_partial = m_check_partial(spectrum);        // Xin's "IS_RC()"
+if (!is_partial) { shrink(spectrum, rcrc(ch)); }    // RC-RC deconv SKIPPED when partial
+...
+if (is_partial) { SignalFilter(signal); RawAdapativeBaselineAlg(signal); }
+```
+`Diagnostics::Partial` (`sigproc/inc/WireCellSigProc/Diagnostics.h`,
+`sigproc/src/Diagnostics.cxx`) fires when the 5 lowest non-DC FFT bins are large
+and monotonically falling — the signature of a long, large ionisation pulse:
+
+```cpp
+mag0 = |spec[1]|;
+for (ind=1..nfreqs) if (mag0 <= |spec[ind+1]|) return false;
+return sum/(nfreqs+1) > maxpower;      // nfreqs=4, maxpower=6000, HARD-CODED in the ctor
+```
+`RawAdapativeBaselineAlg` then applies a **20-tick (~10 µs) sliding-window
+baseline**, removing anything slower that `SignalFilter` (|x| > 4×robust-RMS,
+±8-tick pad) did not flag. On collection the code records **no mask**
+(`if (iplane != 2)`), so the damage leaves no trace downstream.
+
+### Reproduction numbers (run 270/6/46)
+| | |
+|---|---|
+| channels tripping IS_RC | **5**: 4214, 4219 (W/APA0); 10038, 10039, 10040 (W/APA1) |
+| ch 10038 truth-restricted `|raw|/|orig|` | **0.098** (2.9e6 e⁻, 1038 signal ticks) |
+| ch 10039 | 0.567 (817 ticks) |
+| ch 4214 / 4219 / 10040 (≤325 ticks) | 0.99 / 1.03 / 0.91 — unaffected |
+| all other W channels (n=1060) | **1.0007** median |
+| ch 10038 `gauss` sum, NF on → NF removed | **1.086e5 → 4.604e5 (4.2×)** |
+
+Damage scales with signal **duration**, exactly as a 20-tick window predicts.
+
+### Files to resume from
+```
+data/magnify-270-6-46.root        with-NF magnify dump (12 SP stages)
+data/magnify-270-6-46-nonf.root   no-NF dump (no `raw` stage; NF removed)
+data/evt-270-6-46_sp.root         with-NF SP (roi=both, has dnnsp_ReDetSim)
+data/evt-270-6-46_nonf_sp.root    no-NF SP
+data/evt-270-6-46_magnifyjob.root SimChannel truth matched to the with-NF dump
+cfg/…/wcls-sim-drift-depoflux-nf-sp.jsonnet   currently has nf_pipes REMOVED
+cfg/…/*.with-nf.bak                            the with-NF version of that cfg
+scripts/nf_signal_loss.py         truth-restricted loss metric (Test 2)
+scripts/run-nonf.sh, run-img-clus.sh, img-clus-rerun.fcl   the A/B chain
+```
+**To restore NF** for testing a fix: `cp cfg/…/wcls-sim-drift-depoflux-nf-sp.jsonnet.with-nf.bak`
+over the working copy (or re-run `scripts/make-magnify-cfg.sh`, which regenerates
+it from CVMFS with the magnify sinks enabled and NF intact).
+
+### Verification recipe for any fix
+1. rebuild WCT on `ap-yuhw` (`scripts/build_wct.sh` pattern; ~5 min, run it
+   **foreground with a long timeout** — backgrounded builds got killed),
+2. re-run `scripts/run-magnify-dump.sh` (NF restored) and check ch 10038:
+   `is_partial` should be false, `raw` should keep the pulse, and `gauss` should
+   approach the no-NF **4.6e5** while the RC deconvolution still runs,
+3. regression: the other four channels unchanged, and non-partial channels still
+   at `|raw|/|orig|` ≈ 1.0007.
+
+### Not the dashed-track cause
+A full A/B with `nf_pipes` deleted leaves the dashes identical (~95 cm track
+11→13 gaps, gapfrac 0.860→0.827; ~124 cm 10→10; ~60 cm 5→5). BEE: no-NF
+`528e80f1-489d-41f9-ae11-d1168fcba5ba`, with-NF `8db09746-6cfc-46a1-bde9-4f79ef864666`.
+The dashes come from downstream (ROI/DNNROI or the imaging 3-view coincidence).
+
+## The fix — shipped, verified (2026-08-11)
+
+Two changes, both **uncommitted, for review**. WCT tree
+`/exp/sbnd/app/users/yuhw/wire-cell-toolkit` (branch `ap-yuhw`).
+
+### 1. Expose the IS_RC knobs and turn the branch off for SBND
+
+`sigproc/{inc/WireCellSigProc,src}/Microboone.{h,cxx}` — `OneChannelNoise` gains
+an `IConfigurable` implementation so the magic numbers buried in
+`Diagnostics::Partial`'s constructor become configuration:
+
+| knob | default | meaning |
+|---|---|---|
+| `partial_enable` | `true` | `false` disables the branch, so the RC-RC deconvolution runs on **every** channel |
+| `partial_signal_blind` | `false` | judge IS_RC on a signal-suppressed copy instead of the raw spectrum |
+| `partial_nfreqs` | `4` | former `Diagnostics::Partial` ctor arguments |
+| `partial_maxpower` | `6000` | |
+
+`Diagnostics.h` is deliberately **not** touched — its `Partial` has const members
+and is shared by Protodune/ProtoduneHD/ProtoduneVD/DuneCrp/Icarus/Microboone.
+Also added `ret["partial"][ch]` on **all** planes: the pre-existing `lf_noisy`
+mask is induction-only, so a rewritten collection channel left no trace anywhere
+— that is why this went unnoticed for so long. No maskmap sends `partial` to
+`bad`, so it changes no behaviour.
+
+`cfg/pgrapher/experiment/sbnd/nf.jsonnet` sets **`partial_enable: false`**.
+
+**On `partial_signal_blind`: implemented, but defaulted OFF, and it does not
+work here.** The probe suppresses signal with `SignalFilter` before judging.
+That cleared four of the five false positives (10039, 10040, 4214, 4219 all
+flip True→False, and 10036/10037 correctly stay False), but **fails on 10038**,
+the very channel it was written for: the pulse is broad enough that
+`CalcRMSWithFlags` returns 49.6 ADC, so the 4× threshold of 198 ADC flags
+*nothing* and the probe equals the raw waveform. Estimators immune to that
+feedback fail the other way — `median|first difference|` is pinned at 1 by ADC
+quantisation, and an HF-band RMS reads ~0.9 against a true ~2–3 because SBND
+noise is LF-dominated; both then mask 75–98 % of even a quiet channel, i.e. they
+disable the test by stealth. **Within one channel, a big slow ionisation pulse
+and an RC-droop pathology are not reliably separable.** Doing so needs
+cross-channel coherence (unavailable in the per-channel `apply` overload) or a
+requirement that the slow structure span the whole readout.
+
+### 2. Raise the W-plane `max_rms_cut` (this one is required)
+
+Turning the partial branch off alone made ch 10038 **worse — zeroed entirely**.
+With the signal no longer flattened by the adaptive baseline, it reached
+`NoisyFilterAlg`, whose RMS also comes from `CalcRMSWithFlags`, so the *same*
+signal-inflated estimator fired the noisy cut → `maskmap noisy:"bad"` → channel
+deleted. The old code was, in effect, saving the channel from the noisy cut by
+destroying its signal first.
+
+Measured over the whole event: every live W channel sits at **2.0–10.1**, and
+ch 10038 is the **only** channel anywhere above 30 — at 49.0, purely from
+signal. So `chndb-base.jsonnet` sets `max_rms_cut: 100.0` on the W block
+(still ~10× the noise floor, with headroom above any real pulse).
+
+### Verification (`data/magnify-270-6-46-fixed.root`, both fixes in)
+
+| ch | orig-NF `gauss` | fixed `gauss` | no-NF `gauss` |
+|---|---|---|---|
+| 10038 | 1.086e5 | 3.29e4 | 4.604e5 |
+| 10039 | 5.728e5 | **9.077e5** | 8.356e5 |
+| 10040 | 3.00e5 | **3.427e5** | 3.254e5 |
+| 4214 | 7.598e5 | **7.962e5** | 7.361e5 |
+| 4219 | 7.177e5 | **7.277e5** | 6.788e5 |
+
+- Four of five channels now match or exceed the no-NF reference, **with** the RC
+  deconvolution applied.
+- ch 10038's `raw` is preserved (p-p 228 vs orig 245; was 112) and its RC droop
+  is correctly removed (baseline-subtracted 100-tick blocks: orig tail
+  −40…−1 → fixed −5…−8). Its `decon_charge` recovers 3.07e5 → **3.08e6**
+  (no-NF 3.39e6). **The NF is doing the right thing on this channel now.**
+- No channel is newly zeroed (W/APA0 43→43, W/APA1 9→9). The ±20–30 U/V churn
+  between runs is noise-realisation jitter — the sim is not seed-reproducible,
+  totals 329→327.
+- Globally neutral: total `sum|gauss|` = 2.9571e8 (orig-NF), **2.9587e8**
+  (fixed), 2.9600e8 (no-NF) — 0.1 % spread.
+
+### Residual, and it is NOT in the NF
+
+ch 10038's `gauss` is still low because its ROI now dies in **SP**, at
+`break_roi_1st` (9 ticks, vs 64 no-NF, 195 orig-NF). Same pathology a third
+time: `ROI_formation`'s threshold is a multiple of a percentile RMS of the
+deconvolved waveform, and on this channel that RMS is **2036** (fixed) / 1630
+(no-NF) against 62–95 on a normal channel, so signal/RMS is 3.6–4.0 versus ~82
+and almost no ROI forms. Note it is **equally punitive in the no-NF baseline**,
+so it is pre-existing and not caused by these changes. The orig-NF run only
+*looked* better here (195 ROI ticks) because the adaptive baseline had already
+destroyed the signal, dropping the RMS to 66 — it carried 4× less charge.
+
+So ch 10038 is a channel whose signal fills enough of the readout that **every**
+percentile-based RMS estimator in the chain is inflated by the signal itself:
+NF `SignalFilter` → NF `NoisyFilterAlg` → SP `ROI_formation`. The first two are
+fixed; the third is a separate ticket, and it is in the same ROI stage already
+suspected for the dashed track.
+
+### Discussion point for the future (raised by HY)
+
+`is_partial` currently *also* skips the RC deconvolution. On a false positive
+that is a double penalty: the signal is flattened **and** the real RC droop is
+never corrected. Since the RC deconvolution is wanted, consider applying
+`shrink(spectrum, rcrc)` unconditionally and letting the partial branch affect
+only the baselining. `partial_enable: false` gets SBND the same outcome today,
+but the unconditional form would be the better upstream default.
+
+## Part 3 — the SP ROI fix already existed; enabled for SBND (2026-08-11)
+
+The residual above is the *same defect Xin already fixed for ProtoDUNE-HD*:
+commit `50239595` "sigproc: MAD-based cal_RMS + collection BreakROI disable
+(prolonged-W fix)", diagnosed on run 027409 evts 40920/40924 (RMS 1594/1769 vs
+170/186 signal-free, ~10× inflation). It shipped two knobs, **both default ON in
+the pdhd/pdvd configs and neither set by SBND**:
+
+- `roi_mad_rms` (OmnibusSigProc, C++ default `false`) — `ROI_formation::cal_RMS`
+  first pass becomes median-absolute-deviation × 1.4826, robust to 50 %
+  occupancy instead of breaking past ~16 %.
+- `r_break_roi_loop_planes: [2, 2, 0]` — no BreakROI on collection, where its
+  valley-to-valley linear "baseline" is actually real track charge.
+
+`cfg/pgrapher/experiment/sbnd/sp.jsonnet` now sets both. SBND uses the standard
+[U, V, W] slot order on both anodes (no `filter_responses_tn` remap), so W is
+slot 2; override `r_break_roi_loop_planes: [2,2,2]` to revert. Doc:
+`wcp-porting-img/pdhd/docs/sp-w-collection-roi-break.md`.
+
+### Validated against SimChannel truth (same job)
+
+This is the metric that should have been used all along — the no-NF run was
+**not** a valid reference, since it suffers the identical ROI pathology.
+
+| ch | true charge (e-) | NF orig | NF fix only | **+ ROI knobs** | no-NF |
+|---|---|---|---|---|---|
+| 10038 | 2.934e6 | 0.04× | 0.01× | **1.01×** | 0.16× |
+| 10039 | 1.332e6 | 0.43× | 0.68× | **1.01×** | 0.63× |
+| 10040 | 3.382e5 | 0.89× | 1.01× | **1.01×** | 0.96× |
+| 4214 | 7.881e5 | 0.96× | 1.00× | **1.00×** | 0.93× |
+| 4219 | 7.282e5 | 0.99× | 1.00× | **1.00×** | 0.93× |
+| 10036 | 6.068e5 | 1.01× | — | 1.01× | 0.98× |
+| 10037 | 1.367e6 | 0.99× | — | 1.01× | 0.90× |
+
+ch 10038's `gauss` goes 1.086e5 → **2.975e6** against a truth of 2.934e6. The
+large jump is not an overshoot: the channel was previously reconstructing 4 % of
+its charge.
+
+### Global regression (all channels with true charge > 5e4 e-)
+
+| plane | metric | NF fix only | **+ ROI knobs** | no-NF |
+|---|---|---|---|---|
+| W | total gauss/truth | 0.964 | **0.998** | 0.950 |
+| W | frac channels < 0.5 | 0.010 | **0.006** | 0.008 |
+| U | total gauss/truth | 0.881 | 0.881 | 0.888 |
+| V | total gauss/truth | 0.983 | **0.908** | 1.010 |
+| V | median gauss/truth | 1.064 | 0.991 | 1.078 |
+
+W is the win and it is unambiguous (0.2 % from truth in total, fewer badly
+reconstructed channels). U is untouched. V loses 7.5 % of total charge in
+**`gauss`** — `roi_mad_rms` is a global bool applying to all planes, and on the
+bipolar induction decon MAD is not the same estimator (V's *median* moves toward
+truth, 1.064 → 0.991, so it is partly a trade of over-collection for
+under-collection).
+
+**That V number does NOT reach the reconstruction** — see §"What imaging
+actually consumes" below. `gauss` on V is read by nothing in this chain, so no
+per-plane `roi_mad_rms_planes` knob is needed on its account.
+
+### What imaging actually consumes: `dnnsp`, and W is a shunt
+
+`sbnd/dnnroi.jsonnet`: U (plane 0) and V (plane 1) go through the DNN with
+`intags = [loose_lf, mp2_roi, mp3_roi]` + `decon_charge_tag`; **plane 2 (W) is
+shunted** — `tags: ["gauss%d"]` retagged straight to `dnnsp%dw`. So the W plane
+inside `dnnsp` *is* the traditional gauss, which is why these fixes propagate to
+the imaging/BEE result at all. `img-clus-rerun.fcl` reads
+`simtpc2d:dnnsp:ReDetSim`.
+
+`dnnsp` vs truth per plane (`recob::Wire` × `DeconNorm` 50; truth > 5e4 e-):
+
+| variant | U | V | W |
+|---|---|---|---|
+| with-NF (original) | 0.9492 | 0.9151 | 0.9638 |
+| **all fixes** | 0.9507 | **0.9198** | **0.9983** |
+| no-NF | 0.9613 | 0.9304 | 0.9502 |
+
+W in `dnnsp` reproduces the gauss numbers exactly (ch 10038 0.04× → 1.01×), as
+the shunt implies. **V is marginally better, not worse** (0.9151 → 0.9198): the
+DNN does not consume gauss, so the gauss-V regression above is invisible here.
+
+### Environment breakage hit during this run (not ours)
+
+At **14:57 today** the SBN CVMFS repo republished `larcv2 v2_2_6`'s ups table
+with its `e26` blocks requiring root **v6_28_10b**, while `art_root_io v1_13_06`
+in the same dependency tree requires **v6_28_12**. `setup sbndcode
+v10_14_02_03 -q e26:prof` then fails with *"Version conflict … root: versions
+v6_28_10b vs v6_28_12"* and `lar` never reaches PATH — in a clean shell, so it
+hits every SBND e26 user, not just this work. Workaround in
+`wcp-porting-img/sbnd/setup-local-opt.sh`: `$UPS_PATCHES`
+(`/exp/sbnd/app/users/yuhw/opt/ups-patches`) holds a larcv2 version+table copy
+with the e26 lines put back to v6_28_12 (the state that worked until 14:57),
+`PROD_DIR` still pointing at the CVMFS install, prepended to `PRODUCTS`
+**before** `setup sbndcode`. Delete that directory to drop the workaround.
+Worth reporting upstream.
+
+## Part 4 — img/clus/matching + BEE with all fixes: the dashes (2026-08-11)
+
+The magnify job runs `roi:"trad"` and drops `dnnsaver`, so its art output has no
+`dnnsp` product and cannot feed the img chain. New `scripts/rerun-fixed-sp.fcl`
++ `scripts/run-fixed-sp.sh` re-run SP with `roi:"both"` against the same fixed
+cfg override → `data/evt-270-6-46_fixed_sp.root` (27 MB), then
+`scripts/run-img-clus.sh` → `data/img-clus-fixed/mabc.zip` (3.5 MB).
+`run-fixed-sp.sh` moves only its own output up into `data/` — the override
+jsonnet still hard-codes `magoutput=magnify-270-6-46-fixed.root`, so a blanket
+`mv *.root` (as in `run-nonf.sh`) would clobber the verified magnify dump.
+
+**BEE, all three fixes: `9d174713-c6da-4e30-b386-778c814fb823`**
+(with-NF original `8db09746-6cfc-46a1-bde9-4f79ef864666`, no-NF
+`528e80f1-489d-41f9-ae11-d1168fcba5ba`; all index 0 = run 270/6/46.)
+
+### Gap scan on `clustering-global` (cids match between with-NF and all-fixes)
+
+| cluster | with-NF (original) | **all fixes** |
+|---|---|---|
+| cid 15, ~124 cm | 583 pts, gapfrac **0.549**, maxgap 17.7 cm, 9 gaps >3 cm | 941 pts, gapfrac **0.311**, maxgap 11.6 cm, 6 gaps >3 cm |
+| cid 7, ~97 cm | 378 pts, gapfrac 0.860, maxgap 20.7 cm | 377 pts, 0.860, 20.7 cm |
+| cid 12, ~61 cm | 299 pts, gapfrac 0.720, maxgap 26.2 cm | 298 pts, 0.721, 26.2 cm |
+
+**One of the three dashed tracks is substantially repaired** — cid 15 gains 61 %
+more points and its gap fraction nearly halves. That is the track crossing the
+prolonged-signal channels (10038/10039 are its W channels). **cid 7 and cid 12
+are untouched**, so they have a different cause: the prolonged-signal ROI
+pathology only fires where a single channel carries a long, large pulse, and
+these two tracks never trigger it. Their dashes remain unexplained — the earlier
+conclusion that the dashes are not an NF problem still stands for them.
+
+## Part 5 — validation campaign, 10 MC + 10 data (2026-08-12)
+
+Folder `data/validation-20260812/` (gitignored): `mc/<run>-<subrun>-<event>/` and
+`data/<run>-<subrun>-<event>/`, each holding `sp.root` (gauss + dnnsp + wiener),
+`magnify.root` (12 SP stages), `mabc.zip`, and per-stage logs. Scripts:
+`campaign-{sp,img,sp-data,img-data}.sh` (one event each), `campaign-driver.sh`
+(leg-aware, `SUB=mc|data`), `campaign-bee.sh` (merge a leg's zips into one BEE
+set, re-indexing 0..N-1), `campaign-splist.sh`, `campaign-validate-mc.py`,
+`campaign-partial-census.py`.
+
+**Core budget.** WCT runs `TbbFlow`, whose TBB pool defaults to *hardware
+concurrency* (64 here) — `OMP_NUM_THREADS` does not bound it. Each worker is
+pinned with `taskset` to a 2-core pair, 4 workers = 8 cores.
+
+### MC leg — 10 events, all complete
+
+`gen_g4_detsim_reco1-a5f42e7e-...root` holds only 12 events and **270/6/46 is the
+last** (entry 11), so the 10 are entries 2–11, the contiguous block ending with
+our event: 270/6/{11,12,13,14,30,33,34,37,38,46}.
+
+**BEE: `f21829e8-4e3e-427c-bdaa-9e871ce727b3`** (idx 0–9 in that order).
+
+Reconstructed charge vs SimChannel truth, channels with >5e4 e- of true charge:
+
+| plane | channels | gauss/truth | dnnsp/truth | channels <0.5 |
+|---|---|---|---|---|
+| U | 7758 | 0.9726 | 0.9779 | 85 (1.10 %) |
+| V | 8527 | 0.9664 | 0.9465 | 278 (3.26 %) |
+| W | 6542 | **0.9891** | **0.9891** | 83 (1.27 %) |
+
+Per-event W ranges 0.962–0.999 with per-channel median ~1.000. **W `gauss/truth`
+equals `dnnsp/truth` in every single event** — an independent confirmation that
+`dnnroi.jsonnet` shunts plane 2 (`dnnsp*w` *is* gauss).
+
+### Before/after without re-running the pre-fix chain
+
+`campaign-partial-census.py` re-applies `Diagnostics::Partial` (nfreqs=4,
+maxpower=6000 — the numbers the un-patched `Microboone.cxx` hard-coded) to each
+event's `orig` waveforms. Every channel it flags is one the old NF would have
+flattened with `RawAdapativeBaselineAlg` *and* denied the RC deconvolution:
+
+| event | flagged, carrying charge | now >0.8 of truth | min | median |
+|---|---|---|---|---|
+| 270-6-11 | 20 | 18 | 0.631 | 0.991 |
+| 270-6-13 | 3 | 3 | 0.991 | 1.011 |
+| 270-6-14 | 1 | 1 | 1.006 | 1.006 |
+| 270-6-30 | 7 | 7 | 0.996 | 1.001 |
+| 270-6-33 | 10 | 10 | 1.000 | 1.005 |
+| 270-6-37 | 2 | 2 | 1.002 | 1.004 |
+| 270-6-46 | 6 | 6 | 0.993 | 1.006 |
+| 270-6-12 / 34 / 38 | 0 | — | — | — |
+
+**49 channels across 10 events; 47 (96 %) now reconstruct >0.8 of truth.** The
+per-event count swings 0–20, so the defect was firing on most events, not just
+the one that surfaced it.
+
+### Data leg — how it had to be built
+
+Three discoveries, each a blocker:
+
+1. **Production data reco1 keeps no `raw::RawDigit`** — checked the filtered file,
+   its unfiltered parent, and all 495 artdaq fragment branches (generic type
+   placeholders, no TPC waveforms). So NF+SP cannot be re-run on it.
+2. **No decoded sample exists on tape.** `samweb get-metadata` shows the fcl chain
+   `run_decoders_job.fcl/.../reco1_data.fcl/reco2_data.fcl/cafmaker...` ran as ONE
+   job, and `file-lineage parents` gives the raw EventBuilder file directly —
+   the same gen→reco1 chaining that forced the MC re-run.
+3. **The given file's 48 events come from 47 different production files** across 12
+   runs, so "10 of its events" would mean ~10 separate raw parents. Chose instead
+   the 10 events of the single raw parent already verified ONLINE:
+   `data_EventBuilder6_art2_run18259_14_strmBNBLight_20250219T075652.root`
+   (run 18259, 50 events, 1.01 GB) — run 18259 is one of the 12.
+
+`scripts/decode-data.fcl` decodes 10 events and applies frameshift. Two
+dependencies had to be added by hand, each found by running it:
+`crtstrips` (FrameShift wants `raw::TimingReferenceInfo`, which in production
+comes from reco1 — frameshift itself runs in *reco2*), then the CRT service set
+(`CRTGeoService`, `CRTCalibrationDatabase`; the decoder job carries only the
+channel map). Output: `decoded.root`, 268 MB, with `raw::RawDigits_daq__DECODE`
+and `FrameShiftInfo`.
+
+**Do the fixes reach data?** `wcls-nf-sp-data.jsonnet` imports `chndb-base.jsonnet`
+(the W `max_rms_cut`) and `sp.jsonnet` (`roi_mad_rms`, `r_break_roi_loop_planes`),
+so three of four applied already. But NF for data comes from **`nf-data.jsonnet`**,
+a *different file from the `nf.jsonnet` I patched* — and one that lives only in
+sbndcode, not in the WCT tree. Patched copy with `partial_enable: false` is in the
+override dir. **Upstream this means the SBND cfg fixes belong in sbndcode's
+`wire-cell-cfg`, not (only) in wire-cell-toolkit/cfg.**
+
+The data magnify dump needed the same jsonnet surgery as the sim one: sinks
+uncommented in the `roi=="trad"` branch, `use_roi_debug_mode: true` added to the
+bare `else { sparse: true }` override, `magoutput` fixed. Note `roi=="both"` also
+wires `sinks.decon_pipe`, so the sp job writes a decon-only `magnify.root` that
+the trad job then overwrites — run sp first.
+
+A third blocker appeared only at the img stage: every job died with
+**`OpFlashSource failed to get opflashes`**. QL matching needs `recob::OpFlash`,
+built by the reco1 *optical* producers, which the decoder job does not run. No
+recompute of SP was needed — `sp.root` already carries
+`raw::OpDetWaveforms_pmtdecoder_*`, so `scripts/opreco-data.fcl` (process name
+`OPRECO`; `wfalign, opdecopmt, ophitpmt, opflashtpc0, opflashtpc1`) builds the
+flashes on top of it and img runs on the resulting `spflash.root`.
+
+### Data leg results — 10 events, all complete
+
+**BEE: `03b41975-7f1b-4069-976c-33ba7e9e8b30`** (idx 0–9 =
+18259/1/{107100,107386,107694,107716,107738,107892,108882,109762,109960,110026}).
+
+Data has no truth, so the reference is the **production** reco1 dnnsp for the same
+events (made with the pre-fix configuration), read from
+`.../reco1/bnblight/fe/data_filtered_decoded_reco1-fe6033f3-...root`
+(`campaign-validate-data.py`):
+
+| plane | ours / production, all channels | on the old-IS_RC-flagged channels |
+|---|---|---|
+| U | 1.0016 | — |
+| V | 1.0020 | — |
+| W | **1.0042** | **1.146× on 76 channels** |
+
+So on real data the fixes are globally invisible (0.2–0.4 % on every plane) and
+recover ~15 % of the charge precisely on the channels the defect was eating.
+Per-event standouts: 107716 (9 flagged W channels, **2.49×**), 107892 (5, 1.93×),
+109960 (12, 1.10×), 110026 (29, 1.04×).
+
+### Production BEE sets (the pre-fix reference)
+
+The same img → clus → QL matching chain run directly on the **production reco1**
+files, event-for-event and index-for-index with our re-run sets, so BEE can be
+compared side by side at the same index. Production carries everything the chain
+needs — dnnsp, `wienersummary`, `badmasks`, opflashes, and for MC the
+SimChannels/MCParticles the labeler wants — so no re-processing was involved.
+`scripts/img-clus-prod-{mc,data}.fcl` just point the tags at the production
+instances (MC: module `simtpc2d`, process **DetSim**, since SP ran inside the
+chained gen_g4_detsim_reco1 job; data: module `sptpc2d`, process **Reco1**), and
+`campaign-img-prod.sh` runs one event with `--nskip`.
+
+| set | BEE |
+|---|---|
+| MC, ours (fixed) | `f21829e8-4e3e-427c-bdaa-9e871ce727b3` |
+| MC, production (pre-fix) | **`ad1f4703-a047-46b2-be3f-d0eea8d69721`** |
+| data, ours (fixed) | `03b41975-7f1b-4069-976c-33ba7e9e8b30` |
+| data, production (pre-fix) | **`19951d4e-03bb-4b66-82d7-fcb9d2bfa1f4`** |
+
+All four share the same index order (verified by diffing the index maps):
+idx 0–9 = 270/6/{11,12,13,14,30,33,34,37,38,46} for MC and
+18259/1/{107100,107386,107694,107716,107738,107892,108882,109762,109960,110026}
+for data, so index *n* is the same physical event in every set.
+
+### Viewing the campaign
+
+`scripts/campaign-splist.sh` writes `sp-list.txt` (20 files, MC then data).
+`compare_wires_viewer.py` now takes a list and steps through it:
+
+```bash
+scripts/serve-viewer.sh 5011 --list <campaign>/sp-list.txt gauss dnnsp
+```
+**Two loading modes** (`mode` selector). A and B are independent
+`(file, event, tag)` triples — necessary because a production file holds a whole
+run segment while each validation output holds one event at entry 0.
+
+- **manual** — type file A/B, event A/B, tag A/B, press `Load`.
+- **list** — read those six fields from a file, one comparison per row, and walk
+  it with `<< prev entry` / `next entry >>`.
+
+List format (whitespace or comma separated, `#` comments, trailing `#label`
+shown while navigating):
+
+```
+fileA fileB eventA eventB tagA tagB   # label
+file                                  # 1 column: A=B=file, event 0, UI tags
+```
+The 1-column form keeps the older `sp-list.txt` working. `< prev event` /
+`next event >` still step both event indices together, each clamped to its own
+file. Remember W `dnnsp` *is* `gauss` (plane-2 shunt) — the real A/B there is
+against truth or production.
+
+**Campaign comparison lists** (`campaign-cmplists.py`), A = **production**
+(pre-fix), B = **our re-run**, both `dnnsp`, so the A−B panel is negative wherever
+the fixes recovered charge:
+
+| list | rows | A | B |
+|---|---|---|---|
+| `cmp-mc-list.txt` | 10 | `gen_g4_detsim_reco1-a5f42e7e-...root` entries 2–11 | `mc/<rse>/sp.root` entry 0 |
+| `cmp-data-list.txt` | 10 | `data_filtered_decoded_reco1-fe6033f3-...root` | `data/<rse>/sp.root` entry 0 |
+
+Both sides are matched by run/subrun/event, not by position. Spot-checked:
+MC row 1 = production entry 2 and our entry 0, both 270/6/11 (ΣB/ΣA = 1.0146);
+data row 1 = both 18259/1/107100 (0.9983).
+
+```bash
+scripts/serve-viewer.sh 5011 --list <campaign>/cmp-mc-list.txt dnnsp dnnsp
+```
+
+**bokeh gotcha:** `on_change` validates the callback signature *exactly* — three
+required positional parameters. Neither `func(*_)` nor
+`func(attr=None, old=None, new=None)` is accepted; both raise
+"Callback functions must have signature func(attr, old, new)" at app build time,
+which surfaces as a blank page while the HTTP request still returns 200.
+
+**MC/data toggle** (`sample`: auto | MC | data). The WCT producer is labelled
+`simtpc2d` in simulation and **`sptpc2d` in data**, and data has no
+`sim::SimChannel`, so the viewer picks the producer label from this setting and
+skips the truth overlay entirely for data (rather than attempting the lookup and
+logging a miss on every event). `auto` decides per file — which is what the mixed
+MC-then-data campaign list needs — by looking for `sptpc2d` vs `simtpc2d` wire
+branches, falling back to the presence of SimChannels when both or neither are
+found. The info line reports which way it resolved and whether it was forced.
+Process preference when a tag exists from several processes is now
+`ReDetSim` (MC re-run) then `WCLS` (data re-run), ahead of the production
+`DetSim`/`Reco1` instance. Verified: MC `sp.root` → `simtpc2d..._ReDetSim`,
+data `sp.root` → `sptpc2d..._WCLS`.
+
 ## Next steps
 
+- [x] ~~Decide on V~~: moot — the 7.5 % loss is in `gauss`, which nothing in this
+      chain reads; `dnnsp` V is marginally better (0.9151 -> 0.9198).
+- [ ] cid 7 (~97 cm, gapfrac 0.860) and cid 12 (~61 cm, 0.720) are unchanged by
+      all three fixes — find their gap mechanism (dead/shorted wires, DNNROI
+      truncation, or imaging 3-view coincidence). Note cid 7's maxgap is 20.7 cm
+      and cid 12's 26.2 cm, i.e. single large holes, not fine dashing.
 - [ ] Interactive pass in the viewer: find the W channels of the dashed track,
       confirm ROI truncation against truth (port 5010 for production dnnsp).
 - [ ] On port 5011, compare **gauss vs wiener vs dnnsp** on those same W

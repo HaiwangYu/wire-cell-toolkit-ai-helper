@@ -1,0 +1,19 @@
+# Data leg: make recob::OpFlash from the decoded PMT waveforms carried in sp.root.
+#
+# WHY: the QL matching stage dies with "OpFlashSource failed to get opflashes" --
+# flashes are built by the reco1 OPTICAL producers, which our decode job does not
+# run.  sp.root already carries raw::OpDetWaveforms_pmtdecoder_*_DECODE, so the
+# optical chain can run on it directly; no need to re-run decode or NF+SP.
+#
+# Process name must differ from the ones already in the file (DECODE, WCLS).
+#include "reco1_data.fcl"
+
+process_name: OPRECO
+
+physics.reco1: [ wfalign, opdecopmt, ophitpmt, opflashtpc0, opflashtpc1 ]
+physics.ana: []
+physics.trigger_paths: [ reco1 ]
+physics.end_paths: [ stream1 ]
+
+outputs.out1.fileName: "spflash.root"
+outputs.out1.SelectEvents: [ "reco1" ]

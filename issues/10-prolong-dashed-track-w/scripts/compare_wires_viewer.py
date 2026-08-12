@@ -11,11 +11,22 @@ tick) arrays per event and shows:
     pooling so isolated single-tick spikes never disappear when zoomed out.
   * Tap a channel in any 2D panel -> 1D waveforms of that channel below:
     A, B overlaid and the signed difference A-B.
-  * Controls: file paths for A and B (+ Load), product tag, previous/next
-    event, and a table of the largest |A-B| entries (also printed to stdout).
+  * Two loading modes, chosen with the `mode` selector:
+      manual - type file A/B, event A/B and tag A/B directly;
+      list   - read those six fields from a file, one comparison per row, and
+               walk it with `<< prev entry` / `next entry >>`.
+    A and B are independent (file, event, tag) triples, so a per-event re-run
+    output can be compared against the matching event inside a production file
+    that holds a whole run segment.
+  * A table of the largest |A-B| entries (also printed to stdout).
 
 Launched by serve_compare_wires.sh; mirrors the server-side-callback style of
 ql_scan/ql_scan_viewer.py.
+
+List file format (whitespace- or comma-separated, # comments; a trailing
+"#label" is shown while navigating):
+    fileA fileB eventA eventB tagA tagB   # label
+    file                                  # 1 column: A=B=file, event 0, UI tags
 
 Usage (standalone test of the data layer):
     python compare_wires_viewer.py A.root B.root [tag]
@@ -26,7 +37,13 @@ import sys
 import numpy as np
 
 DEFAULT_TAG = "dnnsp"
+# The WCT producer is labelled simtpc2d in simulation and sptpc2d in data.
 DEFAULT_MODULE = "simtpc2d"
+DATA_MODULE = "sptpc2d"
+# Process names of OUR re-runs, preferred over the production instance when a
+# file carries the same tag from several processes: ReDetSim = MC sim+SP re-run,
+# WCLS = data NF+SP re-run (production is DetSim / Reco1).
+RERUN_PROCESSES = ("_ReDetSim.", "_WCLS.")
 MAX_IMG_W = 800    # rendered image resolution budget per panel (channel axis)
 MAX_IMG_H = 600    # (tick axis)
 NTOP = 5           # how many largest diffs to report
@@ -83,17 +100,36 @@ class WireFile:
                 out.append(name)
         return out
 
-    def branch_for_tag(self, tag, module=DEFAULT_MODULE):
-        want = f"recob::Wires_{module}_{tag}_"
-        cands = [n for n in self.wire_branches() if n.startswith(want)]
+    def branch_for_tag(self, tag, module=None):
+        """Resolve a tag to a branch.  module=None tries sim then data labels."""
+        mods = [module] if module else [DEFAULT_MODULE, DATA_MODULE]
+        cands = []
+        for m in mods:
+            want = f"recob::Wires_{m}_{tag}_"
+            cands += [n for n in self.wire_branches() if n.startswith(want)]
         if not cands:
-            raise KeyError(f"no branch {want}* in {self.path}; have: {self.wire_branches()}")
+            tried = " or ".join(f"recob::Wires_{m}_{tag}_*" for m in mods)
+            raise KeyError(f"no branch {tried} in {self.path}; have: {self.wire_branches()}")
         # the same tag can exist from several processes (e.g. dnnsp from both
-        # DetSim and ReDetSim); prefer the re-processed one.
-        for n in cands:
-            if n.endswith("_ReDetSim."):
-                return n
+        # DetSim and ReDetSim, or WCLS and Reco1); prefer the re-processed one.
+        for suffix in RERUN_PROCESSES:
+            for n in cands:
+                if n.endswith(suffix):
+                    return n
         return cands[0]
+
+    def is_data(self):
+        """True when the file looks like data: sptpc2d wires and no SimChannels."""
+        wb = self.wire_branches()
+        has_sim = any(n.startswith(f"recob::Wires_{DEFAULT_MODULE}_") for n in wb)
+        has_dat = any(n.startswith(f"recob::Wires_{DATA_MODULE}_") for n in wb)
+        if has_dat and not has_sim:
+            return True
+        if has_sim and not has_dat:
+            return False
+        # ambiguous (both or neither): fall back to the truth product
+        return not any(b.GetName().startswith("sim::SimChannels_")
+                       for b in self.tree.GetListOfBranches())
 
     def event_label(self, entry):
         br = self.tree.GetBranch("EventAuxiliary")
@@ -144,7 +180,7 @@ class WireFile:
                 arr[ch, t] += q
         return arr
 
-    def dense(self, entry, tag, module=DEFAULT_MODULE):
+    def dense(self, entry, tag, module=None):
         """(channel x tick) float32 array for one event; channel index = channel number.
 
         tag "simchannel" reads sim::SimChannels (summed ionization electrons
@@ -255,16 +291,42 @@ def run_app():
     from bokeh.events import Tap
     from bokeh.plotting import figure
 
+    # Two invocation styles:
+    #   <fileA> <fileB> [tagA] [tagB]              single pair
+    #   --list <list.txt> [tagA] [tagB]            walk a list of sp.root files
+    # A list may also be passed positionally if it ends .txt/.lst/.list.  With a
+    # list, A and B are the SAME file and the tags do the comparing (the campaign
+    # case: tagA=gauss vs tagB=dnnsp), and the prev/next FILE buttons step through
+    # it.  One path per line, blank lines and #-comments ignored.
     argv = sys.argv[1:]
-    path_a = argv[0] if len(argv) > 0 else ""
-    path_b = argv[1] if len(argv) > 1 else ""
-    tag_a0 = argv[2] if len(argv) > 2 else DEFAULT_TAG
-    tag_b0 = argv[3] if len(argv) > 3 else tag_a0
+    list_path = ""
+    if argv and argv[0] == "--list":
+        list_path = argv[1] if len(argv) > 1 else ""
+        argv = argv[2:]
+    elif argv and argv[0].lower().endswith((".txt", ".lst", ".list")):
+        list_path = argv[0]
+        argv = argv[1:]
 
-    state = {"A": None, "B": None, "entry": 0,
+    if list_path:
+        path_a = path_b = ""
+        tag_a0 = argv[0] if len(argv) > 0 else DEFAULT_TAG
+        tag_b0 = argv[1] if len(argv) > 1 else tag_a0
+    else:
+        path_a = argv[0] if len(argv) > 0 else ""
+        path_b = argv[1] if len(argv) > 1 else ""
+        tag_a0 = argv[2] if len(argv) > 2 else DEFAULT_TAG
+        tag_b0 = argv[3] if len(argv) > 3 else tag_a0
+
+    # A and B are fully independent (file, event, tag) triples: comparing our
+    # re-run against production means two different files whose event ORDERING
+    # differs (production holds a whole run segment, our per-event outputs hold
+    # one event each), so a single shared entry index is not enough.
+    state = {"A": None, "B": None, "entry_a": 0, "entry_b": 0,
              "tag_a": tag_a0, "tag_b": tag_b0,
              "a": None, "b": None, "diff": None,
-             "sim": None}  # simchannel truth from file A (1D overlay only)
+             "sim": None,        # simchannel truth from file A (1D overlay only)
+             "is_data": False,   # resolved per load; data has no truth
+             "rows": [], "fidx": 0}  # list-mode rows + cursor into them
 
     # -- widgets ------------------------------------------------------------
     # A and B are each (file, tag); tags may differ, e.g. gauss vs dnnsp from
@@ -273,9 +335,25 @@ def run_app():
     in_b = TextInput(title="file B", value=path_b, width=420)
     in_tag_a = TextInput(title="tag A (gauss/wiener/dnnsp/simchannel)", value=tag_a0, width=220)
     in_tag_b = TextInput(title="tag B", value=tag_b0, width=120)
+    in_ev_a = TextInput(title="event A", value="0", width=80)
+    in_ev_b = TextInput(title="event B", value="0", width=80)
     bt_load = Button(label="Load", button_type="primary", width=80)
     bt_prev = Button(label="< prev event", width=100)
     bt_next = Button(label="next event >", width=100)
+    # Two ways to drive the loader.  manual: type the six fields.  list: read
+    # them from a file, one comparison per row, and step with prev/next.
+    sel_mode = Select(title="mode", value="list" if list_path else "manual",
+                      options=["manual", "list"], width=90)
+    in_list = TextInput(title="list file", value=list_path, width=430)
+    bt_list = Button(label="Load list", width=90)
+    bt_fprev = Button(label="<< prev entry", width=110)
+    bt_fnext = Button(label="next entry >>", width=110)
+    lbl_file = Div(text="", width=700)
+    # MC vs data: picks the producer label (simtpc2d / sptpc2d) and decides
+    # whether to load SimChannel truth at all -- data has none.  "auto" detects
+    # per file, which is what you want when a list mixes both legs.
+    sel_kind = Select(title="sample", value="auto",
+                      options=["auto", "MC", "data"], width=90)
     sel_apa = Select(title="APA", value="all", options=["all", "0", "1"], width=80)
     sel_plane = Select(title="plane", value="all", options=["all", "u", "v", "w"], width=80)
     # colormap limits; empty = auto (0.9 * view min/max).  One pair for the
@@ -529,7 +607,7 @@ def run_app():
         top_src.data = dict(v=[v for v, c, t in tops],
                             c=[c for v, c, t in tops],
                             t=[t for v, c, t in tops])
-        print(f"[entry {state['entry']} {region}] largest |A-B|: "
+        print(f"[A entry {state['entry_a']} / B entry {state['entry_b']} {region}] largest |A-B|: "
               + ", ".join(f"{v:.5g}@(ch {c}, tick {t})" for v, c, t in tops),
               flush=True)
         return tops
@@ -576,11 +654,28 @@ def run_app():
         A, B = state["A"], state["B"]
         if A is None or B is None:
             return
-        entry = state["entry"]
+        ent_a, ent_b = state["entry_a"], state["entry_b"]
         tag_a, tag_b = state["tag_a"], state["tag_b"]
+
+        # resolve MC vs data PER FILE: A may be production and B our re-run, and
+        # in principle one could be MC and the other data.
+        def kind_of(f):
+            if sel_kind.value != "auto":
+                return sel_kind.value == "data"
+            try:
+                return f.is_data()
+            except Exception:
+                return False
+        is_data_a, is_data_b = kind_of(A), kind_of(B)
+        mod_a = DATA_MODULE if is_data_a else DEFAULT_MODULE
+        mod_b = DATA_MODULE if is_data_b else DEFAULT_MODULE
+        # the truth overlay comes from A, so A decides whether we look for it
+        is_data = is_data_a
+        state["is_data"] = is_data
+        module = mod_a
         try:
-            a = A.dense(entry, tag_a)
-            b = B.dense(entry, tag_b)
+            a = A.dense(ent_a, tag_a, mod_a)
+            b = B.dense(ent_b, tag_b, mod_b)
         except Exception as e:  # bad tag / entry: report, keep prior view
             info.text = f"<b>error:</b> {e}"
             return
@@ -590,10 +685,14 @@ def run_app():
 
         # simchannel truth from file A for the 1D overlay (2D only if a tag
         # explicitly selects it).  Pad/crop to the A/B shape.
+        # Data carries no sim::SimChannel, so do not even look -- otherwise every
+        # data event logs a spurious "no simchannel overlay" and pays the lookup.
         state["sim"] = None
-        if tag_a != "simchannel":
+        if is_data:
+            pass
+        elif tag_a != "simchannel":
             try:
-                sim = A.dense(entry, "simchannel")
+                sim = A.dense(ent_a, "simchannel")
                 full = np.zeros_like(a)
                 nr = min(full.shape[0], sim.shape[0])
                 nc = min(full.shape[1], sim.shape[1])
@@ -609,17 +708,29 @@ def run_app():
         render_view()
 
         tops = update_top_table()
-        info.text = (f"entry <b>{entry}</b> / {min(A.nevents, B.nevents)-1} "
-                     f"({A.event_label(entry)})&nbsp;&nbsp; "
-                     f"shape: {nch} ch x {nt} ticks<br>"
-                     f"A: {A.path} : <b>{tag_a}</b><br>"
-                     f"B: {B.path} : <b>{tag_b}</b>")
+        how = "auto" if sel_kind.value == "auto" else "forced"
+        ka = "data" if is_data_a else "MC"
+        kb = "data" if is_data_b else "MC"
+        info.text = (f"shape: {nch} ch x {nt} ticks&nbsp;&nbsp; "
+                     f"sample: <b>{ka}</b>/<b>{kb}</b> ({how})"
+                     f"{'' if is_data else ' &nbsp;truth overlay on'}<br>"
+                     f"A: {A.path} : <b>{tag_a}</b> "
+                     f"event <b>{ent_a}</b>/{A.nevents-1} ({A.event_label(ent_a)})<br>"
+                     f"B: {B.path} : <b>{tag_b}</b> "
+                     f"event <b>{ent_b}</b>/{B.nevents-1} ({B.event_label(ent_b)})")
         fig_a.title.text = f"A: {tag_a}"
         fig_b.title.text = f"B: {tag_b}"
         fig_d.title.text = "A - B"
         show_channel(tops[0][1])  # preload 1D with the worst channel
 
+    def _int(widget, default=0):
+        try:
+            return int(str(widget.value).strip())
+        except (TypeError, ValueError):
+            return default
+
     def do_load():
+        """Read the six fields and load.  Used by both modes."""
         try:
             state["A"] = WireFile(in_a.value.strip())
             state["B"] = WireFile(in_b.value.strip())
@@ -628,31 +739,129 @@ def run_app():
             return
         state["tag_a"] = in_tag_a.value.strip() or DEFAULT_TAG
         state["tag_b"] = in_tag_b.value.strip() or state["tag_a"]
-        state["entry"] = 0
+        state["entry_a"] = int(np.clip(_int(in_ev_a), 0, state["A"].nevents - 1))
+        state["entry_b"] = int(np.clip(_int(in_ev_b), 0, state["B"].nevents - 1))
+        in_ev_a.value = str(state["entry_a"])
+        in_ev_b.value = str(state["entry_b"])
         load_event()
 
     def step(dn):
+        """Step BOTH event indices, each clamped to its own file."""
         if state["A"] is None:
             return
-        nmax = min(state["A"].nevents, state["B"].nevents)
-        state["entry"] = int(np.clip(state["entry"] + dn, 0, nmax - 1))
+        state["entry_a"] = int(np.clip(state["entry_a"] + dn, 0, state["A"].nevents - 1))
+        state["entry_b"] = int(np.clip(state["entry_b"] + dn, 0, state["B"].nevents - 1))
+        in_ev_a.value = str(state["entry_a"])
+        in_ev_b.value = str(state["entry_b"])
         load_event()
+
+    def goto_file(i):
+        """Load row i of the list: fills all six fields, then loads."""
+        rows = state["rows"]
+        if not rows:
+            lbl_file.text = "<b>no list loaded</b>"
+            return
+        i = int(np.clip(i, 0, len(rows) - 1))
+        state["fidx"] = i
+        fa, fb, ea, eb, ta, tb, label = rows[i]
+        in_a.value, in_b.value = fa, fb
+        in_ev_a.value, in_ev_b.value = str(ea), str(eb)
+        in_tag_a.value, in_tag_b.value = ta, tb
+        lbl_file.text = (f"entry <b>{i + 1}/{len(rows)}</b>"
+                         + (f" &nbsp; <b>{label}</b>" if label else "")
+                         + f"<br>A: {fa} [ev {ea}, {ta}]<br>B: {fb} [ev {eb}, {tb}]")
+        do_load()
+
+    def load_list():
+        """Parse the list file.
+
+        Row formats (whitespace- or comma-separated; # starts a comment, and a
+        trailing '#label' on a row is shown in the navigator):
+          fileA fileB eventA eventB tagA tagB   full 6-column comparison
+          file                                  1 column: A=B=file, event 0,
+                                                tags from the tag widgets
+        """
+        p = in_list.value.strip()
+        if not p:
+            lbl_file.text = "<b>give a list path first</b>"
+            return
+        rows, bad = [], []
+        try:
+            with open(p) as fh:
+                for ln, raw in enumerate(fh, 1):
+                    label = ""
+                    if "#" in raw:
+                        raw, _, rest = raw.partition("#")
+                        label = rest.strip()
+                    txt = raw.strip()
+                    if not txt:
+                        continue
+                    parts = [c for c in txt.replace(",", " ").split() if c]
+                    if len(parts) == 1:
+                        rows.append((parts[0], parts[0], 0, 0,
+                                     in_tag_a.value.strip() or DEFAULT_TAG,
+                                     in_tag_b.value.strip() or DEFAULT_TAG, label))
+                    elif len(parts) >= 6:
+                        try:
+                            ea, eb = int(parts[2]), int(parts[3])
+                        except ValueError:
+                            bad.append(ln); continue
+                        rows.append((parts[0], parts[1], ea, eb, parts[4], parts[5], label))
+                    else:
+                        bad.append(ln)
+        except OSError as e:
+            lbl_file.text = f"<b>cannot read list:</b> {e}"
+            return
+        if not rows:
+            lbl_file.text = f"<b>no usable rows in:</b> {p}"
+            return
+        state["rows"] = rows
+        goto_file(0)
+        if bad:
+            lbl_file.text += (f"<br><i>skipped {len(bad)} malformed row(s): "
+                              f"lines {bad[:8]}</i>")
+
+    def apply_mode(attr, old, new):
+        """Show only the widgets belonging to the active mode.
+
+        bokeh's on_change validates the signature exactly: three REQUIRED
+        positional parameters (neither *args nor defaults are accepted), so the
+        startup call passes three Nones.
+        """
+        listy = sel_mode.value == "list"
+        row_list.visible = listy
+        lbl_file.visible = listy
 
     bt_load.on_click(do_load)
     bt_prev.on_click(lambda: step(-1))
     bt_next.on_click(lambda: step(+1))
+    # switching MC/data changes the producer label and the truth overlay, so
+    # re-read the event rather than just re-rendering the current arrays
+    sel_kind.on_change("value", lambda a, o, n: load_event())
+    bt_list.on_click(load_list)
+    bt_fprev.on_click(lambda: goto_file(state["fidx"] - 1))
+    bt_fnext.on_click(lambda: goto_file(state["fidx"] + 1))
+    sel_mode.on_change("value", apply_mode)
 
-    controls = column(row(in_a, in_b),
-                      row(in_tag_a, in_tag_b, bt_load, bt_prev, bt_next, sel_apa, sel_plane,
-                          in_cmin_ab, in_cmax_ab, in_cmin_d, in_cmax_d, sel_dmode, in_deps),
+    row_files = row(in_a, in_b, in_ev_a, in_ev_b)
+    row_list = row(in_list, bt_list, bt_fprev, bt_fnext)
+    controls = column(row(sel_mode, in_tag_a, in_tag_b, bt_load, bt_prev, bt_next,
+                          sel_kind, sel_apa, sel_plane),
+                      row_files,
+                      row_list,
+                      lbl_file,
+                      row(in_cmin_ab, in_cmax_ab, in_cmin_d, in_cmax_d, sel_dmode, in_deps),
                       info)
+    apply_mode(None, None, None)
     layout = column(controls,
                     row(fig_a, fig_b, fig_d),
                     row(column(cap1d, fig1d, figdf), column(topdiv, top_table)))
     curdoc().add_root(layout)
     curdoc().title = "recob::Wire A-B compare"
 
-    if path_a and path_b:
+    if list_path:
+        load_list()
+    elif path_a and path_b:
         do_load()
 
 

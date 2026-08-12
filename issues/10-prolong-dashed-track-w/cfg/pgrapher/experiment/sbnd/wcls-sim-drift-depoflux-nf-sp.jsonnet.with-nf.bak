@@ -182,7 +182,7 @@ else if roi == "trad" then {
 local sp = sp_maker(params, tools, sp_override);
 local sp_pipes = [sp.make_sigproc(a) for a in tools.anodes];
 
-local magoutput = 'magnify-270-6-46-fixed.root';
+local magoutput = 'magnify-270-6-46.root';
 local magnify = import 'pgrapher/experiment/sbnd/magnify-sinks.jsonnet';
 local sinks = magnify(tools, magoutput);
 

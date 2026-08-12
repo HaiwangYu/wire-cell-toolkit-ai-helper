@@ -1,0 +1,11 @@
+# Data img -> clus -> QL matching -> taggers, pointed at OUR re-run SP products.
+# Our sp job's process_name is WCLS (from sp_data_dnnroi.fcl), and the decoded
+# input carries no production sptpc2d, so the bare "sptpc2d:dnnsp" tags of the
+# base fcl already resolve unambiguously -- the explicit process is added anyway
+# so the intent is unmistakable and a future decoded-plus-reco1 input cannot
+# silently pick the production instance (the MC leg needed exactly that fix).
+#include "wcls-img-clus-matching-xin-data.fcl"
+
+physics.producers.sig2img.wcls_main.structs.recobwire_tags:  "[\"sptpc2d:dnnsp:WCLS\", \"sptpc2d:dnnsp:WCLS\"]"
+physics.producers.sig2img.wcls_main.structs.summary_tags:    "[\"\", \"sptpc2d:wienersummary:WCLS\"]"
+physics.producers.sig2img.wcls_main.structs.input_mask_tags: "[\"sptpc2d:badmasks:WCLS\"]"

@@ -1,0 +1,41 @@
+# Decode raw BNB-light data to raw::RawDigit + apply the Gen2 frameshift
+# correction, giving the NF+SP re-run a RawDigit input for the data leg.
+#
+# WHY THIS EXISTS: SBND production ran decode+reco1 as ONE chained job and reco1
+# keeps no raw::RawDigit (verified: the filtered file, its unfiltered parent, and
+# all 495 artdaq fragment branches carry no TPC waveforms).  `samweb file-lineage
+# parents` shows the reco1 parent IS the raw EventBuilder file, so there is no
+# decoded sample to re-process -- we must decode ourselves.  ai-helper issue #10.
+#
+# Input (run 18259, 50 events, 1.01 GB, ONLINE_AND_NEARLINE):
+#   /pnfs/sbnd/archive/sbn/sbn_nd/data/raw/bnblight/v1_10_04/sbnd_daq_v1_10_04/
+#     daq/00/01/82/59/data_EventBuilder6_art2_run18259_14_strmBNBLight_20250219T075652.root
+# Its first 10 events are the campaign's data leg:
+#   18259/1/{107100,107386,107694,107716,107738,107892,108882,109762,109960,110026}
+#
+# frameshift prolog MUST be included before run_decoders_job.fcl (fhicl requires
+# all BEGIN_PROLOG blocks ahead of non-prolog content).
+#include "frameshift_sbnd_data.fcl"
+#include "crtrecoproducers_sbnd.fcl"
+#include "crt_services_sbnd.fcl"
+#include "run_decoders_job.fcl"
+
+# frameshift needs raw::TimingReferenceInfo from crtstrips, which is a reco1
+# producer (in production frameshift runs in reco2, long after it).  Confirmed by
+# running without it:  "No raw::TimingReferenceInfo found w/ tag label='crtstrips'".
+# So run the CRT strip-hit producer here too, between crtdecoder and frameshift.
+# CRTStripHitProducer needs the whole CRT service set (geometry + channel map +
+# calibration DB); the decoder job's service block carries only the channel map,
+# so pull in crt_services_data_sbnd wholesale rather than chasing them one at a
+# time (we hit CRTGeoService then CRTCalibrationDatabase doing that).
+services.CRTGeoService:          @local::crt_geo_service_data_sbnd
+services.CRTCalibrationDatabase: @local::crt_calibration_database_service_sbnd
+
+physics.producers.crtstrips:  @local::crtstriphitproducer_data_sbnd
+physics.producers.frameshift: @local::frameshift_data
+
+physics.dropchoppy: [ daq, ntbdecoder, crtdecoder, ptbdecoder, tdcdecoder, pmtdecoder, xarapucadecoder, filterchoppy, crtstrips, frameshift ]
+physics.savechoppy: [ daq, ntbdecoder, crtdecoder, ptbdecoder, tdcdecoder, pmtdecoder, xarapucadecoder, "!filterchoppy", crtstrips, frameshift ]
+
+outputs.out1.fileName: "decoded.root"
+outputs.out2.fileName: "decoded_choppy.root"

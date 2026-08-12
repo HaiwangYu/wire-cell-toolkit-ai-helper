@@ -1,0 +1,9 @@
+# img -> clus -> QL matching on the PRODUCTION MC reco1 file (pre-fix chain),
+# so the campaign has a like-for-like BEE set to compare against our re-run.
+# Production instances are process DetSim (the WCT SP ran inside the chained
+# gen_g4_detsim_reco1 job); reco1's own products are process Reco1.
+#include "wcls-img-clus-matching-xin.fcl"
+
+physics.producers.sig2img.wcls_main.structs.recobwire_tags:  "[\"simtpc2d:dnnsp:DetSim\", \"simtpc2d:dnnsp:DetSim\"]"
+physics.producers.sig2img.wcls_main.structs.summary_tags:    "[\"\", \"simtpc2d:wienersummary:DetSim\"]"
+physics.producers.sig2img.wcls_main.structs.input_mask_tags: "[\"simtpc2d:badmasks:DetSim\"]"

@@ -1,0 +1,7 @@
+# img -> clus -> QL matching on the PRODUCTION data reco1 file (pre-fix chain).
+# Data production instances are module sptpc2d, process Reco1.
+#include "wcls-img-clus-matching-xin-data.fcl"
+
+physics.producers.sig2img.wcls_main.structs.recobwire_tags:  "[\"sptpc2d:dnnsp:Reco1\", \"sptpc2d:dnnsp:Reco1\"]"
+physics.producers.sig2img.wcls_main.structs.summary_tags:    "[\"\", \"sptpc2d:wienersummary:Reco1\"]"
+physics.producers.sig2img.wcls_main.structs.input_mask_tags: "[\"sptpc2d:badmasks:Reco1\"]"

@@ -1,0 +1,13 @@
+# Data leg: the magnify dump (all 12 SP stages) via roi:"trad", the only graph
+# branch carrying the magnify sinks.  Uses the patched override copy of
+# wcls-nf-sp-data.jsonnet (sinks uncommented, use_roi_debug_mode on,
+# magoutput='magnify.root').
+#
+# NOTE run this AFTER campaign-sp-data.fcl in the same directory: roi:"both"
+# also wires sinks.decon_pipe, so the sp job writes a decon-only magnify.root
+# that this job then overwrites with the full stage set.
+#include "sp_data_dnnroi.fcl"
+
+physics.producers.sptpc2d.wcls_main.params.roi: "trad"
+physics.producers.sptpc2d.wcls_main.outputers: [ "wclsFrameSaver:spsaver" ]
+outputs.out1.fileName: "magnifyjob.root"

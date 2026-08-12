@@ -1,0 +1,12 @@
+# Data leg: NF+SP on decoded RawDigits with roi:"both", so the output carries
+# BOTH gauss (spsaver) and dnnsp (dnnsaver) -- gauss for the waveform comparison,
+# dnnsp for the img/clus chain.  Mirrors the MC leg's rerun-fixed-sp.fcl.
+#
+# The four fixes reach data via: nf-data.jsonnet (partial_enable, our override
+# copy), chndb-base.jsonnet W max_rms_cut, and sp.jsonnet roi_mad_rms +
+# r_break_roi_loop_planes -- wcls-nf-sp-data.jsonnet imports all three.
+#include "sp_data_dnnroi.fcl"
+
+physics.producers.sptpc2d.wcls_main.params.roi: "both"
+physics.producers.sptpc2d.wcls_main.outputers: [ "wclsFrameSaver:spsaver", "wclsFrameSaver:dnnsaver" ]
+outputs.out1.fileName: "sp.root"

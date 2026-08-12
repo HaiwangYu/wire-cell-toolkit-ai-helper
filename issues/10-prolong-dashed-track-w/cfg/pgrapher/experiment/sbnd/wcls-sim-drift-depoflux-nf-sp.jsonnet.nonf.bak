@@ -182,7 +182,7 @@ else if roi == "trad" then {
 local sp = sp_maker(params, tools, sp_override);
 local sp_pipes = [sp.make_sigproc(a) for a in tools.anodes];
 
-local magoutput = 'magnify-270-6-46-fixed.root';
+local magoutput = 'magnify-270-6-46-nonf.root';
 local magnify = import 'pgrapher/experiment/sbnd/magnify-sinks.jsonnet';
 local sinks = magnify(tools, magoutput);
 
@@ -213,7 +213,7 @@ local multipass2 = [
                sn_pipes[n],
                //sinks.orig_pipe[n],
                
-               nf_pipes[n], // NEED to include this pipe for channelmaskmaps    
+               nf_pipes[n], // (multipass2 - unused by the trad/both graphs)
                //sinks.raw_pipe[n], 
                
                sp_pipes[n], 
@@ -371,10 +371,9 @@ if roi == "dnn" then
   g.intern(
     innodes=[chsel_pipes[n]],
     outnodes=[dnnroi_pipes[n],sp_fans[n]],
-    centernodes=[nf_pipes[n], sp_pipes[n], sp_fans[n]],
+    centernodes=[sp_pipes[n], sp_fans[n]],          // nf_pipes REMOVED (no-NF test)
     edges=[
-      g.edge(chsel_pipes[n], nf_pipes[n], 0, 0),
-      g.edge(nf_pipes[n], sp_pipes[n], 0, 0),
+      g.edge(chsel_pipes[n], sp_pipes[n], 0, 0),    // was chsel -> nf -> sp
       g.edge(sp_pipes[n], sp_fans[n], 0, 0),
       g.edge(sp_fans[n], dnnroi_pipes[n], 0, 0),
     ],
@@ -390,10 +389,9 @@ else if roi == "both" then
   g.intern(
     innodes=[chsel_pipes[n]],
     outnodes=[dnnroi_pipes[n],sp_fans[n]],
-    centernodes=[nf_pipes[n], sp_pipes[n], sp_fans[n]],
+    centernodes=[sp_pipes[n], sp_fans[n]],          // nf_pipes REMOVED (no-NF test)
     edges=[
-      g.edge(chsel_pipes[n], nf_pipes[n], 0, 0),
-      g.edge(nf_pipes[n], sp_pipes[n], 0, 0),
+      g.edge(chsel_pipes[n], sp_pipes[n], 0, 0),    // was chsel -> nf -> sp
       g.edge(sp_pipes[n], sp_fans[n], 0, 0),
       g.edge(sp_fans[n], dnnroi_pipes[n], 0, 0),
     ],
@@ -409,7 +407,10 @@ else if roi == "trad" then
                chsel_pipes[n],
                sinks.orig_pipe[n],
 
-               nf_pipes[n], // NEED to include this pipe for channelmaskmaps 
+               // nf_pipes[n],   <-- REMOVED for the no-NF A/B test.  OmnibusSigProc
+               //                    reads in->traces() regardless of tag, so SP still
+               //                    gets the sim frame; only the NF-derived channel
+               //                    mask maps are absent.
                sinks.raw_pipe[n],
 
                sp_pipes[n],

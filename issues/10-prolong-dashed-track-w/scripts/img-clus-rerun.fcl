@@ -1,0 +1,11 @@
+# 1-step img -> clus -> QL matching -> taggers/labeler, pointed at the products of
+# OUR sim+SP re-run (process "ReDetSim") instead of the production ones.
+#
+# The re-run files carry BOTH dnnsp_DetSim (production, NF applied) and
+# dnnsp_ReDetSim (our re-run), so the process name MUST be given explicitly or
+# the tag "simtpc2d:dnnsp" is ambiguous.
+#include "wcls-img-clus-matching-xin.fcl"
+
+physics.producers.sig2img.wcls_main.structs.recobwire_tags:  "[\"simtpc2d:dnnsp:ReDetSim\", \"simtpc2d:dnnsp:ReDetSim\"]"
+physics.producers.sig2img.wcls_main.structs.summary_tags:    "[\"\", \"simtpc2d:wienersummary:ReDetSim\"]"
+physics.producers.sig2img.wcls_main.structs.input_mask_tags: "[\"simtpc2d:badmasks:ReDetSim\"]"
