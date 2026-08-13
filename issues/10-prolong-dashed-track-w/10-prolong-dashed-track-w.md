@@ -504,6 +504,65 @@ the pdhd/pdvd configs and neither set by SBND**:
 slot 2; override `r_break_roi_loop_planes: [2,2,2]` to revert. Doc:
 `wcp-porting-img/pdhd/docs/sp-w-collection-roi-break.md`.
 
+### What `roi_mad_rms` actually changes
+
+`ROI_formation::cal_RMS` estimates a channel's **noise** level, and the ROI
+threshold is a multiple of it —
+[`threshold = th_factor_col * rms + 1`](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/ROI_formation.cxx#L472)
+for collection (`th_factor_col` = 5 for SBND). It runs in two passes; the knob
+changes only the **first**:
+
+| | first pass (the knob) | second pass (unchanged) |
+|---|---|---|
+| off (legacy) | (16, 50, 84) percentile spread: `sqrt(((p84-p50)² + (p50-p16)²)/2)` | truncated second moment over the samples with `\|x\| < 5*rms` |
+| on | **MAD** × 1.4826 | same |
+
+**MAD = median absolute deviation** = `median( |xᵢ − median(x)| )`
+([code](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/ROI_formation.cxx#L369-L381)).
+For Gaussian noise MAD ≈ 0.6745σ, so **1.4826 × MAD** is the σ-equivalent — the
+factor exists purely so the downstream `5*rms` cut and the `th_factor`
+thresholds keep the meaning they had before.
+
+Why it matters here is the **breakdown point** — the fraction of the samples that
+can be arbitrary before the estimator itself is corrupted:
+
+- the percentile spread breaks down past **~16 %** occupancy, because the 84th
+  percentile walks up into the signal and inflates `p84 - p50`;
+- MAD tolerates up to **50 %**, since the median of the absolute deviations only
+  moves once signal occupies half the waveform.
+
+A prolonged W track along the drift direction fills far more than 16 % of one
+channel's readout, so the legacy estimate reports the *signal* as noise, the
+threshold rises above the signal's own median, and almost no ROI forms. Measured
+on ch 10038 of run 270/6/46: decon RMS **2036** versus 62–95 on a normal W
+channel, i.e. signal/RMS 3.6 against ~82, and `break_roi_1st` collapsed to 9
+ticks. Note the second pass cannot rescue it — it is seeded from the first pass's
+`rms`, so a 20× inflated seed keeps essentially every sample inside the `5*rms`
+window.
+
+Upstream source (all links pinned to commit
+[`50239595`](https://github.com/WireCell/wire-cell-toolkit/commit/50239595cfe25f3fa40f287ceae23e58aa9d4333),
+which is on `origin/master` and `origin/0.37.x`):
+
+| what | link |
+|---|---|
+| `cal_RMS`, both passes | [`sigproc/src/ROI_formation.cxx#L364-L403`](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/ROI_formation.cxx#L364-L403) |
+| the MAD branch | [`#L369-L381`](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/ROI_formation.cxx#L369-L381) |
+| threshold use site | [`#L464-L472`](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/ROI_formation.cxx#L464-L472) |
+| `use_mad_rms` member / setter | [`sigproc/src/ROI_formation.h#L68`](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/ROI_formation.h#L68), [`#L103`](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/ROI_formation.h#L103) |
+| `roi_mad_rms` config → setter | [`OmnibusSigProc.cxx#L96`](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/OmnibusSigProc.cxx#L96), [`#L1858`](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/OmnibusSigProc.cxx#L1858) |
+| `r_break_roi_loop_planes` | [`OmnibusSigProc.cxx#L125-L127`](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/OmnibusSigProc.cxx#L125-L127) |
+
+The same estimator problem appears twice more in the NF, both on the *raw* rather
+than deconvolved waveform, via
+[`Microboone::CalcRMSWithFlags`](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/Microboone.cxx#L549-L571)
+— the same (16, 50, 84) spread — used by
+[`SignalFilter`](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/Microboone.cxx#L573)
+(threshold 4×rms) and
+[`NoisyFilterAlg`](https://github.com/WireCell/wire-cell-toolkit/blob/50239595cfe25f3fa40f287ceae23e58aa9d4333/sigproc/src/Microboone.cxx#L468)
+(the `max_rms_cut` that fix #2 addresses). Those two have no MAD option — fixes
+1 and 2 sidestep them rather than re-estimating.
+
 ### Validated against SimChannel truth (same job)
 
 This is the metric that should have been used all along — the no-NF run was
