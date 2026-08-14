@@ -11,7 +11,8 @@ import glob, os, sys
 import numpy as np
 import ROOT
 
-C = ("/exp/sbnd/data/users/yuhw/wire-cell-toolkit-ai-helper/issues/"
+C = os.environ.get("CAMPAIGN_DIR",
+     "/exp/sbnd/data/users/yuhw/wire-cell-toolkit-ai-helper/issues/"
      "10-prolong-dashed-track-w/data/validation-20260812")
 PROD = ("/pnfs/sbn/data_add/sbn_nd/poms_production/data/MCP2025C/v10_14_02/"
         "Fall25-Run1_BNB_Dev_bnblight/reco1/bnblight/fe/"

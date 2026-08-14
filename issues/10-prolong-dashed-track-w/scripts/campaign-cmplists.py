@@ -16,7 +16,8 @@ event A/B.
 import glob, os
 import ROOT
 
-C = ("/exp/sbnd/data/users/yuhw/wire-cell-toolkit-ai-helper/issues/"
+C = os.environ.get("CAMPAIGN_DIR",
+     "/exp/sbnd/data/users/yuhw/wire-cell-toolkit-ai-helper/issues/"
      "10-prolong-dashed-track-w/data/validation-20260812")
 PROD = {
     "mc": ("/pnfs/sbn/data_add/sbn_nd/poms_production/mc/MCP2025C_FallProduction/"

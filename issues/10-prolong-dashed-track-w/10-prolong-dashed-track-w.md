@@ -1,9 +1,11 @@
 # Issue 10 — dashed (broken-up) track on the W plane, BEE evt 29
 
 Status: **four fixes shipped and validated on 10 MC + 10 data events**
-(2026-08-12). The prolonged-W-signal defect is fixed end to end; two of the
-three originally dashed clusters remain unexplained (see Next steps). All
-toolkit/config changes are **uncommitted, awaiting review** — this repo holds
+(2026-08-12; both legs re-validated 2026-08-13 at the production ROI
+thresholds, see Part 6). The prolonged-W-signal defect is fixed end to end;
+two of the three originally dashed clusters remain unexplained (see Next
+steps). Toolkit and sbndcode changes are **committed on `ap-yuhw` /
+uncommitted on `wcp-porting` respectively, awaiting review** — this repo holds
 only the documentation and scripts.
 
 ## BEE sets
@@ -13,10 +15,16 @@ event in all four** — open ours and production at the same index to compare.
 
 | set | link |
 |---|---|
-| MC, **ours** (all four fixes) | <https://www.phy.bnl.gov/twister/bee/set/f21829e8-4e3e-427c-bdaa-9e871ce727b3/event/list/> |
+| MC, **ours** (all four fixes) | <https://www.phy.bnl.gov/twister/bee/set/185a6466-9926-4b8d-9727-2e9b3d6fd676/event/list/> |
 | MC, **production** (pre-fix) | <https://www.phy.bnl.gov/twister/bee/set/ad1f4703-a047-46b2-be3f-d0eea8d69721/event/list/> |
-| data, **ours** (all four fixes) | <https://www.phy.bnl.gov/twister/bee/set/03b41975-7f1b-4069-976c-33ba7e9e8b30/event/list/> |
+| data, **ours** (all four fixes) | <https://www.phy.bnl.gov/twister/bee/set/1b13567d-7553-427b-a41a-c0f4b9df7eed/event/list/> |
 | data, **production** (pre-fix) | <https://www.phy.bnl.gov/twister/bee/set/19951d4e-03bb-4b66-82d7-fcb9d2bfa1f4/event/list/> |
+
+Both "ours" sets are the **2026-08-13 re-run at the production ROI
+thresholds**. The superseded 2026-08-12 sets, which ran at troi 5.0/3.0 while
+production ran 3.0/1.8, were MC `f21829e8-4e3e-427c-bdaa-9e871ce727b3` and
+data `03b41975-7f1b-4069-976c-33ba7e9e8b30`; see Part 6 for what that changed
+and what it did not.
 
 idx 0–9, MC: 270/6/{11,12,13,14,30,33,34,37,38,46} —
 data: 18259/1/{107100,107386,107694,107716,107738,107892,108882,109762,109960,110026}.
@@ -32,14 +40,25 @@ original symptom set `84854901-3b51-4f71-81a7-1f041ad4d867` event 29.
 | # | change | file | why |
 |---|---|---|---|
 | 1 | `partial_enable: false` | `sbnd/nf.jsonnet` (sim) | disables the IS_RC false positive; keeps RC-RC deconvolution on every channel |
-| 1b | `partial_enable: false` | `sbnd/nf-data.jsonnet` (**sbndcode only**) | same, for the data chain — a *different* file from nf.jsonnet |
+| 1b | `partial_enable: false` | `sbnd/nf-data.jsonnet` | same, for the data chain — a *different* file from nf.jsonnet, and one the toolkit lacked entirely until 2026-08-13 |
 | 2 | `max_rms_cut: 30 → 100` (W) | `sbnd/chndb-base.jsonnet` | **required**: without it the un-flattened signal trips `NoisyFilterAlg` and the channel is zeroed |
 | 3 | `roi_mad_rms: true` | `sbnd/sp.jsonnet` | MAD-based `ROI_formation::cal_RMS` |
 | 4 | `r_break_roi_loop_planes: [2,2,0]` | `sbnd/sp.jsonnet` | no BreakROI on collection |
 
 Plus `Microboone.{h,cxx}`: `OneChannelNoise` becomes `IConfigurable`
 (`partial_enable`, `partial_signal_blind`, `partial_nfreqs`, `partial_maxpower`)
-and records a `partial` mask on all planes. 3 and 4 already existed upstream
+and records a `partial` mask on all planes.
+
+**Where they live.** All four are in both trees as of 2026-08-13, and
+`sp.jsonnet` is now byte-identical between them (Part 6):
+`wire-cell-toolkit` on branch `ap-yuhw`, committed —
+`b8086bd6` (the four fixes + the C++), `13ed5167` (`nf-data.jsonnet`),
+`06a02ccb` (the `sp.jsonnet` merge); `sbndcode` on `wcp-porting`,
+**uncommitted**, touching `sp.jsonnet`, `nf.jsonnet`, `nf-data.jsonnet`,
+`chndb-base.jsonnet` and `wcls-nf-sp.jsonnet`. The two trees are a permanent
+fork — sync knob-by-knob, never file-by-file.
+
+3 and 4 already existed upstream
 (Xin's PDHD commit `50239595`) and were simply never enabled for SBND.
 
 ## Symptom
@@ -672,6 +691,12 @@ conclusion that the dashes are not an NF problem still stands for them.
 
 ## Part 5 — validation campaign, 10 MC + 10 data (2026-08-12)
 
+> **Superseded by Part 6.** Every number in this Part was measured with SP
+> running at tight-ROI thresholds 5.0/3.0 while production ran 3.0/1.8 — an
+> `sp.jsonnet` divergence that failed silently. The *method* below is still
+> current and the MC before/after deltas still hold (both legs shared one cfg),
+> but for ours-vs-production and ours-vs-truth ratios use Part 6.
+
 Folder `data/validation-20260812/` (gitignored): `mc/<run>-<subrun>-<event>/` and
 `data/<run>-<subrun>-<event>/`, each holding `sp.root` (gauss + dnnsp + wiener),
 `magnify.root` (12 SP stages), `mabc.zip`, and per-stage logs. Scripts:
@@ -881,6 +906,122 @@ Process preference when a tag exists from several processes is now
 `ReDetSim` (MC re-run) then `WCLS` (data re-run), ahead of the production
 `DetSim`/`Reco1` instance. Verified: MC `sp.root` → `simtpc2d..._ReDetSim`,
 data `sp.root` → `sptpc2d..._WCLS`.
+
+## Part 6 — `sp.jsonnet` merged, and the campaign re-run at production thresholds (2026-08-13)
+
+### The two `sp.jsonnet` copies had diverged, and it cost us the campaign
+
+The toolkit (`wire-cell-toolkit/cfg/pgrapher/experiment/sbnd/`) and sbndcode
+(`sbndcode/WireCell/cfg/pgrapher/experiment/sbnd/`) copies are a permanent
+fork — `funcs`/`img`/`magnify-sinks` differ by 66–72 lines and the `wcls-*`
+files by 218–311. For `sp.jsonnet` the divergence was three items, and one of
+them silently invalidated the data-leg numbers in Part 5.
+
+| item | toolkit | sbndcode | merged |
+|---|---|---|---|
+| `rebase_planes: []` | absent | present | **kept** |
+| tight-ROI thresholds | hardcoded 5.0 / 3.0 | `std.extVar('enableLowROIThresholds')` | **restructured** |
+| `wiener_threshold_tag` | removed | present | **removed** |
+
+**`rebase_planes` is a trap.** `OmnibusSigProc` reads the key only
+`if (config.isMember("rebase_planes"))` and the C++ default is
+`std::vector<int> m_rebase_planes{0,1,2}` (`OmnibusSigProc.h:276`). Omitting
+it therefore rebaselines **all** planes, not none — the opposite of what the
+w-gap study concluded SBND wants. The merged file carries the key with a
+comment saying so. Note CVMFS production also omits it, so production
+rebaselines all planes; only `wcp-porting` turns it off.
+
+**The threshold switch failed silently.** The campaign in Part 5 ran with a
+copy of `sp.jsonnet` derived from the toolkit, which had dropped the extVar and
+hardcoded the **high** thresholds — while `rerun-fixed-sp.fcl:77` and every
+production fcl asked for the **low** ones. Jsonnet ignores an extVar nobody
+reads, so there was no error and no warning. The campaign ran at 5.0/3.0
+against production's 3.0/1.8.
+
+Which fcl wants which:
+
+| fcl / config | jsonnet | `enableLowROIThresholds` |
+|---|---|---|
+| `standard_detsim_sbnd.fcl:100` | `wcls-sim-drift-depoflux-nf-sp` | true (low) |
+| `wcsimsp_sbnd.fcl:85` `sbnd_wcls_simsp` | `wcls-sim-drift-depoflux-nf-sp` | true (low) |
+| `wcsp_data_sbnd.fcl:69` `sbnd_wcls_sp_data` | `wcls-nf-sp-data` | true (low) |
+| `reco1_data_lowthreshold_dnn.fcl:4` | `wcls-nf-sp-data` | true (low) |
+| `wcsimsp_sbnd.fcl:147` `sbnd_wcls_sp` | `wcls-nf-sp` | **false (high)** |
+
+So the merged `sp.jsonnet` **defaults to the low values** and the single
+high-threshold path passes 5.0/3.0 through the existing `override` argument
+(which callers already use for `sparse`). A caller that forgets the override
+now lands on production behaviour instead of silently coarser ROIs — the
+inverse of the failure mode above. One call site changed, not eleven.
+
+### What the threshold error did and did not change
+
+Measured directly on data event 18259-1-107100, old 5.0/3.0 → new 3.0/1.8:
+
+| plane | gauss old | gauss new | ratio | live channels |
+|---|---|---|---|---|
+| U | 2.099e6 | 2.119e6 | 1.009 | 1958 → 1969 |
+| V | 2.108e6 | 2.508e6 | **1.190** | 2716 → 3085 |
+| W | 2.031e6 | 2.059e6 | 1.013 | 1488 → **2373** |
+
+The low induction threshold (1.8 vs 3.0) does most of the work, which is
+exactly where the Part 5 U/V numbers were least trustworthy.
+
+### Data leg re-run — 10 events, like-for-like against production
+
+`data/validation-20260813-lowthr/`, both sides now at 3.0/1.8, so the only
+remaining difference is the four fixes.
+
+| plane | ours / production | Part 5 (confounded) |
+|---|---|---|
+| U | 1.0062 | — |
+| V | 1.0117 | — |
+| W | **1.0144** | 1.0042 |
+| W, on the 76 old-flagged channels | **1.154×** | 1.146× |
+
+Every plane gains slightly and none loses. The flagged-channel recovery barely
+moved (1.146 → 1.154), so **that headline number was robust to the threshold
+error**; the suppressed one was the overall W ratio. Biggest per-event movers:
+18259-1-107716 (9 ch, 2.37×) and 18259-1-107892 (5 ch, 1.83×).
+
+**BEE (data, ours): `1b13567d-7553-427b-a41a-c0f4b9df7eed`**, same index order
+as before, so it still pairs with production `19951d4e-...` at equal indices.
+
+### MC leg re-run — 10 events vs SimChannel truth
+
+`dnnsp`/truth is what imaging consumes (W `dnnsp` *is* `gauss` — the
+`dnnroi.jsonnet` plane-2 shunt), so read that column:
+
+| plane | nchan | gauss/T | **dnnsp/T** | Part 5 dnnsp/T (5.0/3.0) | chans < 0.5 |
+|---|---|---|---|---|---|
+| U | 7758 | 0.9753 | **0.9826** | 0.9507 | 87 (1.12 %) |
+| V | 8527 | 1.0155 | **0.9569** | 0.9198 | 264 (3.10 %) |
+| W | 6542 | 0.9931 | **0.9931** | 0.9891 | 82 (1.25 %) |
+
+Every plane improves at the production thresholds, U and V substantially
+(+3.2 and +3.7 points) — they were the ones the high-threshold run was
+penalising. W lands at 0.9931 of truth. V `gauss` now slightly *over*-collects
+(1.0155) at the low induction threshold, but nothing downstream reads V
+`gauss`.
+
+**BEE (MC, ours): `185a6466-9926-4b8d-9727-2e9b3d6fd676`**, idx 0–9 =
+270/6/{11,12,13,14,30,33,34,37,38,46}, pairing with production
+`ad1f4703-...` at equal indices.
+
+### Campaign scripts are now relocatable
+
+All campaign scripts honour `CAMPAIGN_DIR` (default unchanged, so Part 5
+reproduces as written):
+
+```bash
+export CAMPAIGN_DIR=.../data/validation-20260813-lowthr SUB=data
+bash scripts/campaign-driver.sh $CAMPAIGN_DIR/data-worklist.txt
+```
+
+Also fixed: `campaign-driver.sh`'s `data` case pointed at
+`campaign-img-data.sh`, which has no opflashes and dies on every event with
+`OpFlashSource failed to get opflashes`. It now uses `campaign-opreco-data.sh`,
+the script the working chain actually used.
 
 ## Next steps
 

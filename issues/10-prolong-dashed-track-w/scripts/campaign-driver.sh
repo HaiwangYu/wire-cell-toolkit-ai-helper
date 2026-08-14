@@ -11,7 +11,7 @@
 # for.  Do not raise NWORK without shrinking the core pairs.
 WORKLIST="$1"
 HERE=$(cd "$(dirname "$0")" && pwd); D=$(dirname "$HERE")
-C="$D/data/validation-20260812"
+C="${CAMPAIGN_DIR:-$D/data/validation-20260812}"
 SL7=/exp/sbnd/app/users/yuhw/claude-utilities/in-gpvm-sl7.sh
 NWORK=4
 CORES=("0,1" "2,3" "4,5" "6,7")
@@ -19,7 +19,10 @@ CORES=("0,1" "2,3" "4,5" "6,7")
 # sim+SP chain from SimEnergyDeposits, data runs NF+SP from decoded RawDigits.
 case "$SUB" in
   mc)   SPSH=campaign-sp.sh;      IMGSH=campaign-img.sh ;;
-  data) SPSH=campaign-sp-data.sh; IMGSH=campaign-img-data.sh ;;
+  # The data leg must build opflashes first: sp.root carries no recob::OpFlash,
+  # so img-clus-data.fcl alone dies with "OpFlashSource failed to get opflashes".
+  # campaign-opreco-data.sh runs opreco -> spflash.root -> the same img chain.
+  data) SPSH=campaign-sp-data.sh; IMGSH=campaign-opreco-data.sh ;;
   *)    echo "set SUB=mc|data" >&2; exit 2 ;;
 esac
 run_one () {                      # $1=label $2=input $3=entry $4=coreset

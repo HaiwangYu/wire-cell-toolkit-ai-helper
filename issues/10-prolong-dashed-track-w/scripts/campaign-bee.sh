@@ -7,7 +7,7 @@
 set -eo pipefail
 LEG="$1"; NOUP="$2"
 HERE=$(cd "$(dirname "$0")" && pwd); D=$(dirname "$HERE")
-C="$D/data/validation-20260812"
+C="${CAMPAIGN_DIR:-$D/data/validation-20260812}"
 W="$C/$LEG-worklist.txt"
 [ -f "$W" ] || { echo "no worklist: $W" >&2; exit 1; }
 STAGE="$C/bee-$LEG"; rm -rf "$STAGE"; mkdir -p "$STAGE/data"

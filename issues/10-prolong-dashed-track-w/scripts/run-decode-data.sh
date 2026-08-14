@@ -4,7 +4,7 @@ source /nashome/y/yuhw/.bashrc >/dev/null 2>&1
 source /exp/sbnd/app/users/yuhw/wcp-porting-img/sbnd/setup-local-opt.sh >/dev/null 2>&1
 set -e
 HERE=$(cd "$(dirname "$0")" && pwd); D=$(dirname "$HERE")
-C="$D/data/validation-20260812"
+C="${CAMPAIGN_DIR:-$D/data/validation-20260812}"
 RAW=/pnfs/sbnd/archive/sbn/sbn_nd/data/raw/bnblight/v1_10_04/sbnd_daq_v1_10_04/daq/00/01/82/59/data_EventBuilder6_art2_run18259_14_strmBNBLight_20250219T075652.root
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
 mkdir -p "$C/data/decode"; cd "$C/data/decode"
