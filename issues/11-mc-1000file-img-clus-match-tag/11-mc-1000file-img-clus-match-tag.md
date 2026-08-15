@@ -216,6 +216,40 @@ constraint, and they are capped by construction. This should be unobtrusive to
 other users — unlike issue 8's harness, which had no pinning and would have
 taken all 64.
 
+## Full run — execution
+
+Launched 2026-08-14 after the pilot was reviewed and approved.
+
+```bash
+CAMPAIGN=/exp/sbnd/data/users/yuhw/production-prep/img-clus-match-tag-mc-1000file-2026-08-14
+bash scripts/run-harness.sh $CAMPAIGN/files-1000.lst $CAMPAIGN 10 2
+#                            <list>                  <out>     ^NWORK ^CORES_PER
+```
+
+Run on sbndbuild03 directly (not submitted to the grid), inside the SL7
+apptainer. It is started detached rather than tied to a terminal — a 10–13 hour
+job cannot survive an interactive session — with a watcher reporting per-file
+completions and any non-zero `rc`. The core cap is enforced by `taskset` inside
+the harness, not by the launch method, so it holds either way.
+
+Restartability: the harness is **not** resumable as written. The cursor starts
+at 0 and `zips/` is additive, so re-running would redo completed files (their
+zips would simply be overwritten). If it dies partway, the cheap fix is to
+build a new list from the files absent in `summary.csv` and run that.
+
+### The 100-event BEE set
+
+Sampled as **every 100th event** across the run in completion order, rather
+than the first 100, so the set spans many files and both the easy and hard tails
+of the event-size distribution. Built with the same `merge_bee.py` as the pilot.
+
+## Status
+
+- [x] Pilot 10 events + BEE (`bd8bc010-17c3-4f67-a80d-c76c7e12c1d6`)
+- [ ] Full run, 1000 files / ~10,100 events
+- [ ] 100-event BEE set from the full run
+- [ ] Post-run summary: failure census, wall-time distribution, tagger rates
+
 ## Files in this folder
 
 ```
