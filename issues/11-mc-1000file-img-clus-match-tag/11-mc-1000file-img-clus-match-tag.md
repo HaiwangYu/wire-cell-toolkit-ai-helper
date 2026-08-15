@@ -243,12 +243,118 @@ Sampled as **every 100th event** across the run in completion order, rather
 than the first 100, so the set spans many files and both the easy and hard tails
 of the event-size distribution. Built with the same `merge_bee.py` as the pilot.
 
+## Full run — results
+
+2026-08-14 21:25:23 → 2026-08-15 11:04:33, **13 h 39 min**.
+
+| | |
+|---|---|
+| files | 1000 / 1000 |
+| events | **13,217** (13,211 ok, **6 failed = 0.045 %**) |
+| events/file | mean **13.2** (min 5, max 23) |
+| wall/event | mean 35.6 s, median 32, p90 49, p99 93, **max 950** |
+| CPU | **261.5 core-hours** |
+| disk | **64 GB** of `mabc.zip` |
+
+**100-event BEE set:**
+<https://www.phy.bnl.gov/twister/bee/set/3fa24feb-fbb3-4a9e-a27b-0aa2bb540003/event/list/>
+— 101 events, every 132nd zip in completion order so the set spans files 0–999.
+`bee/sample-100-index.txt` maps BEE index → (file, event).
+
+### Where the pre-run estimates were wrong
+
+| quantity | projected | actual | why |
+|---|---|---|---|
+| events/file | 10.1 | **13.2** | the 8-file sample caught several short files; the distribution is wide (5–23) |
+| total events | ~10,100 | **13,217** | follows from the above |
+| wall | 10–13 h | **13.6 h** | right at the top of the range: +31 % more events than projected, partly offset by the per-event rate holding at 35.6 s |
+| disk | ~42 GB | **64 GB** | more events, and the pilot's 10 events under-sampled the large-event tail (4.20 → 4.85 MB/event) |
+
+The per-event *rate* held almost exactly (pilot 32.4 s uncontended → 35.6 s
+under 10-way contention, a 10 % penalty). Everything that missed came from
+under-sampling the input, not from mismodelling the machine — a 10-event pilot
+is enough to calibrate cost per event and nothing about the population.
+
+### Load — and why load average misled here
+
+At 81 % through, load average read 57 and later 73, which looked alarming.
+It was not us:
+
+- our 10 workers stayed pinned to cores 0–19 throughout (verified with
+  `taskset -cp`), and their **aggregate CPU was 885 % ≈ 8.9 cores** — under
+  half the 20-core allowance;
+- machine-wide only **10 processes were runnable** against a load average of
+  57, with the rest of the number coming from `D`-state I/O wait.
+
+This run is **I/O-bound, not CPU-bound**: 315 GB read from dCache, and workers
+sat at 70–95 % of a single core rather than saturating their pairs. Load
+average counts uninterruptible I/O wait, so on an NFS/dCache-heavy box it is a
+poor proxy for "am I crowding other users". The honest measure is per-user CPU:
+`yuhw` 875 %, `root` 341 %, others < 35 % — about 12.7 of 64 cores busy.
+
+Consequence for future runs: **more workers would not have helped**. The
+binding constraint was dCache, so the 20-core cap cost nothing.
+
+### Failure census — 6 events, three distinct causes
+
+| file | event | rc | wall | cause |
+|---|---|---|---|---|
+| 196 | 11 | 1 | 27 s | `sig2img` range check |
+| 224 | 1 | 1 | 27 s | `sig2img` range check |
+| 684 | 7 | 139 | 30 s | **segfault** in `MultiAlgBlobClustering` |
+| 364 | 16 | 124 | 2369 s | timeout |
+| 470 | 4 | 124 | 2698 s | timeout |
+| 955 | 3 | 124 | 2499 s | timeout |
+
+**1. `sig2img` off-by-one (2 events) — a real toolkit bug.**
+
+```
+vector::_M_range_check: __n (which is 353) >= this->size() (which is 353)
+vector::_M_range_check: __n (which is 383) >= this->size() (which is 383)
+```
+
+In both, the index is *exactly* `size()` — one past the end, never further.
+That is the signature of an off-by-one at an upper bound (`<=` for `<`, or a
+bin lookup returning `nbins` for a value on the top edge). Reproducers:
+
+- run 719 / subRun 77 / event 35 —
+  `.../000041/000418/reco1-detsim-g4-gen-Gen2_2026-d53d-206a-31c4-9dbe.root`
+- run 714 / subRun 44 / event 10 —
+  `.../000041/000413/reco1-detsim-g4-gen-Gen2_2026-24c6-2937-92b2-cc2c.root`
+
+**2. Segfault in clustering (1 event).** Died in
+`MultiAlgBlobClustering:apa0-0` shortly after `ClusteringSeparate`, 30 s in.
+A separate defect from (1) — different component. The core file did not
+survive (the harness deletes the per-event work directory), so a stack trace
+needs a re-run under `gdb` on
+`.../000017/000170/reco1-detsim-g4-gen-Gen2_2026-67a3-4e42-52e3-19f7.root`.
+
+**3. Timeouts (3 events) — not bugs.** Each exceeded `timeout 1800`; all three
+consumed 2350–2700 s. Note art reported these as `passed = 1` and the log shows
+`closed shared Bee zip mabc.zip` **before** the SIGTERM, so their output was
+probably complete — but the harness keys on `rc == 0` and discarded it. That is
+the conservative choice, and at 3 events in 13,217 the loss is negligible;
+worth knowing before anyone reuses this harness where such events matter. The
+p99 is 93 s and the slowest *successful* event took 950 s, so these three are
+far out in the tail, not near the cut.
+
 ## Status
 
 - [x] Pilot 10 events + BEE (`bd8bc010-17c3-4f67-a80d-c76c7e12c1d6`)
-- [ ] Full run, 1000 files / ~10,100 events
-- [ ] 100-event BEE set from the full run
-- [ ] Post-run summary: failure census, wall-time distribution, tagger rates
+- [x] Full run, 1000 files / 13,217 events, 13 h 39 min
+- [x] 100-event BEE set (`3fa24feb-fbb3-4a9e-a27b-0aa2bb540003`)
+- [x] Failure census + wall-time distribution
+- [ ] File the `sig2img` off-by-one upstream (2 reproducers above)
+- [ ] Get a stack trace for the clustering segfault
+- [ ] Tagger-rate summary across the 13,211 zips (not yet built — see below)
+
+## Not done
+
+No **physics** summary exists. `summary.csv` carries `rc` and wall time per
+event, but nothing about what was reconstructed: no per-event TGM/STM/FC
+verdicts, cluster counts, or kinematics. Extracting those from the 13,211 zips
+into one table is what would make this run analyzable rather than merely
+completed. Deliberately left out of scope here.
 
 ## Files in this folder
 
