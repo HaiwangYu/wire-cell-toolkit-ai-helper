@@ -208,6 +208,28 @@ loop right after its trigger visitor, and the trigger was `TaggerCheckNeutrino` 
 which runs BEFORE the BDT scorers. Now keyed on `UbooneNueBDTScorer:pr` when the
 scorers are present.
 
+**Regression from this merge, fixed 2026-08-18.** Moving the truth tree into the
+merged `mc` made it hostage to the reco half: `fill_bee_pf_tree` returns early
+with no PR graph / TrackFitting / main vertex, and the call site skipped it
+entirely without a TrackFitting. Those are exactly the events the neutrino
+tagger declines -- most of them -- so **6 of 10 events had no `mc.json` at all**,
+truth included. Easy to miss: their `truth_*` POINT layers were still present,
+only the particle tree vanished.
+
+Fix is not "emit empty": all six had truth, only reco was missing. Priority is
+truth+reco > truth alone > empty. Three places had to change (hoist the upstream
+fetch above the reco checks; one `emit_without_reco()` bail-out on every no-reco
+path; drop the call-site `if (!tf) continue`), plus a per-set `emit_empty`
+(default false) that also stops the flush skipping empty trees.
+
+Verified at Bee's own `/event/<i>/mc/` endpoint for all 10: HTTP 200, 1-4
+top-level nodes each, **coverage 10/10 (was 4/10)**. Recovered content is not
+trivial -- evt 11 has 4 interactions, evt 2 has two (rockbox multi-nu).
+BEE after: `c946a64f-41a5-4dbb-b4f3-4b6fb91d4905`; before: `b3deef1c-91dd-4fcf-8b08-20a972bbb04c`.
+Caveats: several events read `Edep 0.0 MeV` (rock/dirt nu -- a truth node is not
+visible charge), and the genuinely-empty branch (neither truth nor reco, e.g.
+data) is coded but not exercised by this MC test.
+
 ## Open
 
 - **G6** — no post-Q/L pctree; blocks `nusel_extract.py` and the
