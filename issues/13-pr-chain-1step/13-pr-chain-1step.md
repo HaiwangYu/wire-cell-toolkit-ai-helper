@@ -61,7 +61,7 @@ which is not "evaluated and found not a cosmic".
 | G1 | `XGB_nue_seed2_0923.xml` missing | **resolved** (owner added it) |
 | G2 | DL (SCN) vertex unavailable | **resolved** — uboone `scn` UPS product |
 | G3 | RSE = 0/0/0 in everything WCT writes | **resolved** — new attacher component |
-| G4 | PR Bee layers land in a separate zip | open (`clus_pr` has no `bee_sink`) |
+| G4 | PR Bee layers land in a separate zip | **resolved*** — one caveat, see below |
 | G5 | `PrDisplayDump` absent | **resolved** by the upstream merge |
 | G6 | no pctree written before the PR node | open (one `tensor_outname` argument) |
 | G7 | cost of the full chain | partially measured, see below |
@@ -169,11 +169,39 @@ change beyond the stage names:
   (`kine_reco_Enu = 107.46`), `Trun`, plus the Magnify trees.
 - DL vertex healthy (0 failures).
 
+### G4 — PR Bee layers
+`clus_pr` was the only MABC maker without a `bee_sink`, so its layers went to
+`mabc-pr.zip`, which the issue-11 harness deletes — throwing away the three
+layers that exist nowhere else (`track_fit`, `shower_track`, `vertices`: the
+fitted trajectory, per-particle shower/track colouring, reconstructed vertices).
+
+Fixed with three jsonnet changes, no C++: `bee_sink` pass-through; the two
+colliding set names renamed **only when a sink is shared**
+(`clustering`→`clustering-pr`, `mc`→`mc-pr`) so sbnd_xin's `nusel_extract.py`,
+which requires `-clustering-global.json` inside `mabc-pr.zip`, keeps working;
+and `save_deadarea: bee_sink == null` — the first attempt produced 24 entries
+with `channel-deadarea-apa0/1` **duplicated**, because `clus_pr` wrote dead area
+on top of `clus_all_apa`'s (`clus_per_face` already guarded this).
+
+Result: one zip, 22 entries, zero duplicates, no `mabc-pr.zip`.
+
+**Bee check** (uploaded, set `8374939d`): 19 layers registered, DAQ ID shown as
+`713-74-3` (the G3 fix, visible). But *registered != rendered*, and the two
+families differ, read off `bee.js`:
+- **point sets are generic** — `${event_url}${eventId}/${this.name}/`, so
+  `clustering-pr-global`, `track_fit-global`, `shower_track-global`,
+  `vertices-global` are all viewable;
+- **the particle tree is hardcoded** — `this.url = base_url + "mc/"`, feeding one
+  `<div id="mc">`. Bee renders **exactly one** particle tree per event, named `mc`.
+
+So `mc-pr.json` is stored and listed but **never displayed**. The collision is
+real (two different trees, one name), so something must give: current state keeps
+the labeler's TRUTH tree as the rendered `mc` and parks the PR RECO particle flow
+at `mc-pr`. Swapping is one line in each of `clus_pr` and the labeler. Which
+deserves the panel is a physics call — left open.
+
 ## Open
 
-- **G4** — `clus_pr` has no `bee_sink`, so PR Bee layers go to `mabc-pr.zip`,
-  which the issue-11 harness deletes. Either merge the zips or add the
-  pass-through.
 - **G6** — no post-Q/L pctree; blocks `nusel_extract.py` and the
   run-the-2-step-on-1-step-output cross-check. One `tensor_outname` argument.
 - **G7** — cost and physics of the full chain on a real multi-event sample.
