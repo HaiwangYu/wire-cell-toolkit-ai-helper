@@ -230,19 +230,58 @@ Caveats: several events read `Edep 0.0 MeV` (rock/dirt nu -- a truth node is not
 visible charge), and the genuinely-empty branch (neither truth nor reco, e.g.
 data) is coded but not exercised by this MC test.
 
-## Open
+## Open tasks (deferred, not forgotten)
 
-- **G6** — no post-Q/L pctree; blocks `nusel_extract.py` and the
-  run-the-2-step-on-1-step-output cross-check. One `tensor_outname` argument.
-- **G7** — cost and physics of the full chain on a real multi-event sample.
-  DL vertex is +6.8 s/event on the one event measured.
-- **Route B cross-check** — run the canonical
-  `cfg/pgrapher/experiment/sbnd/wct-pr-perevt.jsonnet` on a 1-step-written
-  pctree and compare `T_tagger` leaf-by-leaf against Route A. This is the real
-  validation and it is not done.
-- **Item 8** — RSE branches on `T_tagger`/`T_kine` (they carry none today).
-- Single-instance labeler config not re-verified byte-identical after the
-  two-knob change (defaults are historical; reasoning, not measurement).
+**T1 -- validate Route A against Xin's ORIGINAL 2-step chain.**  The 1-step PR
+chain has never been compared to anything external; all verification so far is
+internal (it runs, produces every artifact, values stable across config changes).
+Owner decision 2026-08-18: use Xin's own chain rather than the "Route B" in the
+doc.  That is the stronger test -- Route B would run *our* toolkit build on a
+1-step-produced pctree, sharing our code, so it could not catch build- or
+port-level differences.  It also removes the need for **G6** entirely (no pctree
+handoff); the work becomes input matching, since Xin's chain runs from dumped
+files.
+
+**T2 -- make `tracking-pr.root` multi-event safe** (per-event filename or an
+append-mode writer) and retire the `enable_tracking_root` workaround.  See G9.
+Only worth doing if something needs the ROOT trees from a multi-event process --
+the CAF work may not.
+
+**T3 -- RSE branches on `T_tagger` / `T_kine`.**  Re-verified 2026-08-18: 1216
+and 21 branches, ZERO RSE in either.  Only `Trun` identifies the event, so any
+`T_tagger` analysis must join through `Trun` or the filename.
+
+**T4 -- exercise the empty particle-flow branch on data.**  Priority is
+truth+reco > truth alone > empty, and the empty arm fires only when there is
+neither.  MC always has truth, so all 10 test events took arm 1 or 2.  The data
+fcl sets `reality: "data"` -> no truth tree -> every event the tagger declines
+takes the empty arm: a path that has never executed, on the majority of a data
+campaign.  Two lines, low risk, one data event closes it.
+
+**T5 -- fix `sbnd/CLAUDE.md`** (drop the `enable_downstream_pr` reference; the
+key no longer exists in `clus.jsonnet`).  Cosmetic, G8.
+
+Dropped from this list 2026-08-18: "verify a single-instance labeler config is
+still byte-identical".  Nothing else instantiates `wclsTensorSetLabeler` -- only
+our sim fcl, data fcl and entry jsonnet; sbndcode has none and the standalone
+jsonnet mentions it only in a comment saying it is absent.  No consumer to break.
+
+### G9 -- tracking-pr.root is not multi-event safe (worked around)
+`SbndPrMagnifyTrackingVisitor` opens the file RECREATE and
+`UbooneTaggerOutputVisitor` opens it UPDATE, on one fixed filename, every event.
+`lar -n 5` leaves an 8 KB file with `T_tagger` and `T_kine` ABSENT and `Trun`
+holding only the last event -- while rc=0 and every other output is fine.
+Worked around by `enable_tracking_root` (fcl param, default true); "false" drops
+both stages.  Costs `numu_score` / `nue_score` / `kine_reco_Enu`; the Bee "mc"
+node keeps Enu and both scores regardless.
+
+### G7 -- cost, now MEASURED (10 events, run 925-23)
+Mean 48.8 s/event, median ~29 s.  Imaging ~45%, per-APA 12.4 s, QL 3.2 s,
+all-APA 7.3 s, **PR 3.8 s (8%)**.  DL vertex 6.4-6.8 s wherever a candidate
+exists (4/10 events) -- 78% of PR on those events, near-constant regardless of
+event size.  Peak RSS 2350 MB; ~47 GB at 20 workers.  The tail matters more than
+the mean and **the tail is in clustering, not PR**: one event took 212 s (4x the
+next), of which per-APA was 93.8 s and all-APA 57.6 s while PR was 8.9 s.
 
 ## Repos touched (all uncommitted, for review)
 
