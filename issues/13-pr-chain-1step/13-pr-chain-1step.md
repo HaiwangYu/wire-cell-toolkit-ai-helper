@@ -63,7 +63,7 @@ which is not "evaluated and found not a cosmic".
 | G3 | RSE = 0/0/0 in everything WCT writes | **resolved** — new attacher component |
 | G4 | PR Bee layers land in a separate zip | **resolved*** — one caveat, see below |
 | G5 | `PrDisplayDump` absent | **resolved** by the upstream merge |
-| G6 | no pctree written before the PR node | open (one `tensor_outname` argument) |
+| G6 | no pctree written before the PR node | **deferred** — Route B only, revisit later |
 | G7 | cost of the full chain | partially measured, see below |
 | G8 | stale docs (`enable_downstream_pr`, `x_sce` comment) | open, cosmetic |
 
