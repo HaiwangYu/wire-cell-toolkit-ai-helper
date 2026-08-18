@@ -194,11 +194,19 @@ families differ, read off `bee.js`:
 - **the particle tree is hardcoded** — `this.url = base_url + "mc/"`, feeding one
   `<div id="mc">`. Bee renders **exactly one** particle tree per event, named `mc`.
 
-So `mc-pr.json` is stored and listed but **never displayed**. The collision is
-real (two different trees, one name), so something must give: current state keeps
-the labeler's TRUTH tree as the rendered `mc` and parks the PR RECO particle flow
-at `mc-pr`. Swapping is one line in each of `clus_pr` and the labeler. Which
-deserves the panel is a physics call — left open.
+So `mc-pr.json` would be stored but never displayed. **Resolved by merging**: one
+`mc.json` with the labeler's truth nodes at top level and the PR reco flow under a
+sibling node `reco nu  <Enu> MeV  numu <s>  nue <s>` (energy/scores from
+`tf->get_kine_info()`/`get_tagger_info()`). Transport is a new labeler
+`pf_metadata_key` -> TensorSet metadata -> MABC `merge_metadata_key`, riding the
+`m_in_metadata` added for G3. New `'pf'` Bee family lets the labeler hand the tree
+over without writing it. Reco ids shifted by 20M (a duplicate jsTree id silently
+drops a branch). Verified at Bee's own `/event/0/mc/` endpoint: both nodes served.
+
+Trap: the scores first read 0.000 because the pf dump fires inside the pipeline
+loop right after its trigger visitor, and the trigger was `TaggerCheckNeutrino` --
+which runs BEFORE the BDT scorers. Now keyed on `UbooneNueBDTScorer:pr` when the
+scorers are present.
 
 ## Open
 
