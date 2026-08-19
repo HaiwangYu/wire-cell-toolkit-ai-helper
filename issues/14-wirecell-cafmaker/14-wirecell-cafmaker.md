@@ -170,6 +170,62 @@ object.
 Nothing verifies it today. Phase 1, because a silent mismatch mis-assigns every
 particle energy.
 
+## `rec.dlp` is SPINE, and how SPINE actually gets into a CAF
+
+"DLP" is the older name for the ML chain now called SPINE.  It is filled by
+NEITHER `sbncode/CAFMaker` nor any art module.
+
+**`justinjmueller/sbn_ml_cafmaker`** is a standalone C++/CMake project -- no art,
+no LArSoft.  SPINE runs outside LArSoft and writes HDF5; this tool moves it into
+CAF two ways: `merge_sources` (existing CAF + HDF5, matched event-by-event on
+`(run,subrun,evt)`, writes a new CAF with both) and `make_standalone` (a CAF with
+only ML output).  The merge loop reads the whole record, clears only its own four
+members (`dlp`, `ndlp`, `dlp_true`, `ndlp_true`), fills them on a match, and
+REBUILDS `recTree` entry by entry -- everything else passes through untouched.
+
+**This is the closest precedent to what we need, and better than an art module.**
+WC, like SPINE, produces output from its own chain rather than as art products a
+CAFMaker would see.  The merge pattern means no change to sbncode/CAFMaker, no
+art integration, no coupling to reco2, and the WC block can be re-made
+independently whenever the PR chain changes.  It also explains **why ndlp = 0**
+in our production sample: the branches are in the schema but filling them is a
+downstream step this production never ran.
+
+**Practical obstacle, ours specifically.** `merge_sources` does
+`SetBranchAddress("rec", &rec)` -- it needs a NESTED CAF.  Verified on our
+sample: there is no branch named `rec`; branches are `rec.crt_hits..length`,
+`rec.dlp.cathode_offset`, ... i.e. flattened.  And a `find` over the whole
+`caf/` tree returns **no non-flat `.caf.root` at all** -- SBND Gen2 production
+keeps only `.flat.caf.root`.  So the SPINE tool cannot be pointed at our files
+as-is; either obtain the nested CAF (presumably transient upstream of the
+flattening step) or make the merge work on the flat form, which is harder since
+flat branches are fixed-layout.
+
+### Can we add `rec.wc`?
+
+Correction first: **`rec.dlp` is not a TTree.**  There is one `recTree`.  Nested
+CAF: one branch `rec` holding a `caf::StandardRecord`, with `dlp` a member.  Flat
+CAF: that object exploded into ~2662 dotted branches, 433 of them `rec.dlp*`.  So
+`rec.wc` would be a MEMBER of StandardRecord (hence a set of branches), not a
+tree.
+
+| | option | cost | verdict |
+|---|---|---|---|
+| A | `std::vector<SRWireCellInteraction> wc` + `nwc` as new StandardRecord members, parallel to `dlp`/`ndlp` | sbnanaobj PR: record, flat mirror, dictionaries, SBN review | **the real destination** |
+| B | reuse the existing EMPTY `dlp` block | zero | **no** -- SPINE-shaped fields, and WC becomes indistinguishable from SPINE the moment SBND enables it.  Tempting because ndlp=0 today; a trap tomorrow |
+| C | sidecar TTree (`wcTree`) keyed by (run,subrun,evt) in the same file | none | **good first step**, but not "in the CAF" for tooling -- SRProxy/CAFAna address `recTree`; analysers would join by hand |
+
+Recommended: **C to prove the content, A to ship it.**  C gives real WC-in-CAF
+output in days and costs nothing that must be un-done -- the fillers and the RSE
+join are the same work either way.  A then converts a schema argument into a
+review of something already producing numbers.
+
+This supersedes "sibling visitor / read in memory" as the PRIMARY route.  Reading
+in memory is still the right way to OBTAIN the WC quantities (it avoids the 8 kB
+ambiguity above), but the CAF-side plumbing should follow the SPINE merge
+pattern.  The two are complementary: a WCT visitor writes a compact per-event WC
+summary, and a merge step joins it to the CAF on RSE.
+
 ## Design decision that outranks both questions
 
 **CAFMaker should not read `tracking-pr.root`.** It is a Magnify/debug artifact
