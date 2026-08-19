@@ -55,6 +55,60 @@ Five things.
    uncertainties. `cluster_id`/`real_cluster_id`/`sub_cluster_id` are the nearest
    analogues; WC gives per-point chi2/ndf, not propagated errors.
 
+## What is actually in an SBND CAF file (measured)
+
+Sample linked at `cafmaker-dev/sample-gen2-caf/sample.flat.caf.root` ->
+`/pnfs/sbn/data_add/sbn_nd/aurora/mc/v10_14_02_03/prodgenie_corsika_proton_rockbox0p1_sbnd/Gen2_2026/CV/caf/000240/002404/`.
+298 files there, ~11 MB each, **all `.flat.caf.root`** -- this production ships
+only the flattened form, no nested CAF.
+
+**File shape:** `recTree` 15 entries (one per spill), **2662 branches**,
+**631 kB/event compressed**; plus `GenieEvtRecTree` (30), `globalTree`
+(SRGlobal systematics config), `TotalPOT`/`TotalEvents`/`TotalGenEvents` for
+normalisation, and `env/` + `metadata/` provenance dirs.
+
+**Where the bytes go** (kB/event, share):
+
+| family | #br | kB/evt | % |
+|---|---|---|---|
+| `rec.slc.reco` | 614 | 174.4 | 27.6 |
+| `rec.mc.nu` | 146 | 84.5 | 13.4 |
+| `rec.true_particles.genp` | 3 | 84.0 | 13.3 |
+| `rec.true_particles.gen` | 3 | 58.1 | 9.2 |
+| `rec.true_particles.daughters` | 4 | 33.1 | 5.3 |
+| `rec.slc.truth` | 145 | 23.6 | 3.7 |
+| `rec.reco.pfp` | 491 | 4.5 | 0.7 |
+
+Truth dominates -- true_particles + mc.nu + slc.truth is well over half the
+file; slice reco is ~28%. `rec.reco.pfp` has 491 branches for 0.7% of bytes:
+in a flat CAF, branch count and size are only loosely related.
+
+**Blocks by branch count:** `rec.slc` 981, `rec.reco` 608, `rec.dlp_true` 269,
+`rec.hdr` 210, `rec.mc` 179, `rec.dlp` 164, `rec.true_particles` 56.
+
+**Occupancy/event:** nslc 2-14 (8.5 avg), ntrue_particles 4922-13275 (7144
+avg), nopflashes 30-63, **ndlp = 0**, ndlp_true = 0.
+
+### The DLP block is present but EMPTY
+
+433 `rec.dlp*` branches exist in the schema and occupy space, but `ndlp = 0` in
+every event -- SBND production does not run the ML reco that fills them.  So
+`SRInteractionDLP` is a **schema precedent, not a working example**: it proves
+the "second reconstruction at top level" slot is legitimate and already
+carried, but nobody has exercised it in SBND.  No operational pattern to copy;
+also no contention if WC takes an adjacent slot.
+
+### Correction to the Q1 size argument
+
+The first draft argued the ~1174 BDT-input branches were a SIZE problem.
+Against a measured 631 kB/event, 1023 floats is ~4.1 kB -- about **0.65%**.
+Size is a weak argument and should not have led.  What survives is stronger:
+**branch count** (2662 -> ~3850, +45% schema width; flat-CAF tooling and
+dictionaries scale with branch count, not bytes), **meaning** (one selection's
+intermediate features, uncharacterised on SBND), and **review burden** (every
+branch is a permanent commitment in a shared schema).  The tiering
+recommendation stands; the justification changes.
+
 ## Findings that shape the design
 
 **`SRInteractionDLP` is the precedent.** `StandardRecord` carries
