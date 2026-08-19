@@ -8,6 +8,42 @@ Work dir: `/exp/sbnd/data/users/yuhw/production-prep/cafmaker-dev`
 Follows on from issue #13 (the PR-chain port), which produced the reco output
 this consumes.
 
+## Where to find a real `tracking-pr.root`
+
+It is written to the job's CWD under that fixed name, with no RSE in it:
+
+```
+<outdir>/work/e_<fileidx>_<evtidx>/tracking-pr.root   # 1-step, 1 event per lar process
+<out_root>/pr_evt<ID>/tracking-pr.root                # sbnd_xin 2-step driver
+```
+
+The harness deletes its per-event workdir, so no durable copy existed. A
+reference set is preserved, renamed by RSE:
+
+```
+/exp/sbnd/data/users/yuhw/production-prep/cafmaker-dev/sample-tracking-pr/
+    tracking-pr_r925_s23_e{2,6,11,22,24,25}.root     8 kB each
+    tracking-pr_r925_s23_e{4,9,18,20}.root      218-318 kB
+```
+
+All 10 events of MCP2025C run 925-23, current build, full 15-stage pipeline,
+1.2 MB total.
+
+### The two size states matter for CAFMaker
+
+The 8 kB files contain ONLY `T_bad_ch`, `T_proj`, `Trun` -- `T_tagger`,
+`T_kine`, `T_rec_charge`, `T_proj_data` are **entirely absent**. That is every
+event where the neutrino tagger selected no candidate: **6 of these 10**. So
+"no PR content" is the COMMON case and a filler must treat absent trees as
+normal, not as an error.
+
+**And that signature is indistinguishable from the G9 multi-event corruption.**
+The corrupted `lar -n 5` file was 8261 bytes with T_tagger/T_kine absent; a
+legitimate no-candidate event is 8243-8282 bytes with exactly the same three
+trees. You cannot tell a silently corrupted production run from one where the
+tagger declined every event by inspecting the files -- a further argument for
+reading the products in memory, where "no candidate" is an explicit state.
+
 ## The two questions, answered
 
 ### Q1 — can all of `tracking-pr.root` go into CAF?
