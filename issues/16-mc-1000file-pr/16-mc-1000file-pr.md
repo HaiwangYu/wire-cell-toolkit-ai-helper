@@ -378,12 +378,100 @@ and 2512 s. They were timeout kills, and their logs end with a normal timer
 summary, which is why they showed no exception. Anything at this scale needs a
 timeout above the p99.9 of ~414 s by a wide margin; 1800 s was not enough.
 
+## Config audit vs Xin's 2-step chain (2026-08-21)
+
+Done after the run, by compiling both chains with `wcsonnet` and diffing the
+component `data` blocks — not by reading jsonnet. Full list:
+[`config-diff-1step-vs-2step.md`](config-diff-1step-vs-2step.md).
+
+Method note: the 2-step must be compiled with the production `pipeline_names`
+TLA that `run_pr_chain_batch_isolated75base.sh` passes. Compiling its bare
+defaults shows a phantom 10-vs-15-stage pipeline difference that does not exist
+in the real chain — the first version of this audit made exactly that mistake.
+
+### The shared files are genuinely shared
+
+`sbnd_xin/clus.jsonnet` is a **10-line re-export** of
+`pgrapher/experiment/sbnd/clus.jsonnet`, and `sbnd_xin/wct-pr-perevt.jsonnet` is
+a one-line re-export of the in-tree file. Both chains therefore compile the same
+`experiment/sbnd/clus.jsonnet` and the same `common/clus.jsonnet`, the latter
+being imported from exactly one place. **No divergence is possible in either
+clus jsonnet** — every difference comes from the entry point.
+
+### Clustering half: matches
+
+| instance | verdict |
+|---|---|
+| `apa0-0`, `apa1-0` | identical but for `bee_sink` / `rse_from_*` (1-step only) and `save_deadarea` false-vs-true |
+| `clus_all_apa` | identical on all 23 shared keys; Xin additionally sets `bee_flash_pred_min: 0` |
+| `clus_pr` pipeline | same 15 stages, same order |
+
+`save_deadarea=false` and the `clustering-pr` set name are deliberate — both
+follow from sharing one Bee zip (issue-13 G4); writing dead area from two nodes
+is what produced the duplicate `channel-deadarea` entries that fix removed.
+
+### PR half: 160 knobs missing
+
+`wct-pr-perevt.jsonnet` passes **351** named arguments to `clus_maker.pr()`.
+Our 1-step passes **7**. Compiled effective difference: **160 knobs**.
+
+| component | missing knobs |
+|---|---|
+| `TaggerCheckNeutrino:pr` | **139** — incl. 39 `shower_*`, 24 `mvga_*`, 10 `kine_*`, `fit_exclusion`, `mvfit_robust`, `nu_per_bundle`, `neutrino_type_bitmask`, `fiducial`+`fv_tolerance` |
+| `ClusteringProtectBundle:pr` | 5, plus `graph_name` = `relaxed` vs `relaxed_strict_img_2d_rescue_long_wtrack` |
+| `CreateSteinerGraph:pr`, `:prrefresh` | 3 each |
+| `ClusteringUnmergeBundle:pr` | 2 (`require_provenance`, `restore_demoted_mains`) |
+| `TaggerCheckTGM:pr` | 2 |
+| `UbooneTaggerOutputVisitor:pr` | 2 |
+| `TaggerCheckFC:pr`, `TaggerCheckSTM:pr`, `ClusteringExamineBundles:all` | 1 each |
+
+This is **by design on Xin's side and an oversight on ours.**
+`wct-pr-perevt.jsonnet:568` states it outright: *"Per doc 68 the SBND operating
+point lives HERE only; clus.jsonnet's clus_pr()/pr() function defaults stay
+null."* The 1-step bypasses that entry point, so it silently gets the
+conservative defaults. Worse, the 1-step jsonnet contains a comment claiming to
+"Match the SBND production operating point ... mirror it here" — for
+`iso_endpoint` alone. One knob of roughly 160 was mirrored, and the comment
+reads as though the operating point had been handled.
+
+These knobs are default-OFF in C++ *specifically* so config selects them, so
+absent means pre-flip behaviour, not "same as production".
+
+### Consequences for the 13,213-event dataset
+
+- `T_tagger`/`T_kine` were computed with the pre-flip tagger; the 10 `kine_*`
+  knobs feed `kine_reco_Enu` directly.
+- `nu_per_bundle=true` books per-bundle `T_tagger` branches in Xin's chain, so
+  this dataset is **not schema-compatible** with a production 2-step `T_tagger`.
+- The 45.1% candidate yield and the hand-scan false positives are **not**
+  production numbers. Several missing knobs
+  (`shower_bragg_protect_start_segment`, the `*_straight_guard` family,
+  `shower_nv_bridge_track`) target exactly the misclassification the scan saw.
+- The clustering half matches, so `T_rec_charge` geometry and the nugraph inputs
+  are the least affected.
+
+### This answers T1
+
+Issue 13's task T1 was "verify Route A against Xin's original 2-step chain". The
+audit answers it without running anything: the two chains agree on imaging,
+clustering and matching, and diverge on the PR operating point by 160 knobs. T1
+was the right task and the answer is that Route A was **not** equivalent.
+
+### Proposed fix (not applied)
+
+Factor the operating point out of `wct-pr-perevt.jsonnet` into a single jsonnet
+that both entry points import. Copying 351 arguments into the 1-step would work
+today and drift again tomorrow — copying is how this happened. After the fix,
+re-run the 10-event pilot and diff the compiled configs to zero before
+regenerating the 13k.
+
 ## Open items
 
-1. **`nugraph.h5` has one dataset per event keyed `..._rec-lab-apa0-1`**, even
-   though the labeler sits on the all-APA node. Either the name is legacy or the
-   graph covers only apa0 — worth confirming before this feeds training.
-   `semantic_classes` also has only 2 entries.
+1. ~~**`nugraph.h5` keyed `..._rec-lab-apa0-1`** — does it cover only apa0?~~
+   **Resolved 2026-08-21: naming artifact only.** Sampled x ranges run −234 to
+   +234 cm, roughly balanced across the cathode, so the graph spans both APAs.
+   `semantic_classes` is still only `['nu','cosmic']`, and every event is
+   labelled `train`.
 2. **`nue_score = -15.000`** on the smoke event looks like a floor/sentinel
    rather than a score. Harmless for this run; check before anyone cuts on it.
 3. **`vector::_M_range_check` with `__n == size()`** on 3 events (196/11,

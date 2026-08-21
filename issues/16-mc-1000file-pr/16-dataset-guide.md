@@ -12,6 +12,17 @@ Production details, measurements and failure analysis:
 > to seed training work. It carries no stability guarantee and will be
 > regenerated as the chain changes. Pin the git hashes below in anything you
 > publish from it.
+>
+> **⚠ Known configuration gap (found 2026-08-21, after production).** This
+> dataset was reconstructed with the **pre-flip** pattern-recognition operating
+> point, not the SBND production one. The 1-step chain that produced it passes
+> 7 arguments to `clus_maker.pr()`; Xin's 2-step chain passes 351, and a
+> compiled diff shows **160 knobs set there that ours leaves at default** —
+> 139 of them on the neutrino tagger, including 10 `kine_*` (which affect
+> `T_kine`), 39 `shower_*`, 24 `mvga_*` main-vertex knobs, `fit_exclusion`, and
+> `nu_per_bundle`/`neutrino_type_bitmask` (which change the `T_tagger`
+> *schema*). See [§10](#10-configuration-gap-vs-the-2-step-chain) before drawing
+> physics conclusions, and expect a regenerated dataset.
 
 ---
 
@@ -266,3 +277,69 @@ records this per event.
 
 Haiwang Yu. Questions about a specific event: quote its `(run, subrun, event)`
 — that is the key to all three datasets and to `summary.csv`.
+
+---
+
+## 10. Configuration gap vs the 2-step chain
+
+Verified 2026-08-21 by compiling both chains with `wcsonnet` and diffing the
+component `data` blocks. Full list:
+[`config-diff-1step-vs-2step.md`](config-diff-1step-vs-2step.md).
+
+**What is the same.** Both chains import the *same*
+`cfg/pgrapher/experiment/sbnd/clus.jsonnet` and the same
+`cfg/pgrapher/common/clus.jsonnet` — `sbnd_xin/clus.jsonnet` is a 10-line
+re-export shim. The imaging/clustering/matching half is effectively identical:
+`apa0-0`, `apa1-0` and `clus_all_apa` differ only in keys added deliberately for
+the 1-step (`bee_sink`, `rse_from_*`, `save_deadarea`). The PR pipeline is the
+same 15 stages in the same order.
+
+**What is different.** By design, the SBND production operating point lives in
+the 2-step *entry point* (`wct-pr-perevt.jsonnet`, which says so at line 568:
+"the SBND operating point lives HERE only; clus.jsonnet's clus_pr()/pr()
+function defaults stay null"). Our 1-step entry point calls `clus_maker.pr()`
+directly and so inherits those conservative defaults.
+
+| component | knobs Xin sets that we don't |
+|---|---|
+| `TaggerCheckNeutrino:pr` | **139** |
+| `ClusteringProtectBundle:pr` | 5 (+ `graph_name` differs: `relaxed` vs `relaxed_strict_img_2d_rescue_long_wtrack`) |
+| `CreateSteinerGraph:pr` / `:prrefresh` | 3 each |
+| `ClusteringUnmergeBundle:pr` | 2 |
+| `TaggerCheckTGM:pr` | 2 |
+| `UbooneTaggerOutputVisitor:pr` | 2 (`nu_per_bundle`, `neutrino_type_bitmask`) |
+| `TaggerCheckFC:pr`, `TaggerCheckSTM:pr` | 1 each (`evaluate_demoted_mains`) |
+| `ClusteringExamineBundles:all` | 1 (`save_bundle_main_provenance`) |
+| **total** | **160** |
+
+These are the knobs the recent `doc pr/40, 91–101` rounds flipped to "SBND
+PRODUCTION ON". They are default-OFF in C++ precisely so that config selects
+them, so absent = pre-flip behaviour.
+
+### What this means for the three datasets
+
+- **`T_tagger` / `T_kine`** — computed with the pre-flip tagger. The 10 `kine_*`
+  knobs (charge dedup/rebuild, mass rules, hadronic dQ/dx, long-muon mode)
+  directly affect `kine_reco_Enu`. Treat the energy and the BDT scores as
+  *this configuration's*, not SBND production's.
+- **`T_tagger` schema** — Xin's `nu_per_bundle=true` books per-bundle branches
+  ours does not have, so this dataset is **not schema-compatible** with a
+  production 2-step `T_tagger`.
+- **Candidate yield (45.1%) and the false positives** seen in the hand scan
+  should not be quoted as production numbers. Several missing knobs
+  (`shower_bragg_protect_start_segment`, the `*_straight_guard` family,
+  `shower_nv_bridge_track`) exist specifically to suppress the kind of
+  misclassification the scan found.
+- **Bee `mc.json`** — 14 `pf_*` particle-flow knobs are off here, so the reco
+  particle tree is built with pre-flip parentage/shower rules. Display only; it
+  does not change the reconstruction.
+- **`T_rec_charge` geometry and the nugraph inputs** are the least affected —
+  they come from the clustering half, which matches.
+
+### Fix
+
+Not applied yet. The right shape is to factor the operating point out of
+`wct-pr-perevt.jsonnet` into one jsonnet that *both* entry points import, rather
+than copying 351 arguments into the 1-step — copying is what let the two drift
+apart in the first place. Tracked in
+[issue #16](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/16).
