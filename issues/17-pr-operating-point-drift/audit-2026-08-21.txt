@@ -1,0 +1,200 @@
+wrote xin-both.json (143 components)
+1-step: 224 components | Xin: 133 components
+shared: 125
+
+### ClusteringExamineBundles:all
+    only in Xin : save_bundle_main_provenance          = true
+### ClusteringProtectBundle:pr
+    only in Xin : cathode_rejoin_angle                 = 20
+    only in Xin : cathode_rejoin_dir_npts              = 20
+    only in Xin : cathode_rejoin_dir_radius            = 150
+    only in Xin : cathode_rejoin_perp                  = 30
+    only in Xin : open_convicted_bundles               = true
+    DIFFER      : graph_name                           1-step="relaxed" | Xin="relaxed_strict_img_2d_rescue_long_wtrack"
+### ClusteringUnmergeBundle:pr
+    only in Xin : require_provenance                   = true
+    only in Xin : restore_demoted_mains                = true
+### CreateSteinerGraph:pr
+    only in Xin : edge_charge_forward_dead_mix         = true
+    only in Xin : terminal_adjacent_slice              = true
+    only in Xin : terminal_wire_tol                    = 1
+### CreateSteinerGraph:prrefresh
+    only in Xin : edge_charge_forward_dead_mix         = true
+    only in Xin : terminal_adjacent_slice              = true
+    only in Xin : terminal_wire_tol                    = 1
+### MultiAlgBlobClustering:apa0-0
+    only in 1-step : bee_sink                             = "BeeSink:mabc_shared"
+    only in 1-step : rse_from_ident                       = true
+    only in 1-step : rse_from_metadata                    = true
+    DIFFER      : save_deadarea                        1-step=false | Xin=true
+### MultiAlgBlobClustering:apa1-0
+    only in 1-step : bee_sink                             = "BeeSink:mabc_shared"
+    only in 1-step : rse_from_ident                       = true
+    only in 1-step : rse_from_metadata                    = true
+    DIFFER      : save_deadarea                        1-step=false | Xin=true
+### MultiAlgBlobClustering:clus_all_apa
+    only in 1-step : bee_sink                             = "BeeSink:mabc_shared"
+    only in 1-step : rse_from_ident                       = true
+    only in 1-step : rse_from_metadata                    = true
+    only in Xin : bee_flash_pred_min                   = 0
+### MultiAlgBlobClustering:clus_pr
+    only in 1-step : bee_sink                             = "BeeSink:mabc_shared"
+    only in 1-step : rse_from_ident                       = true
+    only in 1-step : rse_from_metadata                    = true
+    DIFFER      : bee_pf                               1-step=[{"em_ke_min": 5, "emit_empty": true, "grouping":  | Xin=[{"em_ke_min": 5, "emit_empty": true, "grouping": 
+    DIFFER      : bee_points_sets                      1-step=[{"algorithm": "clustering", "coords": ["x_t0cor", | Xin=[{"algorithm": "clustering", "coords": ["x_t0cor",
+    DIFFER      : save_deadarea                        1-step=false | Xin=true
+### TaggerCheckFC:pr
+    only in Xin : evaluate_demoted_mains               = true
+### TaggerCheckNeutrino:pr
+    only in Xin : assoc_clear_on_merge                 = true
+    only in Xin : assoc_full_recluster                 = true
+    only in Xin : assoc_reassign_orphans               = true
+    only in Xin : break_seg_orient                     = true
+    only in Xin : broken_muon_cluster_id_count         = true
+    only in Xin : conn3_stitch_max                     = 1
+    only in Xin : cont_muon_dir3_30cm                  = true
+    only in Xin : cosmic_companion_min_length          = 15
+    only in Xin : daughter_count_proto_examine_showers = true
+    only in Xin : daughter_count_proto_main_vertex     = true
+    only in Xin : daughter_shower_angle_reclass_straight_guard = true
+    only in Xin : dir_track_median_local               = true
+    only in Xin : es3_stub_guard                       = true
+    only in Xin : examine_direction_dirsign_shower_in_guard = true
+    only in Xin : fiducial                             = "BoxFiducial:sbnd_pr_fv"
+    only in Xin : fit_blob_coverage                    = 0
+    only in Xin : fit_exclusion                        = true
+    only in Xin : fv_tolerance                         = [-25, -25, -30, -30, -50, -30]
+    only in Xin : iso_snap_min_dir_mag                 = 4
+    only in Xin : kine_charge_dedup                    = true
+    only in Xin : kine_charge_rebuild                  = true
+    only in Xin : kine_charge_track_ctx                = true
+    only in Xin : kine_count_orphan_tracks             = true
+    only in Xin : kine_drop_stray_satellites           = true
+    only in Xin : kine_hadronic_dqdx                   = true
+    only in Xin : kine_long_muon_mode                  = 2
+    only in Xin : kine_mainvtx_used_guard              = true
+    only in Xin : kine_mass_rules                      = true
+    only in Xin : kine_shower_pdg_live                 = true
+    only in Xin : kink_break_protect                   = true
+    only in Xin : kink_walk_dqdx_stop                  = true
+    only in Xin : long_muon_stub_bridge                = true
+    only in Xin : main_vertex_candidate_flag           = true
+    only in Xin : main_vertex_graph_audit              = true
+    only in Xin : main_vertex_require_descriptor       = true
+    only in Xin : michel_stem_michel_check             = true
+    only in Xin : michel_stem_muon_rescue              = true
+    only in Xin : muon_multi_proton_pion               = true
+    only in Xin : mvfit_robust                         = true
+    only in Xin : mvga_ac_chord_max                    = 30
+    only in Xin : mvga_ac_no_cascade                   = true
+    only in Xin : mvga_approach_collapse               = 15
+    only in Xin : mvga_dup_frac                        = 0.8
+    only in Xin : mvga_dup_starved_asym                = 0.55
+    only in Xin : mvga_dup_starved_mip                 = 0.8
+    only in Xin : mvga_dup_starved_span                = 0.5
+    only in Xin : mvga_interposed                      = true
+    only in Xin : mvga_interposed_angle                = 130
+    only in Xin : mvga_interposed_deg1                 = true
+    only in Xin : mvga_interposed_len                  = 10
+    only in Xin : mvga_op1_dup_frac                    = 0.7
+    only in Xin : mvga_op1_post                        = true
+    only in Xin : mvga_op1_radius                      = -1
+    only in Xin : mvga_proj_angle                      = 25
+    only in Xin : mvga_proj_dqdx_ratio                 = 0.55
+    only in Xin : mvga_proj_dup_frac                   = 0.7
+    only in Xin : mvga_reseat_angle                    = 0
+    only in Xin : mvga_sat_dup_frac                    = 0.7
+    only in Xin : mvga_satellite                       = 3
+    only in Xin : mvga_splice_straighten               = 5
+    only in Xin : mvga_straighten_radius               = 1
+    only in Xin : mvga_stub                            = 2.5
+    only in Xin : mvga_stub_pts                        = 3
+    only in Xin : neutrino_type_bitmask                = true
+    only in Xin : nu_per_bundle                        = true
+    only in Xin : nu_per_bundle_demoted_acts           = true
+    only in Xin : nu_per_bundle_min_length             = 15
+    only in Xin : nu_selected_as_main                  = true
+    only in Xin : oov_prototype_parity                 = true
+    only in Xin : other_seg_empty_2d_guard             = true
+    only in Xin : other_seg_keep_isolated              = true
+    only in Xin : pi0_id_shared_allocator              = true
+    only in Xin : pid_flag_reconcile                   = true
+    only in Xin : reclass_never_computed_ke_floor      = true
+    only in Xin : reclass_preserve_4mom                = true
+    only in Xin : sccc_bridge_body                     = true
+    only in Xin : sccc_kink_max                        = 18
+    only in Xin : sccc_max_gap                         = 6
+    only in Xin : sgp_max_sep                          = 3
+    only in Xin : sgp_weak_qref                        = 6000
+    only in Xin : sgp_weak_scale                       = 5
+    only in Xin : shower_absorb_track_guard            = true
+    only in Xin : shower_absorb_unreachable_main       = true
+    only in Xin : shower_accept_pid_guard              = true
+    only in Xin : shower_bragg_protect_start_segment   = true
+    only in Xin : shower_cone_absorb_guard             = true
+    only in Xin : shower_conn3_unreachable             = true
+    only in Xin : shower_connect_from_vertices_straight_guard = true
+    only in Xin : shower_connect_main_vertex_straight_guard = true
+    only in Xin : shower_connect_start_seg_straight_guard = true
+    only in Xin : shower_dedup_start_seg               = true
+    only in Xin : shower_detach_track_stem             = true
+    only in Xin : shower_endpoint_exclude_start_vertex = true
+    only in Xin : shower_endpoint_skip_orphan_vtx      = true
+    only in Xin : shower_flag_pdg_electron             = true
+    only in Xin : shower_ghost_member_drop             = true
+    only in Xin : shower_hadronic_growth_max           = 0.7
+    only in Xin : shower_hadronic_stem_ratio           = 2.8
+    only in Xin : shower_hadronic_tag                  = true
+    only in Xin : shower_in_cascade_guard              = true
+    only in Xin : shower_less_id_tiebreak              = true
+    only in Xin : shower_long_muon_keep_type           = true
+    only in Xin : shower_nv_bridge_track               = true
+    only in Xin : shower_pdg_exact_muon_test           = true
+    only in Xin : shower_pdg_from_shower_type          = true
+    only in Xin : shower_pdg_from_start_segment        = true
+    only in Xin : shower_proton_daughter_pion          = true
+    only in Xin : shower_proton_daughter_pion_dissolve = true
+    only in Xin : shower_reclass_case_b_dqdx_guard     = true
+    only in Xin : shower_reclass_dqdx_guard            = true
+    only in Xin : shower_stem_backfill                 = true
+    only in Xin : shower_topo_demote_len               = 50
+    only in Xin : shower_topo_dqdx_guard               = true
+    only in Xin : shower_topo_reexam_straight_guard    = true
+    only in Xin : shower_topo_reset                    = true
+    only in Xin : shower_traj_michel_stem              = true
+    only in Xin : shower_traj_recheck_parity           = true
+    only in Xin : shower_traj_straight_guard           = true
+    only in Xin : shower_vote_track_pid_counts         = true
+    only in Xin : shower_walk_visited_parity           = true
+    only in Xin : single_muon_long_muon_claim          = true
+    only in Xin : single_muon_proton_chain_veto        = true
+    only in Xin : skip_cosmic_companions               = true
+    only in Xin : sp_photon_flag                       = true
+    only in Xin : steiner_gap_penalty                  = 2
+    only in Xin : stem_endpoint_wcpt_parity            = true
+    only in Xin : straight_cont_cross_cluster          = true
+    only in Xin : swap_orphan_dup_audit                = true
+    only in Xin : tagger_ordered_segment_sets          = true
+    only in Xin : teb_bragg_veto_turn                  = 30
+    only in Xin : teb_turn_min_arm_frac                = 0.4
+    only in Xin : track_comp_empty_abstain             = true
+    only in Xin : track_pid_persist_4mom               = true
+    only in Xin : track_pid_persist_dqdx               = true
+    only in Xin : track_pid_persist_dqdx_electron_guard = true
+    only in Xin : two_end_break                        = true
+    only in Xin : v3_extension_guard                   = true
+    only in Xin : vertex_dir_use_fit_point             = true
+    only in Xin : vertex_kink_snap                     = true
+### TaggerCheckSTM:pr
+    only in Xin : evaluate_demoted_mains               = true
+### TaggerCheckTGM:pr
+    only in Xin : evaluate_demoted_mains               = true
+    only in Xin : exempt_demoted_main_pairs            = true
+### TensorFileSink:clus_all_apa
+    DIFFER      : dump_mode                            1-step=false | Xin=true
+### UbooneTaggerOutputVisitor:pr
+    only in Xin : neutrino_type_bitmask                = true
+    only in Xin : nu_per_bundle                        = true
+
+179 differences
