@@ -338,6 +338,8 @@ them, so absent = pre-flip behaviour.
 
 ### Fix
 
+Tracked in [issue #17](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/17).
+
 Not applied yet. The right shape is to factor the operating point out of
 `wct-pr-perevt.jsonnet` into one jsonnet that *both* entry points import, rather
 than copying 351 arguments into the 1-step — copying is what let the two drift

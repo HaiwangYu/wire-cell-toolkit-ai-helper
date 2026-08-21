@@ -459,6 +459,9 @@ was the right task and the answer is that Route A was **not** equivalent.
 
 ### Proposed fix (not applied)
 
+Tracked separately in [issue #17](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/17), with a reproducible audit script as the acceptance gate.
+
+
 Factor the operating point out of `wct-pr-perevt.jsonnet` into a single jsonnet
 that both entry points import. Copying 351 arguments into the 1-step would work
 today and drift again tomorrow — copying is how this happened. After the fix,
