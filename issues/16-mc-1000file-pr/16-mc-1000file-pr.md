@@ -253,7 +253,7 @@ be wider than the pilot suggests.
 - [x] 1-event smoke — all three deliverables verified substantive
 - [x] 10-event pilot — 10/10 ok, timing/memory/disk measured, both Bee sets up
 - [x] hand scan of the 10 events — passes, see above
-- [x] full 1000-file run **launched** 2026-08-20 22:42 CDT, 32 workers x 1 core
+- [x] full 1000-file run — **complete**, 6h29m, 13,213/13,217 events (99.97%)
 
 ## Full run — launched 2026-08-20 22:42 CDT
 
@@ -281,6 +281,103 @@ Two revisions to the pilot's projections, both from a larger sample:
   suggested (51% stubs vs 60%). Revises the `tracking-pr.root` volume estimate
   upward, though it stays small in absolute terms.
 
+## Full run — COMPLETE
+
+`2026-08-20 22:42:12` → `2026-08-21 05:11:36` CDT, **6 h 29 m**, 32 workers × 1 core.
+
+| | result |
+|---|---|
+| events | **13,213 ok / 13,217 attempted = 99.97%** |
+| deliverables | 13,213 × 3 — Bee zip, `tracking-pr.root`, `nugraph.h5` |
+| zero-size or missing deliverables | **0** |
+| RSE collisions | **0** (13,213 unique RSE over 13,213 files) |
+| audit FAIL among successes | **0** — the 4 audit fails are exactly the 4 `rc != 0` |
+| coverage | 16 runs, 1000 distinct run/subrun pairs |
+| total cost | 192.2 core-hours |
+
+**No silent failures.** The audit column fired on nothing except the four hard
+crashes, so across 13,213 events there was no DL-vertex geometric fallback, no
+unregistered RSE attacher, no unlabeled pass-through and no blob loss. And
+because the filenames are RSE and all 13,213 are unique, nothing silently
+overwrote anything — the failure mode that a fixed-filename scheme would have
+hidden.
+
+### Wall time
+
+| | s |
+|---|---|
+| mean | 52.4 |
+| median | 48 |
+| p90 | 68 |
+| p99 | 118 |
+| p99.9 | 414 |
+| max | **2988** |
+
+The distribution is tight through p99 and then has a long thin tail: 25 events
+(0.19%) over 300 s, 7 over 600 s. The mean tracked the 9-minute estimate almost
+exactly (52.4 vs 54.8 s), so the ETA was good — 6.5 h actual against 6.8 h
+projected.
+
+### Memory — 32 workers was correct
+
+| | GB |
+|---|---|
+| mean over 709 samples at ≥30 concurrent jobs | **52.0** |
+| max over the whole 6.5 h | **60.6** |
+
+Never exceeded the 64 GB budget, and the max equals the max seen in the first 9
+minutes, i.e. the ceiling was reached early and held. This settles the
+28-vs-32 question: sum-of-peaks (65.3 GB) overestimates because peaks do not
+coincide across independent jobs. **Size future campaigns on the sampled
+concurrent sum, not on the sum of per-job peaks.**
+
+### Disk — 84.7 GB (projected 76 GB)
+
+| | actual | per event | projected |
+|---|---|---|---|
+| Bee | 67 GB | 5.41 MB | 4.61 MB |
+| `nugraph.h5` | 16 GB | 1.25 MB | 1.06 MB |
+| `tracking-pr.root` | 1.6 GB | 0.12 MB | 0.11 MB |
+
+Both the Bee and nugraph means came in ~17% above the pilot, because the pilot
+took only event 0 of each file and those happen to be lighter than the file
+average. Max single event: 38.8 MB Bee, 9.4 MB nugraph.
+
+### Reconstruction yield — 45.1%
+
+**5,960 of 13,213 events (45.1%) carry a reconstructed neutrino candidate**;
+7,253 (54.9%) have a stub `tracking-pr.root`. Between the pilot's 40% and the
+first-9-minutes 49%, as expected from a bigger sample.
+
+## The four failures
+
+| file/evt | RSE | mode | in 08-14? |
+|---|---|---|---|
+| 196/11 | 719/77/35 | `vector::_M_range_check: __n (353) >= size() (353)` | **yes, identical index** |
+| 224/1 | 714/44/10 | `vector::_M_range_check: __n (383) >= size() (383)` | **yes, identical index** |
+| 684/7 | 471/18/33 | SIGSEGV, core dumped, during `apa0-0` clustering | **yes** |
+| 932/0 | 718/51/3 | `vector::_M_range_check: __n (6) >= size() (6)` | **no — succeeded in 22 s** |
+
+Three of the four are pre-existing and deterministic: they reproduce from issue
+11 at the same (file, event) with the *same out-of-range index*, so they are
+input-driven and independent of the PR chain. All three range-check throws have
+`__n == size()` exactly — a one-past-the-end `.at()`, at three different sizes
+(353, 383, 6), which suggests one bug reached by a common code path rather than
+three unrelated ones.
+
+**932/0 is genuinely new** — it completed in 22 s in issue 11 and now throws.
+That is 1 new failure in 13,217 events (0.008%), attributable to either the PR
+chain being on or the 47-commit merge. Worth a look, not worth blocking on.
+
+### Why 4 failures here and 6 in issue 11
+
+Not an improvement in the chain — a timeout change. Issue 11 used
+`timeout 1800`; this harness uses `timeout 3600`. Issue 11's other three
+failures (364/16, 470/4, 955/3) all **succeeded here**, taking 2512 s, 2988 s
+and 2512 s. They were timeout kills, and their logs end with a normal timer
+summary, which is why they showed no exception. Anything at this scale needs a
+timeout above the p99.9 of ~414 s by a wide margin; 1800 s was not enough.
+
 ## Open items
 
 1. **`nugraph.h5` has one dataset per event keyed `..._rec-lab-apa0-1`**, even
@@ -289,6 +386,11 @@ Two revisions to the pilot's projections, both from a larger sample:
    `semantic_classes` also has only 2 entries.
 2. **`nue_score = -15.000`** on the smoke event looks like a floor/sentinel
    rather than a score. Harmless for this run; check before anyone cuts on it.
-3. **Issue 13 T1 is still open** — Route A has not been verified against Xin's
+3. **`vector::_M_range_check` with `__n == size()`** on 3 events (196/11,
+   224/1, 932/0) and a SIGSEGV on 1 (684/7). The first two reproduce from issue
+   11 with identical indices, so they are a standing bug in the chain rather
+   than a scale artifact — 4 reproducible test cases now exist for whoever
+   fixes it.
+4. **Issue 13 T1 is still open** — Route A has not been verified against Xin's
    original 2-step chain. This campaign runs Route A on 13k events regardless;
    T1 remains the thing that would validate it.
