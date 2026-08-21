@@ -177,7 +177,40 @@ campaign writes one h5 per event, not one h5 per job). Colouring: `q` =
 nu(1)/cosmic(0)/ghost(-1) from `y_semantic`, `cluster_id` = `y_instance` (truth
 trackid).
 
-## Concurrency — 28 workers, not 32
+## Hand scan of the 10 pilot events (owner, 2026-08-20)
+
+Verdict: **passes the sanity check** — proceed to the full run.
+
+| Bee evt | RSE | PR content | owner note |
+|---|---|---|---|
+| 0 | 713/74/3 | 211 kB | no in-beam, but a nu was reconstructed |
+| 1 | 713/35/3 | stub | — |
+| 2 | 713/0/11 | 230 kB | w-prolonged cosmic |
+| 3 | 713/68/2 | stub | — |
+| 4 | 713/59/9 | stub | w-prolonged cosmic |
+| 5 | 713/5/4 | stub | — |
+| 6 | 713/51/3 | 404 kB | very good case with pi0 |
+| 7 | 713/70/3 | 235 kB | selection good, but pi0 not correct |
+| 8 | 713/40/2 | stub | — |
+| 9 | 713/52/1 | stub | match OK, but too small? truth depo 142 MeV |
+
+Two things fall out of cross-referencing the notes against the file sizes:
+
+- **The four events with a reconstructed candidate are exactly the four the
+  owner flagged as having reco** (0, 2, 6, 7). The stub/non-stub split is
+  therefore a faithful index of "the tagger accepted this event", not an
+  artifact of the writer.
+- **Two of those four look like false positives.** Event 2 is a w-prolonged
+  cosmic that was nonetheless reconstructed as a neutrino candidate, and event 0
+  has no in-beam activity yet produced one (its truth is `numu RES CC` with
+  Etot 1821.6 MeV but only **19.8 MeV deposited**). W-plane prolongation is
+  [issue 10](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/10);
+  events 2 and 4 both show it, so 2 of 10 events carry that defect and one of
+  them converts it into a candidate. This is the thing to quantify on 13k events.
+- Events 6 and 7 are genuine pi0 cases: 6 reconstructs well, 7 selects correctly
+  but gets the pi0 wrong.
+
+## Concurrency — owner chose 32 workers
 
 Both stated constraints cannot be met at once, so the measurement decides:
 
@@ -186,11 +219,14 @@ Both stated constraints cannot be met at once, so the measurement decides:
 | 28 | 28 × 2.04 = **57.1 GB** | 28 × 1.89 = 52.9 GB | fits, with tail headroom |
 | 32 | 32 × 2.04 = **65.3 GB** | 32 × 1.89 = 60.5 GB | **over 64 GB** on peaks |
 
-Sized on sum-of-peaks rather than the observed concurrent sum, because the pilot
-sampled no tail event — issue 13 saw a 212 s clustering event, and issue 11 saw
-a 950 s one, neither of which is in these 10. 28 × 1 core costs ~13% wall
-against 32 and keeps a 7 GB margin. The host has 64 cores / 125 GB, so 64 GB is
-a courtesy cap on a shared box, not a hard limit.
+The recommendation was 28, sized on sum-of-peaks because the pilot sampled no
+tail event (issue 13 saw a 212 s clustering event, issue 11 a 950 s one).
+**The owner chose 32**, and the run vindicates it: over the first 9 minutes at
+32 concurrent jobs the sampled total RSS is **mean 51.0 GB, max 60.6 GB** — the
+observed-concurrent column, not the sum-of-peaks column, and inside the 64 GB
+budget. Peaks do not coincide across independent jobs, which is why sum-of-peaks
+was the conservative bound rather than the real one. The host has 64 cores /
+125 GB, so 64 GB was a courtesy cap on a shared box, not a hard limit.
 
 ## Projection for the full run
 
@@ -216,8 +252,34 @@ be wider than the pilot suggests.
 - [x] harness with per-event RSE naming, three deliverables, audit column
 - [x] 1-event smoke — all three deliverables verified substantive
 - [x] 10-event pilot — 10/10 ok, timing/memory/disk measured, both Bee sets up
-- [ ] hand scan of the 10 events (user)
-- [ ] full 1000-file run
+- [x] hand scan of the 10 events — passes, see above
+- [x] full 1000-file run **launched** 2026-08-20 22:42 CDT, 32 workers x 1 core
+
+## Full run — launched 2026-08-20 22:42 CDT
+
+32 workers x 1 core, `scripts/sample-mem.sh` recording total RSS to `mem.txt`
+every 30 s for the duration.
+
+First 9 minutes:
+
+| | measured | vs pilot projection |
+|---|---|---|
+| throughput | **32.4 events/min** | — |
+| ETA (13,200 events) | **~6.8 h** (finish ~05:30 CDT) | 5.8 h projected at 28 |
+| mean wall/event | 54.8 s | 44.5 s in the pilot |
+| concurrent RSS | mean 51.0 GB, max 60.6 GB | 60.5 GB predicted at 32 |
+| rc != 0 | **0** of 296 | — |
+| audit FAIL | **0** of 296 | — |
+| tracking-pr stubs | 51% | 60% in the pilot |
+
+Two revisions to the pilot's projections, both from a larger sample:
+
+- **Per-event wall is 54.8 s, not 44.5 s.** The pilot took only event 0 of each
+  file; the bulk run takes every event, and 32-way single-core contention is
+  worse than 10-way. ETA moves from 5.8 h to ~6.8 h.
+- **~49% of events carry a reconstructed candidate**, not the ~40% the pilot
+  suggested (51% stubs vs 60%). Revises the `tracking-pr.root` volume estimate
+  upward, though it stays small in absolute terms.
 
 ## Open items
 
