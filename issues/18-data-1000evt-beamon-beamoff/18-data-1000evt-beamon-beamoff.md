@@ -10,7 +10,12 @@ Work/output: `/exp/sbnd/data/users/yuhw/production-prep/img-clus-match-tag-pr-da
 | sample | status |
 |---|---|
 | **beam-on**, 1000 events | **complete** — 1000/1000, 25 min |
-| **beam-off**, 1000 events | **blocked** on the SAM file list (see below) |
+| **beam-off**, 1000 events | **complete** — 1000/1000, 69 min |
+
+**Headline result: the neutrino-candidate rate is 43.4% beam-on against 7.5%
+beam-off — a factor 5.8, a 35.9 ± 1.8% difference (20σ).** That is the
+strongest end-to-end sanity check the chain has had: the tagger fires on beam
+and largely does not fire off beam, on real data, with no truth involved.
 
 ## Data mode differs from MC in four ways
 
@@ -105,33 +110,86 @@ layers.
 - full chain: <https://www.phy.bnl.gov/twister/bee/set/39fad5b1-bbb4-47ad-92c3-f1c95e1a6cea/event/list/>
 - nugraph space points: <https://www.phy.bnl.gov/twister/bee/set/ab1514e6-ba9a-4c7f-bfac-dae731417d05/event/list/>
 
-## Beam-off — blocked, and on exactly one thing
+## Beam-off (complete)
 
-`samweb` cannot be reached from this build node: **no DNS for any `*.fnal.gov`
-SAM host**, inside or outside the SL7 container (`www.phy.bnl.gov` resolves, so
-it is selective, not a general network outage). The definition is
-`data_MCP2025C_FallValidationII_RollingDev_offbeamlight_v10_14_00_reco1_sbnd`.
+Built here from the SAM definition
+`data_MCP2025C_FallValidationII_RollingDev_offbeamlight_v10_14_00_reco1_sbnd`
+(738 files; 60 resolved to `/pnfs`), merged + frameshifted into one 4.05 GB /
+1000-event file by `prep-beam-off.sh`, which then **verifies the FrameShift
+product actually landed** rather than assuming it. Owner decision: use this
+definition as-is — it is the only Run-1 beam-off reco1 sample currently
+available — despite being a different campaign and version from beam-on
+(`FallValidationII_RollingDev` v10_14_00 vs `Fall25-Run1_BNB_Dev` v10_14_02).
 
-`scripts/make-beamoff-list.sh` must therefore be **run by the owner**. It
-describes the definition, lists its files, resolves each to a `/pnfs` path and
-stops at 60 (beam-on reached 1000 events from 20 files, and the merge caps at
-`lar -n 1000`, so surplus files are never read). Everything after that is
-automated: `prep-beam-off.sh` → merge+frameshift+verify → manifest, then the
-same harness.
+`22:14:35 → 23:23:51 CDT`, **69 min**, 28.7 core-hours, **26** workers (see the
+memory note below).
 
-### Open question: the two samples are different processings
+### samweb: reachable all along
 
-| | beam-on | beam-off definition |
+An earlier version of this doc claimed samweb was unreachable from the build
+node. **That was wrong.** It works inside SL7 once the ups environment is set
+up — `source setup-local-opt.sh; setup sam_web_client` (v3_6). Two errors
+produced the false conclusion: a hand-prepended PATH to the cvmfs v3_3 client,
+and — the real one — testing reachability with `getent hosts samweb.fnal.gov`,
+which **fails even where `samweb` itself works**. Recorded in `sbnd/CLAUDE.md`
+and memory: run the real command, never a proxy for it.
+
+### 26 workers, not 32
+
+At 32 workers beam-off held **73.7 GB** (samples repeatedly 66–74 GB), over the
+64 GB budget, with the host down to 29 GB available. Beam-off jobs are ~20%
+heavier than beam-on: mean peak RSS **2.36 GB vs 1.96 GB**. The two stated
+constraints ("32 cores", "<64 GB") conflict for this sample, so the memory cap
+won — it is the one that affects other users of a shared box — and the run was
+restarted at 26 workers, costing ~5 min of redone work. Result: mean 46.5 GB,
+**max 60.2 GB**.
+
+## Both samples, side by side
+
+| | beam-on | beam-off |
 |---|---|---|
-| campaign | `Fall25-Run1_BNB_Dev_bnblight` | `FallValidationII_RollingDev_offbeamlight` |
-| version | **v10_14_02** | **v10_14_00** |
+| events | **1000 / 1000** | **1000 / 1000** |
+| zero-size / missing | 0 | 0 |
+| RSE unique, == manifest | 1000, 0 diff | 1000, 0 diff |
+| `audit` FAIL / `rse_check` | 0 / 0 | 0 / 0 |
+| workers | 32 | 26 |
+| wall | 25 min, 12.4 core-h | 69 min, 28.7 core-h |
+| wall/event | mean **44.5 s**, median 42, p99 104, max 192 | mean **103.5 s**, median 53, p99 1769, max 2199 |
+| events > 300 s | **0** | 27 |
+| concurrent RSS | mean 48.0, max **57.8 GB** | mean 46.5, max **60.2 GB** |
+| disk | 2.4 GB (2.45 MB/evt) | 2.4 GB (2.39 MB/evt) |
+| **candidates** | **434 / 1000 = 43.4%** | **75 / 1000 = 7.5%** |
+| runs covered | 2 (18255, 18259) | 43 |
 
-Beam-on/beam-off is normally a subtraction, so a version and campaign mismatch
-is worth a decision before spending the cycles. Awaiting owner input on whether
-a v10_14_02 off-beam definition should be used instead.
+Medians are close (42 vs 53 s); the beam-off mean is driven entirely by a tail,
+and that tail is one run.
+
+### Run 18308 is an anomaly worth a look
+
+23 of beam-off's 27 tail events come from **run 18308**, and it is not a
+high-occupancy effect:
+
+| | events | mean wall | Bee | nugraph | candidates |
+|---|---|---|---|---|---|
+| run 18308 | 28 | **1459.7 s** | 0.95 MB | 1.22 MB | **0 (0%)** |
+| all other beam-off | 972 | **64.4 s** | 1.03 MB | 1.34 MB | 75 (8%) |
+
+**23× the processing time on slightly *below*-average data volume, and not one
+candidate in 28 events.** Whatever is slow is not proportional to the amount of
+data, so this looks like a degenerate condition in clustering or PR rather than
+a busy detector. Excluding 18308, beam-off is mean 64.4 s / median 52 / p99 260,
+and the candidate rate is 7.7% — i.e. the physics conclusion does not depend on
+this run, but the cost does. One 2199 s event in run 18277 is a separate
+outlier.
+
+All 27 tail events are stubs (0% candidates), against 8% for events under 300 s.
 
 ## Caveats
 
+- **The candidate rates are configuration-dependent.** The 43.4% / 7.5% split is
+  a strong relative statement — same chain, same config, both samples — and that
+  is what makes it a good sanity check. The *absolute* rates are not production
+  numbers; see the next point.
 - **The `#17` operating-point gap applies here too.** This ran the same
   pre-flip PR configuration as issue 16: 160 knobs that Xin's 2-step chain sets
   are at default, 139 of them on `TaggerCheckNeutrino`. So the 43.4% candidate
