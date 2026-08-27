@@ -1,0 +1,48 @@
+sim: 224 components | data: 224 components
+shared: 224
+
+### ClusteringCathodeBundleRescue:all
+    DIFFER      : coords                               sim=["x_t0cor", "y", "z"] | data=["x_t0cor", "y_cor", "z_cor"]
+### ClusteringCathodeConnect:all
+    DIFFER      : coords                               sim=["x_t0cor", "y", "z"] | data=["x_t0cor", "y_cor", "z_cor"]
+### ClusteringClose:all
+    DIFFER      : coords                               sim=["x_t0cor", "y", "z"] | data=["x_t0cor", "y_cor", "z_cor"]
+### ClusteringExamineBundles:all
+    DIFFER      : coords                               sim=["x_t0cor", "y", "z"] | data=["x_t0cor", "y_cor", "z_cor"]
+### ClusteringExtend:all
+    DIFFER      : coords                               sim=["x_t0cor", "y", "z"] | data=["x_t0cor", "y_cor", "z_cor"]
+### ClusteringExtendLoop:all
+    DIFFER      : coords                               sim=["x_t0cor", "y", "z"] | data=["x_t0cor", "y_cor", "z_cor"]
+### ClusteringParallelProlong:all
+    DIFFER      : coords                               sim=["x_t0cor", "y", "z"] | data=["x_t0cor", "y_cor", "z_cor"]
+### ClusteringRegular:all1
+    DIFFER      : coords                               sim=["x_t0cor", "y", "z"] | data=["x_t0cor", "y_cor", "z_cor"]
+### ClusteringRegular:all2
+    DIFFER      : coords                               sim=["x_t0cor", "y", "z"] | data=["x_t0cor", "y_cor", "z_cor"]
+### DetectorVolumes:dv-apa0-0
+    DIFFER      : metadata                             sim={"a0f0pA": {"FV_xmax": -25, "FV_xmax_margin": 20,  | data={"a0f0pA": {"FV_xmax": -25, "FV_xmax_margin": 20, 
+### DetectorVolumes:dv-apa0-1
+    DIFFER      : metadata                             sim={"a0f0pA": {"FV_xmax": -25, "FV_xmax_margin": 20,  | data={"a0f0pA": {"FV_xmax": -25, "FV_xmax_margin": 20, 
+### DetectorVolumes:dv-apa0-1-0
+    DIFFER      : metadata                             sim={"a0f0pA": {"FV_xmax": -25, "FV_xmax_margin": 20,  | data={"a0f0pA": {"FV_xmax": -25, "FV_xmax_margin": 20, 
+### DetectorVolumes:dv-apa1-0
+    DIFFER      : metadata                             sim={"a0f0pA": {"FV_xmax": -25, "FV_xmax_margin": 20,  | data={"a0f0pA": {"FV_xmax": -25, "FV_xmax_margin": 20, 
+### MultiAlgBlobClustering:clus_all_apa
+    DIFFER      : bee_points_sets                      sim=[{"algorithm": "img", "coords": ["x", "y", "z"], " | data=[{"algorithm": "img", "coords": ["x", "y", "z"], "
+### MultiAlgBlobClustering:clus_pr
+    DIFFER      : bee_points_sets                      sim=[{"algorithm": "clustering", "coords": ["x_t0cor", | data=[{"algorithm": "clustering", "coords": ["x_t0cor",
+### QLMatching:matching_joint
+    DIFFER      : QtoL                                 sim=1 | data=0.86
+    DIFFER      : data                                 sim=false | data=true
+### wclsCookedFrameSource:sigs
+    DIFFER      : input_mask_tags                      sim=["simtpc2d:badmasks"] | data=["sptpc2d:badmasks"]
+    DIFFER      : recobwire_tags                       sim=["simtpc2d:dnnsp", "simtpc2d:dnnsp"] | data=["sptpc2d:dnnsp", "sptpc2d:dnnsp"]
+    DIFFER      : summary_tags                         sim=["", "simtpc2d:wienersummary"] | data=["", "sptpc2d:wienersummary"]
+### wclsTensorSetLabeler:labeler_tagger
+    DIFFER      : reality                              sim="sim" | data="data"
+    DIFFER      : tagger_coords                        sim=["x_t0cor", "y", "z"] | data=["x_t0cor", "y_cor", "z_cor"]
+### wclsTensorSetLabeler:labeler_truth
+    DIFFER      : reality                              sim="sim" | data="data"
+    DIFFER      : tagger_coords                        sim=["x_t0cor", "y", "z"] | data=["x_t0cor", "y_cor", "z_cor"]
+
+24 differences

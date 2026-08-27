@@ -184,6 +184,66 @@ outlier.
 
 All 27 tail events are stubs (0% candidates), against 8% for events under 300 s.
 
+## Configuration confirmation vs issue #16 / #17
+
+Verified 2026-08-21 by **compiling the data config and diffing it**, using the
+issue-17 audit script (`issues/17-pr-operating-point-drift/scripts/audit-config-diff.py`)
+— not by reading the fcl. Raw output:
+[`config-diff-sim-vs-data-2026-08-21.txt`](config-diff-sim-vs-data-2026-08-21.txt).
+
+### The issue-17 operating-point gap is identical here
+
+Diffing the **data** config against Xin's 2-step reproduces the issue-17 result
+exactly — same total, same components, same counts as the sim run:
+
+| component | knobs Xin sets that we don't |
+|---|---|
+| `TaggerCheckNeutrino:pr` | **139** |
+| `ClusteringProtectBundle:pr` | 5 |
+| `CreateSteinerGraph:pr` / `:prrefresh` | 3 each |
+| `ClusteringUnmergeBundle:pr`, `TaggerCheckTGM:pr`, `UbooneTaggerOutputVisitor:pr` | 2 each |
+| `TaggerCheckFC:pr`, `TaggerCheckSTM:pr`, `ClusteringExamineBundles:all` | 1 each |
+| **total** | **160** — identical to the MC campaign |
+
+Diffing sim against data directly, **none of the issue-17 components appear**:
+`TaggerCheckNeutrino`, `ClusteringProtectBundle`, `CreateSteinerGraph`,
+`ClusteringUnmergeBundle`, all three `TaggerCheck*` and
+`UbooneTaggerOutputVisitor` are byte-identical between the two runs. The
+pre-flip PR operating point carried over unchanged.
+
+### …but the two runs are not byte-identical: `reality=data` changes 24 things
+
+These are the reality switch working as intended, not operating-point toggles:
+
+| what | sim | data |
+|---|---|---|
+| `coords` on 9 `Clustering*` + both labelers' `tagger_coords` | `["x_t0cor","y","z"]` | `["x_t0cor","y_cor","z_cor"]` |
+| `DetectorVolumes` `pos_offset` (APA0 / APA1) | `null` | `[0,-1.1,6.7]` / `[0,1.1,-6.7]` |
+| `QLMatching:matching_joint` `QtoL` | `1` | **`0.86`** |
+| `QLMatching:matching_joint` `data` | `false` | `true` |
+| `wclsCookedFrameSource` product tags | `simtpc2d:*` | `sptpc2d:*` |
+| `reality` on both labelers | `"sim"` | `"data"` |
+| `bee_points_sets` coords on `clus_all_apa`, `clus_pr` | — | follows the coord change |
+
+The per-TPC `pos_offset` is the source of the `y_cor`/`z_cor` coordinates
+(`pos_offset_on=true` for data), and `QtoL = 0.86` is a real physics difference
+in the light-yield scaling used by Q/L matching.
+
+### What this means
+
+- **The #17 caveat transfers exactly.** Absolute candidate rates, `T_tagger`,
+  `T_kine` and `kine_reco_Enu` are this pre-flip configuration's numbers in the
+  data run just as in the MC one.
+- **Beam-on vs beam-off is internally consistent** — both data samples used
+  the identical config, so the 5.8× ratio is not a configuration artifact.
+- **Data vs MC comparisons are affected by the 24 reality differences**,
+  independently of #17 — particularly `QtoL 0.86` and the position offsets.
+
+Not settled by config alone: this confirms the *configuration* matched, not the
+*binaries*. Both campaigns loaded the same `opt` install (built 2026-08-20
+20:48–21:09 and unchanged since), so the code matched too — but that rests on
+install timestamps, not on a compiled diff.
+
 ## Caveats
 
 - **The candidate rates are configuration-dependent.** The 43.4% / 7.5% split is
