@@ -343,16 +343,36 @@ Both the Bee and nugraph means came in ~17% above the pilot, because the pilot
 took only event 0 of each file and those happen to be lighter than the file
 average. Max single event: 38.8 MB Bee, 9.4 MB nugraph.
 
-### Reconstruction yield — 44.0% (corrected 2026-08-27)
+### Reconstruction yield — 43.9% (corrected 2026-08-27)
 
-**5,813 of 13,213 events (44.0%) carry a real reconstruction.**
+**5,797 of 13,213 events (43.9%) carry a usable reconstruction**
+(`kine_reco_Enu > 0`).
+
+| criterion | MC (13,213) | beam-on (1000) | beam-off (1000) |
+|---|---|---|---|
+| file size > 20 kB *(wrong)* | 5,960 = 45.1% | 434 = 43.4% | 75 = 7.5% |
+| `T_rec_charge` entries > 0 | 5,813 = 44.0% | 421 = 42.1% | 34 = 3.4% |
+| **`kine_reco_Enu > 0`** *(use this)* | **5,797 = 43.9%** | **419 = 41.9%** | **33 = 3.3%** |
+
+`kine_reco_Enu > 0` is the right test: it agrees **exactly** with the count of
+Bee `mc.json` files carrying a `reco nu` node (419 and 33), i.e. with the
+existence of a reconstructed main vertex. The other two over-count:
+
+- *size* counts the ~211 kB files where `T_tagger`'s 1216 branches are booked
+  but `T_rec_charge` is empty and `Enu` = 0;
+- *`T_rec_charge` > 0* still admits a handful (2 beam-on, 1 beam-off, 16 MC)
+  with a few charge points but **no main vertex** and `Enu` = 0 — nothing an
+  analysis can use.
+
+`scripts/count_criteria.py` reports all three side by side.
+
 
 This was first reported as 45.1% (5,960) using a `file size > 20 kB` filter.
 That filter is wrong: a further **147 files are ~211 kB but empty** — the tagger
 ran and wrote a verdict while finding no main vertex, so `T_tagger`'s 1216
 branches are booked, `T_rec_charge` has 0 entries and `kine_reco_Enu` = 0.00.
 Size cannot separate those from real reconstructions. The correct test is
-`T_rec_charge.GetEntries() > 0` (`scripts/count_reco.py`).
+`kine_reco_Enu > 0` (`scripts/count_criteria.py`).
 
 The error was small here (147 of 13,213) but **large on beam-off data**, where
 it more than doubled the apparent rate — see issue 18.
@@ -451,7 +471,7 @@ absent means pre-flip behaviour, not "same as production".
   knobs feed `kine_reco_Enu` directly.
 - `nu_per_bundle=true` books per-bundle `T_tagger` branches in Xin's chain, so
   this dataset is **not schema-compatible** with a production 2-step `T_tagger`.
-- The 44.0% reconstruction yield and the hand-scan false positives are **not**
+- The 43.9% reconstruction yield and the hand-scan false positives are **not**
   production numbers. Several missing knobs
   (`shower_bragg_protect_start_segment`, the `*_straight_guard` family,
   `shower_nv_bridge_track`) target exactly the misclassification the scan saw.

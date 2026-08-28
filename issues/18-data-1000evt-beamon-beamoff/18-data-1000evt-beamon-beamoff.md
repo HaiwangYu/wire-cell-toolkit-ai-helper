@@ -12,8 +12,8 @@ Work/output: `/exp/sbnd/data/users/yuhw/production-prep/img-clus-match-tag-pr-da
 | **beam-on**, 1000 events | **complete** — 1000/1000, 25 min |
 | **beam-off**, 1000 events | **complete** — 1000/1000, 69 min |
 
-**Headline result: the rate of real reconstructions is 42.1% beam-on against
-3.4% beam-off — a factor 12.4, a 38.7 ± 1.7% difference (23σ).** That is the
+**Headline result: the rate of usable reconstructions is 41.9% beam-on against
+3.3% beam-off — a factor 12.7, a 38.6 ± 1.7% difference (23σ).** That is the
 strongest end-to-end sanity check the chain has had: the tagger fires on beam
 and very rarely off beam, on real data, with no truth involved.
 *(Corrected 2026-08-27 from 43.4% / 7.5% / 5.8× — see "Counting corrected".)*
@@ -91,7 +91,7 @@ Input: `add-frameshift-data-2nd-2k-2026-08-15/data_MCP2025C_reco1_frameshift_2nd
 | wall | mean **44.5 s**, median 42, p90 58, p99 104, **max 192** |
 | memory | mean 48.0 GB, **max 57.8 GB** at 32 jobs |
 | disk | **2.4 GB** — Bee 968 MB, nugraph 1.3 GB, tracking-pr 114 MB |
-| real reconstructions | **421 / 1000 = 42.1%** (corrected; see "Counting corrected") |
+| usable reconstructions | **419 / 1000 = 41.9%** (corrected; see "Counting corrected") |
 
 Two things differ from the MC run in a useful way:
 
@@ -159,7 +159,7 @@ restarted at 26 workers, costing ~5 min of redone work. Result: mean 46.5 GB,
 | events > 300 s | **0** | 27 |
 | concurrent RSS | mean 48.0, max **57.8 GB** | mean 46.5, max **60.2 GB** |
 | disk | 2.4 GB (2.45 MB/evt) | 2.4 GB (2.39 MB/evt) |
-| **real reconstructions** | **421 / 1000 = 42.1%** | **34 / 1000 = 3.4%** |
+| **usable reconstructions** | **419 / 1000 = 41.9%** | **33 / 1000 = 3.3%** |
 | runs covered | 2 (18255, 18259) | 43 |
 
 Medians are close (42 vs 53 s); the beam-off mean is driven entirely by a tail,
@@ -236,7 +236,7 @@ in the light-yield scaling used by Q/L matching.
   `T_kine` and `kine_reco_Enu` are this pre-flip configuration's numbers in the
   data run just as in the MC one.
 - **Beam-on vs beam-off is internally consistent** — both data samples used
-  the identical config, so the 12.4× ratio is not a configuration artifact.
+  the identical config, so the 12.7× ratio is not a configuration artifact.
 - **Data vs MC comparisons are affected by the 24 reality differences**,
   independently of #17 — particularly `QtoL 0.86` and the position offsets.
 
@@ -327,20 +327,56 @@ vertex, so `T_tagger`'s 1216 branches are booked with nothing behind them.
 tagger accepted this event', verified against a hand scan" was wrong: it holds
 on MC, where the hand scan checked it, and fails on data.
 
-Recounted on `T_rec_charge.GetEntries() > 0`:
+Recounted three ways:
 
-| sample | size-based (reported) | correct | booked-but-empty |
+| criterion | MC (13,213) | beam-on (1000) | beam-off (1000) |
 |---|---|---|---|
-| MC | 5,960 = 45.1% | **5,813 = 44.0%** | 147 |
-| beam-on | 434 = 43.4% | **421 = 42.1%** | 13 |
-| beam-off | 75 = 7.5% | **34 = 3.4%** | 41 |
+| file size > 20 kB *(wrong)* | 5,960 = 45.1% | 434 = 43.4% | 75 = 7.5% |
+| `T_rec_charge` entries > 0 | 5,813 = 44.0% | 421 = 42.1% | 34 = 3.4% |
+| **`kine_reco_Enu > 0`** *(use this)* | **5,797 = 43.9%** | **419 = 41.9%** | **33 = 3.3%** |
+
+`kine_reco_Enu > 0` is the right test: it agrees **exactly** with the count of
+Bee `mc.json` files carrying a `reco nu` node (419 and 33), i.e. with the
+existence of a reconstructed main vertex. The other two over-count:
+
+- *size* counts the ~211 kB files where `T_tagger`'s 1216 branches are booked
+  but `T_rec_charge` is empty and `Enu` = 0;
+- *`T_rec_charge` > 0* still admits a handful (2 beam-on, 1 beam-off, 16 MC)
+  with a few charge points but **no main vertex** and `Enu` = 0 — nothing an
+  analysis can use.
+
+`scripts/count_criteria.py` reports all three side by side.
 
 Beam-off was over-counted by more than a factor two, because off-beam events far
 more often get a tagger verdict with no vertex. **The corrected discrimination
-is stronger than first reported — 12.4× and 23σ, not 5.8× and 20σ** — but the
+is stronger than first reported — 12.7× and 23σ, not 5.8× and 20σ** — but the
 published numbers were wrong either way, and the dataset guide told readers to
 filter on file size. Both are now corrected, and `count_reco.py` ships with
 issue 16's scripts.
+
+## Bee regenerated with the fix (2026-08-27)
+
+Both 1000-event data samples re-run under WCT `14f0aeeb`, so their `mc.json`
+now carries the reco summary or the no-candidate marker.
+`20:32 → 21:35 CDT` (beam-on 27 min at 32 workers, beam-off 37 min at 26),
+**1000/1000 each, 0 audit failures, 0 RSE problems.**
+
+Run into fresh `*-v2` directories rather than in place, so the claim "the fix is
+display-only" could be **checked instead of asserted** — then swapped in.
+
+- **RSE sets identical** to the originals, 1000/1000 both samples.
+- **Content identical**: 300 sampled events (150 per sample) compared on tree
+  inventory, `Trun` RSE, `T_tagger` scores, `kine_reco_Enu`, `T_rec_charge`
+  entries + a hash of the first 50 charge points, and the nugraph `sp/pos` and
+  `sp/features` array hashes — **300/300 identical**. Byte comparison is
+  useless here and was discarded: ROOT and HDF5 embed creation timestamps and
+  UUIDs, so all 4000 files "differ" byte-wise while meaning the same thing.
+- **Every `mc.json` now has a summary or a marker, 0 with neither** (beam-on
+  419/581, beam-off 33/967).
+
+The superseded payload was deleted after verification; the pre-fix
+`summary.csv` and memory samples are kept under `logs/pre-pf-fix/` for
+provenance.
 
 ## Caveats
 
@@ -350,7 +386,7 @@ issue 16's scripts.
   numbers; see the next point.
 - **The `#17` operating-point gap applies here too.** This ran the same
   pre-flip PR configuration as issue 16: 160 knobs that Xin's 2-step chain sets
-  are at default, 139 of them on `TaggerCheckNeutrino`. So the 42.1% / 3.4% reconstruction
+  are at default, 139 of them on `TaggerCheckNeutrino`. So the 41.9% / 3.3% reconstruction
   rates, `T_tagger`, `T_kine` and `kine_reco_Enu` are **this configuration's**,
   not SBND production's. Requested explicitly as "same configuration as
   issue-16".

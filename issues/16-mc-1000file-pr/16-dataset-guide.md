@@ -180,21 +180,39 @@ separate them.**
 |---|---|---|
 | no trees | 7,253 (54.9%) | ~8.2 kB; only `Trun`, `T_bad_ch`, `T_proj`. `f.Get("T_tagger")` returns a **null pointer**, so a naive loop crashes rather than skipping |
 | **booked but empty** | **147 (1.1%)** | ~211 kB — the tagger ran and wrote a verdict but found **no main vertex**: `T_tagger`'s 1216 branches are booked, `T_rec_charge` has **0 entries**, `kine_reco_Enu` = 0.00 |
-| real reconstruction | **5,813 (44.0%)** | `T_rec_charge` populated, real `kine_reco_Enu` |
+| real reconstruction | **5,797 (43.9%)** | `T_rec_charge` populated **and** `kine_reco_Enu > 0` |
 
-**Filter on `T_rec_charge.GetEntries() > 0`, never on file size.** A booked-but-
-empty file is ~211 kB, indistinguishable by size from a real one, and its
-`numu_score` looks like a real number (e.g. −1.9417) beside `Enu = 0.00`.
+**Filter on `kine_reco_Enu > 0`, never on file size.** A booked-but-empty file
+is ~211 kB, indistinguishable by size from a real one, and its `numu_score`
+looks like a real number (e.g. −1.9417) beside `Enu = 0.00`.
 
 ```python
-tc = f.Get("T_rec_charge")
-if tc and tc.GetEntries() > 0:   # a real reconstruction
-    ...
+tk = f.Get("T_kine")
+if tk and tk.GetEntries():
+    tk.GetEntry(0)
+    if tk.kine_reco_Enu > 0:      # a usable reconstruction
+        ...
 ```
 
-`scripts/count_reco.py` classifies a whole directory this way.
+| criterion | MC (13,213) | beam-on (1000) | beam-off (1000) |
+|---|---|---|---|
+| file size > 20 kB *(wrong)* | 5,960 = 45.1% | 434 = 43.4% | 75 = 7.5% |
+| `T_rec_charge` entries > 0 | 5,813 = 44.0% | 421 = 42.1% | 34 = 3.4% |
+| **`kine_reco_Enu > 0`** *(use this)* | **5,797 = 43.9%** | **419 = 41.9%** | **33 = 3.3%** |
 
-So the usable sample for BDT / vertex training is **5,813 events (44.0%)**, not
+`kine_reco_Enu > 0` is the right test: it agrees **exactly** with the count of
+Bee `mc.json` files carrying a `reco nu` node (419 and 33), i.e. with the
+existence of a reconstructed main vertex. The other two over-count:
+
+- *size* counts the ~211 kB files where `T_tagger`'s 1216 branches are booked
+  but `T_rec_charge` is empty and `Enu` = 0;
+- *`T_rec_charge` > 0* still admits a handful (2 beam-on, 1 beam-off, 16 MC)
+  with a few charge points but **no main vertex** and `Enu` = 0 — nothing an
+  analysis can use.
+
+`scripts/count_criteria.py` reports all three side by side.
+
+So the usable sample for BDT / vertex training is **5,797 events (43.9%)**, not
 13,213 and not 5,960.
 
 **Four events are missing** — don't chase them. They crashed and were
@@ -339,7 +357,7 @@ them, so absent = pre-flip behaviour.
 - **`T_tagger` schema** — Xin's `nu_per_bundle=true` books per-bundle branches
   ours does not have, so this dataset is **not schema-compatible** with a
   production 2-step `T_tagger`.
-- **Reconstruction yield (44.0%) and the false positives** seen in the hand scan
+- **Reconstruction yield (43.9%) and the false positives** seen in the hand scan
   should not be quoted as production numbers. Several missing knobs
   (`shower_bragg_protect_start_segment`, the `*_straight_guard` family,
   `shower_nv_bridge_track`) exist specifically to suppress the kind of
