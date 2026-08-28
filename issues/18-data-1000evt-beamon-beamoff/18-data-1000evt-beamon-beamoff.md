@@ -12,10 +12,11 @@ Work/output: `/exp/sbnd/data/users/yuhw/production-prep/img-clus-match-tag-pr-da
 | **beam-on**, 1000 events | **complete** — 1000/1000, 25 min |
 | **beam-off**, 1000 events | **complete** — 1000/1000, 69 min |
 
-**Headline result: the neutrino-candidate rate is 43.4% beam-on against 7.5%
-beam-off — a factor 5.8, a 35.9 ± 1.8% difference (20σ).** That is the
+**Headline result: the rate of real reconstructions is 42.1% beam-on against
+3.4% beam-off — a factor 12.4, a 38.7 ± 1.7% difference (23σ).** That is the
 strongest end-to-end sanity check the chain has had: the tagger fires on beam
-and largely does not fire off beam, on real data, with no truth involved.
+and very rarely off beam, on real data, with no truth involved.
+*(Corrected 2026-08-27 from 43.4% / 7.5% / 5.8× — see "Counting corrected".)*
 
 ## Data mode differs from MC in four ways
 
@@ -158,7 +159,7 @@ restarted at 26 workers, costing ~5 min of redone work. Result: mean 46.5 GB,
 | events > 300 s | **0** | 27 |
 | concurrent RSS | mean 48.0, max **57.8 GB** | mean 46.5, max **60.2 GB** |
 | disk | 2.4 GB (2.45 MB/evt) | 2.4 GB (2.39 MB/evt) |
-| **candidates** | **434 / 1000 = 43.4%** | **75 / 1000 = 7.5%** |
+| **real reconstructions** | **421 / 1000 = 42.1%** | **34 / 1000 = 3.4%** |
 | runs covered | 2 (18255, 18259) | 43 |
 
 Medians are close (42 vs 53 s); the beam-off mean is driven entirely by a tail,
@@ -235,7 +236,7 @@ in the light-yield scaling used by Q/L matching.
   `T_kine` and `kine_reco_Enu` are this pre-flip configuration's numbers in the
   data run just as in the MC one.
 - **Beam-on vs beam-off is internally consistent** — both data samples used
-  the identical config, so the 5.8× ratio is not a configuration artifact.
+  the identical config, so the 12.4× ratio is not a configuration artifact.
 - **Data vs MC comparisons are affected by the 24 reality differences**,
   independently of #17 — particularly `QtoL 0.86` and the position offsets.
 
@@ -313,9 +314,37 @@ quantities for those events are unaffected and remain available in
 Regenerating is Bee-only and costs ~1.6 h for the two data samples and ~6.5 h
 for the MC campaign — not yet done.
 
+## Counting corrected (2026-08-27): 12.4×, not 5.8×
+
+Found while testing the `mc.json` fix. Two beam-on pilot events showed the
+no-candidate marker despite having "non-stub" 211 kB `tracking-pr.root` files.
+Opening them: **6 trees, `T_rec_charge` with 0 entries, `kine_reco_Enu` = 0.00,
+`numu_score` = −1.9417.** The tagger ran and wrote a verdict but found no main
+vertex, so `T_tagger`'s 1216 branches are booked with nothing behind them.
+
+**File size cannot distinguish that from a real reconstruction** — both are
+~211 kB and up. The earlier claim that "size alone is a reliable index of 'the
+tagger accepted this event', verified against a hand scan" was wrong: it holds
+on MC, where the hand scan checked it, and fails on data.
+
+Recounted on `T_rec_charge.GetEntries() > 0`:
+
+| sample | size-based (reported) | correct | booked-but-empty |
+|---|---|---|---|
+| MC | 5,960 = 45.1% | **5,813 = 44.0%** | 147 |
+| beam-on | 434 = 43.4% | **421 = 42.1%** | 13 |
+| beam-off | 75 = 7.5% | **34 = 3.4%** | 41 |
+
+Beam-off was over-counted by more than a factor two, because off-beam events far
+more often get a tagger verdict with no vertex. **The corrected discrimination
+is stronger than first reported — 12.4× and 23σ, not 5.8× and 20σ** — but the
+published numbers were wrong either way, and the dataset guide told readers to
+filter on file size. Both are now corrected, and `count_reco.py` ships with
+issue 16's scripts.
+
 ## Caveats
 
-- **The candidate rates are configuration-dependent.** The 43.4% / 7.5% split is
+- **The candidate rates are configuration-dependent.** The 42.1% / 3.4% split is
   a strong relative statement — same chain, same config, both samples — and that
   is what makes it a good sanity check. The *absolute* rates are not production
   numbers; see the next point.

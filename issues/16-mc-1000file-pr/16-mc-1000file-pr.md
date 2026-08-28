@@ -343,11 +343,19 @@ Both the Bee and nugraph means came in ~17% above the pilot, because the pilot
 took only event 0 of each file and those happen to be lighter than the file
 average. Max single event: 38.8 MB Bee, 9.4 MB nugraph.
 
-### Reconstruction yield — 45.1%
+### Reconstruction yield — 44.0% (corrected 2026-08-27)
 
-**5,960 of 13,213 events (45.1%) carry a reconstructed neutrino candidate**;
-7,253 (54.9%) have a stub `tracking-pr.root`. Between the pilot's 40% and the
-first-9-minutes 49%, as expected from a bigger sample.
+**5,813 of 13,213 events (44.0%) carry a real reconstruction.**
+
+This was first reported as 45.1% (5,960) using a `file size > 20 kB` filter.
+That filter is wrong: a further **147 files are ~211 kB but empty** — the tagger
+ran and wrote a verdict while finding no main vertex, so `T_tagger`'s 1216
+branches are booked, `T_rec_charge` has 0 entries and `kine_reco_Enu` = 0.00.
+Size cannot separate those from real reconstructions. The correct test is
+`T_rec_charge.GetEntries() > 0` (`scripts/count_reco.py`).
+
+The error was small here (147 of 13,213) but **large on beam-off data**, where
+it more than doubled the apparent rate — see issue 18.
 
 ## The four failures
 

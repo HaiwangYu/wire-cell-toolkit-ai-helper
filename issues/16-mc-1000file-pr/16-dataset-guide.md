@@ -173,15 +173,29 @@ files therefore loses event identity entirely, silently. Either read `Trun`
 per file, or parse the filename — and if you build a flat training table, add
 the RSE column yourself.
 
-**55% of `tracking-pr.root` files are stubs, and the trees are *absent*, not
-empty.** 7,253 of 13,213 events (54.9%) had no neutrino candidate; those files
-are ~8.2 kB and contain only `Trun`, `T_bad_ch`, `T_proj`. `f.Get("T_tagger")`
-returns a **null pointer**, so a naive loop crashes rather than skipping.
-Guard on it, or pre-filter on file size > 20 kB — size alone is a reliable
-index of "the tagger accepted this event", verified against a hand scan.
+**There are THREE classes of `tracking-pr.root`, not two — and file size cannot
+separate them.**
 
-So the usable sample for BDT / vertex training is **5,960 events (45.1%)**, not
-13,213.
+| class | count (MC) | what is in it |
+|---|---|---|
+| no trees | 7,253 (54.9%) | ~8.2 kB; only `Trun`, `T_bad_ch`, `T_proj`. `f.Get("T_tagger")` returns a **null pointer**, so a naive loop crashes rather than skipping |
+| **booked but empty** | **147 (1.1%)** | ~211 kB — the tagger ran and wrote a verdict but found **no main vertex**: `T_tagger`'s 1216 branches are booked, `T_rec_charge` has **0 entries**, `kine_reco_Enu` = 0.00 |
+| real reconstruction | **5,813 (44.0%)** | `T_rec_charge` populated, real `kine_reco_Enu` |
+
+**Filter on `T_rec_charge.GetEntries() > 0`, never on file size.** A booked-but-
+empty file is ~211 kB, indistinguishable by size from a real one, and its
+`numu_score` looks like a real number (e.g. −1.9417) beside `Enu = 0.00`.
+
+```python
+tc = f.Get("T_rec_charge")
+if tc and tc.GetEntries() > 0:   # a real reconstruction
+    ...
+```
+
+`scripts/count_reco.py` classifies a whole directory this way.
+
+So the usable sample for BDT / vertex training is **5,813 events (44.0%)**, not
+13,213 and not 5,960.
 
 **Four events are missing** — don't chase them. They crashed and were
 discarded:
