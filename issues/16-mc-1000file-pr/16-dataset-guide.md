@@ -339,7 +339,7 @@ them, so absent = pre-flip behaviour.
 - **`T_tagger` schema** — Xin's `nu_per_bundle=true` books per-bundle branches
   ours does not have, so this dataset is **not schema-compatible** with a
   production 2-step `T_tagger`.
-- **Candidate yield (45.1%) and the false positives** seen in the hand scan
+- **Reconstruction yield (44.0%) and the false positives** seen in the hand scan
   should not be quoted as production numbers. Several missing knobs
   (`shower_bragg_protect_start_segment`, the `*_straight_guard` family,
   `shower_nv_bridge_track`) exist specifically to suppress the kind of

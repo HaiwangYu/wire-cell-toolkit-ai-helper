@@ -451,7 +451,7 @@ absent means pre-flip behaviour, not "same as production".
   knobs feed `kine_reco_Enu` directly.
 - `nu_per_bundle=true` books per-bundle `T_tagger` branches in Xin's chain, so
   this dataset is **not schema-compatible** with a production 2-step `T_tagger`.
-- The 45.1% candidate yield and the hand-scan false positives are **not**
+- The 44.0% reconstruction yield and the hand-scan false positives are **not**
   production numbers. Several missing knobs
   (`shower_bragg_protect_start_segment`, the `*_straight_guard` family,
   `shower_nv_bridge_track`) target exactly the misclassification the scan saw.
