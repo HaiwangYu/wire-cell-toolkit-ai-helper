@@ -244,6 +244,75 @@ Not settled by config alone: this confirms the *configuration* matched, not the
 20:48–21:09 and unchanged since), so the code matched too — but that rests on
 install timestamps, not on a compiled diff.
 
+## Bug found in the data Bee `mc.json`, and fixed (2026-08-27)
+
+Owner spotted it by comparing Bee event displays: the MC `mc.json` carries a
+`reco nu 107.5 MeV numu ... nue ...` node, the data one does not.
+
+**Nothing was miscomputed and nothing is missing from the dataset — the values
+were never rendered.** On beam-on event `18255/1/49987` (Bee event 6 of the
+pilot set), `mc.json` held a single bare `mu- 480 MeV` node while
+`tracking-pr.root` held `kine_reco_Enu = 486.69 MeV`,
+`numu_score = 2.6033`, `nue_score = -4.3009`.
+
+### Cause — three links, each verified
+
+1. `TensorSetLabeler.cxx:550` returns early when `reality != "sim"`, so
+   `m_pf_particles` stays empty and line 1735 never publishes the
+   `bee_pf_truth` metadata key. **Data has no upstream truth tree.**
+2. `MultiAlgBlobClustering::pf_set_particles()` took an early return in exactly
+   that case:
+   ```cpp
+   if (!have_upstream) { tree.set_particles(particles); return; }
+   // ...only past here was the "reco nu <Enu> MeV numu X nue Y" node built
+   ```
+3. The summary text existed **only** inside the merge wrapper.
+
+So the summary was coupled to "is there truth to merge with", which is
+independent of "is there reco to summarise". MC always has truth, so it always
+appeared; data never does, so it never did. Introduced in issue 13 G5, when the
+truth+reco merge was added — the summary was made a property of the wrapper
+rather than of the reco.
+
+It also means the T4 verification reported earlier was incomplete: `mc.json` was
+confirmed present and non-empty on data, but not confirmed to carry everything
+it should.
+
+### Fix
+
+`pf_summary_node()` extracted, and built whenever there is reco, independent of
+the upstream truth tree; the truth forest is grafted on top only when it exists.
+Plus a **no-candidate marker**, so a declined event says so instead of looking
+like a bare particle list (MC) or an empty layer (data). The reason is carried
+in parentheses, since "no main vertex" and "no PR graph" are different failures
+and that is what a hand scan wants to know. New `BeePFConfig::no_candidate_text`
+(default on; `""` disables).
+
+Display-only: it cannot change reconstruction, `T_tagger`, `T_kine`, or the
+nugraph.
+
+### Verified on all four cases
+
+| case | `mc.json` after the fix |
+|---|---|
+| data, candidate (`18255/1/49987`) | `reco nu  486.7 MeV   numu 2.603   nue -4.301` with `mu- 480 MeV` nested under it |
+| data, no candidate (`18255/1/50273`) | `no reco neutrino candidate (no TrackFitting)` |
+| MC, truth+reco (`713/74/3`) | `1 numu RES CC …` + `reco nu  107.5 MeV   numu -1.715   nue -15.000` — **unchanged** |
+| MC, truth only (`713/74/4`) | two truth nodes + `no reco neutrino candidate (no TrackFitting)` (new) |
+
+The data numbers match `T_kine`/`T_tagger` exactly (486.69 → 486.7,
+2.6033 → 2.603, −4.3009 → −4.301), and the MC candidate case is byte-identical
+to before, so the merge path did not regress.
+
+### Datasets already produced
+
+The MC 13,213-event and data 2,000-event Bee zips were written **before** this
+fix, so their `mc.json` still shows the old behaviour. The reconstructed
+quantities for those events are unaffected and remain available in
+`tracking-pr.root` (`T_kine.kine_reco_Enu`, `T_tagger.numu_score`/`nue_score`).
+Regenerating is Bee-only and costs ~1.6 h for the two data samples and ~6.5 h
+for the MC campaign — not yet done.
+
 ## Caveats
 
 - **The candidate rates are configuration-dependent.** The 43.4% / 7.5% split is
