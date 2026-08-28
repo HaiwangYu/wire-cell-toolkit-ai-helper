@@ -91,7 +91,7 @@ Input: `add-frameshift-data-2nd-2k-2026-08-15/data_MCP2025C_reco1_frameshift_2nd
 | wall | mean **44.5 s**, median 42, p90 58, p99 104, **max 192** |
 | memory | mean 48.0 GB, **max 57.8 GB** at 32 jobs |
 | disk | **2.4 GB** — Bee 968 MB, nugraph 1.3 GB, tracking-pr 114 MB |
-| candidates | **434 / 1000 = 43.4%** |
+| real reconstructions | **421 / 1000 = 42.1%** (corrected; see "Counting corrected") |
 
 Two things differ from the MC run in a useful way:
 
@@ -350,8 +350,8 @@ issue 16's scripts.
   numbers; see the next point.
 - **The `#17` operating-point gap applies here too.** This ran the same
   pre-flip PR configuration as issue 16: 160 knobs that Xin's 2-step chain sets
-  are at default, 139 of them on `TaggerCheckNeutrino`. So the 43.4% candidate
-  rate, `T_tagger`, `T_kine` and `kine_reco_Enu` are **this configuration's**,
+  are at default, 139 of them on `TaggerCheckNeutrino`. So the 42.1% / 3.4% reconstruction
+  rates, `T_tagger`, `T_kine` and `kine_reco_Enu` are **this configuration's**,
   not SBND production's. Requested explicitly as "same configuration as
   issue-16".
 - Validation output, not production. No stability guarantee.
