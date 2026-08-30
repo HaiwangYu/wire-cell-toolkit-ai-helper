@@ -204,6 +204,86 @@ mass rules, hadronic dQ/dx, long-muon mode) feeds `kine_reco_Enu` directly.
 Their `T_kine`/`T_tagger` values are not what this chain now produces, and
 regenerating them is the only way to make all campaigns homogeneous.
 
+## PROCEDURE — re-syncing after the owner flips more knobs
+
+**When:** after any `wire-cell-toolkit` pull whose log mentions
+`SBND PRODUCTION ON`, or before any campaign whose numbers you intend to quote.
+The owner flips knobs in `wct-pr-perevt.jsonnet` continuously; our chain does not
+follow automatically, and nothing warns when it falls behind.
+
+**One command:**
+
+```bash
+issues/17-pr-operating-point-drift/scripts/resync-operating-point.sh [workdir]
+```
+
+Run it inside SL7. It is **idempotent** — if nothing drifted, the generated file
+is unchanged and the gate still exits 0.
+
+### What it does
+
+| step | action | what to look at |
+|---|---|---|
+| 1 | compile the **bare** 1-step (`pr()` with structural args only) | `drift before regeneration: N differences` — how far behind we were |
+| 2 | regenerate `sbnd/pr-operating-point.jsonnet` | `unchanged`, or a diff of exactly which knobs moved |
+| 3 | **GATE**: compile `sync`, diff against Xin | must print `0 differences [exit 0]` |
+| 4 | compile `preflip`, confirm it still reproduces issues 16/18 | the full gap, unchanged |
+
+**Step 3 is the acceptance test.** If it is non-zero the script aborts and says
+*"Do NOT run production on this config"*. Never accept the sync on inspection of
+the knob list — that is precisely what failed the first time.
+
+### Then, before trusting new physics
+
+```bash
+scripts/ab_compare.py <preflip-run-dir> <sync-run-dir>
+```
+
+Run ~10 events each way. Expect the tagger verdict to be stable and
+`kine_reco_Enu` to move; if the *verdict* flips a lot, understand why before
+launching a campaign.
+
+Commit `sbnd/pr-operating-point.jsonnet` **together with** the toolkit commit
+that caused the drift, so the pair is recoverable.
+
+### The three modes
+
+`pr_operating_point` (fcl param / jsonnet extVar):
+
+| value | meaning |
+|---|---|
+| `sync` | **default** — the SBND production operating point, via the generated file |
+| `preflip` | the pre-2026-08-29 behaviour; reproduces issues 16 and 18 exactly |
+| `bare` | `pr()` with structural args only. **A regeneration baseline, not a physics config** — step 1 uses it and nothing else should |
+
+### Rules
+
+1. **Never hand-edit `sbnd/pr-operating-point.jsonnet`.** It is generated, and
+   hand-mirroring is the original bug. The header says so.
+2. **Never accept a sync without the gate at 0.**
+3. **Never widen the `--expected-key` allowlist** to make the gate pass. Those
+   seven keys are deliberate 1-step design (issue 13 G3/G4/G5). Adding an eighth
+   to silence a failure re-creates this issue in a form that looks green.
+
+### Two bugs this procedure itself shipped with, both found by running it
+
+Recorded because both are the same class as the original issue — a failure that
+looks like success:
+
+- The generator used `subprocess.run(capture_output=…)`, which is python 3.7+,
+  while the bare SL7 container has **3.6**. It crashed — and the wrapper
+  swallowed it, left the *previous* generated file in place, and printed
+  **GATE PASSED**. The gate was green on stale content. The script now aborts
+  on generation failure, and says why.
+- The provenance header degraded to `toolkit ?` because `git` is not on PATH in
+  the bare container, losing the one fact identifying which operating point the
+  file represents. It now reads `.git/HEAD` directly, and refuses to write
+  without it.
+
+The signature is also located by **content, not line numbers** — `clus.jsonnet`
+is edited often, and a hardcoded `NR>=2966` silently starts reading the wrong
+function.
+
 ## Fix options as originally scoped (option B was taken)
 
 **A. Factor the operating point into a shared jsonnet — recommended.** Extract
