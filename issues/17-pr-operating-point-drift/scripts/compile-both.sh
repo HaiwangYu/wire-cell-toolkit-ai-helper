@@ -28,6 +28,7 @@ PIPE_TLA="pipeline_names=[$(echo "$PIPELINE" | sed "s/[^,]\+/'&'/g")]"
 wcsonnet \
   --ext-str reality=sim \
   --ext-str enable_tracking_root=true \
+  --ext-str "pr_operating_point=${PR_OP:-sync}" \
   --ext-code 'recobwire_tags=["simtpc2d:dnnsp", "simtpc2d:dnnsp"]' \
   --ext-code 'trace_tags=["gauss", "wiener"]' \
   --ext-code 'summary_tags=["", "simtpc2d:wienersummary"]' \
@@ -54,7 +55,19 @@ PY
 
 # Pgrapher edges and the wire-cell plugin list differ by construction (different
 # graphs); they are not operating-point knobs.
+# Deliberate 1-step design differences (issue 13), NOT operating-point knobs:
+#   bee_sink / save_deadarea / bee_points_sets / bee_pf -- one shared Bee zip
+#     (G4/G5): the PR node writes into the same zip under renamed sets, and only
+#     one node may write dead area or the entries duplicate.
+#   rse_from_ident / rse_from_metadata -- run/subrun/event plumbing (G3), which
+#     the standalone 2-step gets from its own TLAs instead.
+#   dump_mode -- the 1-step has no pctree handoff to dump; the 2-step needs one.
+# Everything else must be identical, so the exit status is a real gate.
 exec python3 "$(dirname "$0")/audit-config-diff.py" \
     "$OUT/onestep.json" "$OUT/xin-both.json" \
     --label-a 1-step --label-b Xin \
-    --skip-type Pgrapher --skip-type wire-cell
+    --skip-type Pgrapher --skip-type wire-cell \
+    --expected-key bee_sink --expected-key rse_from_ident \
+    --expected-key rse_from_metadata --expected-key save_deadarea \
+    --expected-key bee_points_sets --expected-key bee_pf \
+    --expected-key dump_mode

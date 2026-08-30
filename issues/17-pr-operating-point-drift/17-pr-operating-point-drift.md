@@ -1,6 +1,6 @@
 # Issue 17 — the 1-step chain does not carry the SBND PR operating point
 
-**Status: recorded, not fixed.** Deliberately. The fix changes reconstruction
+**Status: FIXED 2026-08-29** (`wcp-porting-img` `05957e9`). Originally recorded and deliberately left unfixed; The fix changes reconstruction
 output for every event, so it wants its own before/after gate rather than being
 folded into other work.
 
@@ -131,7 +131,80 @@ repeated here so this issue stands alone.
 - This also answers issue #13's **T1** ("validate Route A against Xin's original
   2-step chain"): **Route A was not equivalent.**
 
-## Fix options (none applied)
+## Fixed 2026-08-29 — gate at 0
+
+`sbnd/pr-operating-point.jsonnet`: a **generated** wrapper around
+`clus_maker.pr()` carrying **151 knobs**, imported by the 1-step chain.
+
+### Design
+
+- **Generated, not hand-written.** Hand-copying 351 arguments is how the drift
+  happened; `scripts/gen-pr-operating-point.py` can be re-run after the owner
+  flips more knobs.
+- **Values from the COMPILED Xin config**, not from parsing jsonnet source. The
+  call site contains expressions (`pr_y_top - 17`,
+  `[t * wc.us for t in beam_window_us]`) that only resolve after compilation.
+- **Names from `clus.jsonnet`'s `pr()` signature** — identity for most, unique
+  suffix match for prefixed ones (`cathode_rejoin_angle` →
+  `protect_cathode_rejoin_angle`).
+- **Xin's file is untouched**, so his chain is unaffected and there is nothing
+  to conflict on when he edits it.
+- **Baseline is the BARE 1-step** (`pr()` with structural args only). Diffing
+  against that rather than against the current 1-step is what keeps the file
+  self-contained without dragging in component wiring.
+
+### The gate
+
+`compile-both.sh` now **exits 0**. The 18 remaining compiled differences are all
+deliberate 1-step design — `bee_sink`, `rse_from_ident`, `rse_from_metadata`,
+`save_deadarea`, `bee_points_sets`, `bee_pf`, `dump_mode` (the issue-13 G3/G4/G5
+work) — and are declared as an **explicit `--expected-key` allowlist** rather
+than silently tolerated, so any *new* difference still fails the gate.
+
+### Reproducibility of the earlier campaigns
+
+New extVar `pr_operating_point`: `sync` (default) or `preflip`.
+**`preflip` reproduces the pre-fix config exactly — verified 0 compiled
+differences against what issues 16 and 18 actually ran**, so those campaigns
+remain reproducible. `wcls-img-clus-matching-xin-preflip.fcl` selects it.
+
+### Three bugs caught while building it, all by the gate
+
+1. The `pr()` argument extractor was anchored `^`, so it saw only the first name
+   on lines packing several (`main_vertex_require_descriptor=false,
+   main_vertex_candidate_flag=false,`) — 4 knobs silently unmapped.
+2. The derived-knob map was global, but `fv_tolerance` comes from
+   `stm_consistent_fv` on `TaggerCheckSTM` and `neutrino_consistent_fv` on
+   `TaggerCheckNeutrino`. A global map mis-assigns it. Now keyed by
+   (component type, data key).
+3. Diffing against the *current* 1-step instead of a bare baseline dropped
+   `iso_endpoint`, which the 1-step had been setting inline — it looked like
+   "already agrees" and was skipped.
+
+Each would have been an invisible hole in a hand-written file. All three showed
+up as a non-zero gate, which is the argument for having one.
+
+### What synchronising changes physically
+
+A/B on the 10 events of the issue-16 pilot:
+
+| | preflip | sync |
+|---|---|---|
+| candidates | 4/10 | 4/10 |
+| tagger verdict flips | — | **0** |
+| `kine_reco_Enu` changed | — | **3 of 4** |
+
+`372.8 → 347.8`, `1512.2 → 1500.4`, `283.1 → 203.3` MeV (a 28% shift on the
+last), with `numu_score` moving accordingly (`-1.322 → -0.563`,
+`3.728 → 3.043`). The accept/reject decision is stable; the reconstructed
+energy is not — as expected, since the `kine_*` family (charge dedup/rebuild,
+mass rules, hadronic dQ/dx, long-muon mode) feeds `kine_reco_Enu` directly.
+
+**Consequence for existing datasets:** issues 16 and 18 were produced preflip.
+Their `T_kine`/`T_tagger` values are not what this chain now produces, and
+regenerating them is the only way to make all campaigns homogeneous.
+
+## Fix options as originally scoped (option B was taken)
 
 **A. Factor the operating point into a shared jsonnet — recommended.** Extract
 the 351 defaults from `wct-pr-perevt.jsonnet`'s signature into one importable

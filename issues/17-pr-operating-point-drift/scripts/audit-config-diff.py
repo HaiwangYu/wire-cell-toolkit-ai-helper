@@ -19,6 +19,10 @@ ap.add_argument('a'); ap.add_argument('b')
 ap.add_argument('--label-a', default='A'); ap.add_argument('--label-b', default='B')
 ap.add_argument('--skip-type', action='append', default=[],
                 help='component type to ignore (repeatable); e.g. Pgrapher, wire-cell')
+ap.add_argument('--expected-key', action='append', default=[],
+                help=('data key whose difference is EXPECTED and does not count '
+                      'towards the exit status (repeatable).  Use only for '
+                      'deliberate design differences, never to hide a knob.'))
 args = ap.parse_args()
 
 def idx(path):
@@ -41,7 +45,13 @@ for key in shared:
     only_a = sorted(set(da) - set(db))
     only_b = sorted(set(db) - set(da))
     differ = sorted(k for k in set(da) & set(db) if da[k] != db[k])
-    if not (only_a or only_b or differ):
+    exp = set(args.expected_key)
+    only_a_r = [k for k in only_a if k not in exp]
+    only_b_r = [k for k in only_b if k not in exp]
+    differ_r = [k for k in differ if k not in exp]
+    if not (only_a_r or only_b_r or differ_r):
+        if (only_a or only_b or differ):
+            print("### %s:%s  -- only expected differences" % key)
         continue
     print("### %s:%s" % key)
     for k in only_a:
@@ -52,7 +62,7 @@ for key in shared:
         print("    DIFFER      : %-36s %s=%s | %s=%s"
               % (k, args.label_a, json.dumps(da[k])[:50],
                     args.label_b, json.dumps(db[k])[:50]))
-    total += len(only_a) + len(only_b) + len(differ)
+    total += len(only_a_r) + len(only_b_r) + len(differ_r)
 
 print("\n%d differences" % total)
 sys.exit(0 if total == 0 else 1)
