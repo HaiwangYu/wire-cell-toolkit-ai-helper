@@ -496,6 +496,31 @@ today and drift again tomorrow — copying is how this happened. After the fix,
 re-run the 10-event pilot and diff the compiled configs to zero before
 regenerating the 13k.
 
+## RE-RUN IN PROGRESS — synchronised operating point (started 2026-08-30)
+
+This campaign was produced **preflip** (issue 17: 160 PR knobs at default). It is
+being re-run on the **synchronised** operating point, on the *identical* input
+list, so the two can be compared per event.
+
+| | |
+|---|---|
+| original (preflip) | `production-prep/img-clus-match-tag-pr-mc-1000file-2026-08-20/` — **kept, not modified** |
+| re-run (sync) | `production-prep/img-clus-match-tag-pr-mc-1000file-sync-2026-08-30/` |
+| config | `pr_operating_point: "sync"`, gate at 0 differences vs Xin's 2-step |
+| input | the same `files-1000.lst` (md5 `4dc75514e652bddf49e41459a5091080`) |
+| timeout | **3600 s, unchanged** (owner decision) |
+
+**Known risk, recorded before the fact:** 3 events took over 1800 s under preflip
+(max 2988 s). If the sync slows them past 3600 s they will be killed and the
+re-run will hold slightly fewer events than the original. Those events are
+listed in the after-action update, so the A/B is not silently comparing
+different populations.
+
+Also changed: the re-run uses the **manifest** harness (issue 18) rather than
+the original file-cursor one, which adds the per-event `rse_check` guard and a
+matching summary schema. The MC files are single-run-per-file, so the
+`--nskip` ordering hazard that motivated the manifest does not apply here.
+
 ## Open items
 
 1. ~~**`nugraph.h5` keyed `..._rec-lab-apa0-1`** — does it cover only apa0?~~

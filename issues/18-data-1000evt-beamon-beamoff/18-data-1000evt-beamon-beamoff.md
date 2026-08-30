@@ -378,6 +378,25 @@ The superseded payload was deleted after verification; the pre-fix
 `summary.csv` and memory samples are kept under `logs/pre-pf-fix/` for
 provenance.
 
+## RE-RUN IN PROGRESS — synchronised operating point (started 2026-08-30)
+
+Both samples were produced **preflip** (issue 17). They are being re-run on the
+**synchronised** operating point, from the identical merged inputs, so the two
+can be compared per event.
+
+| | |
+|---|---|
+| original (preflip) | `.../img-clus-match-tag-pr-data-1000evt-2026-08-21/` — **kept, not modified** |
+| re-run (sync) | `.../img-clus-match-tag-pr-data-1000evt-sync-2026-08-30/` |
+| config | `pr_operating_point: "sync"`, gate at 0 differences vs Xin's 2-step |
+| input | the same merged+frameshifted files and the same manifests |
+| timeout | **3600 s, unchanged** (owner decision) |
+
+**Known risk, recorded before the fact:** beam-off had 25 events over 1200 s
+(23 of them in the anomalous run 18308, mean 1459 s) and 2 over 1800 s. If the
+sync pushes any past 3600 s they will be killed. Beam-on is not at risk — its
+longest event was 192 s.
+
 ## Caveats
 
 - **The candidate rates are configuration-dependent.** The 42.1% / 3.4% split is
