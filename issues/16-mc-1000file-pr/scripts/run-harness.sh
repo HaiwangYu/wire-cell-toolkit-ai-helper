@@ -84,8 +84,13 @@ worker () {
             tag="r${run}_s${sub}_e${evt}"
             ed="$OUT/work/e_${fi}_${k}"; mkdir -p "$ed"; cd "$ed" || continue
             t0=$(date +%s)
+            # `timeout -k`: plain `timeout` only sends SIGTERM, and lar/art does
+            # not always take it -- two nueCC events sat in TaggerCheckNeutrino
+            # for 8.6 h and 6.6 h with the timeout process still alive and
+            # waiting.  -k 60 follows up with SIGKILL, which is what makes the
+            # bound real.
             taskset -c "$cores" /usr/bin/time -v -o time.txt \
-                timeout 3600 lar -n 1 --nskip "$k" -c "$FCL" \
+                timeout -k 60 3600 lar -n 1 --nskip "$k" -c "$FCL" \
                     -s "$fpath" --no-output > lar.log 2>&1
             rc=$?
             t1=$(date +%s)
