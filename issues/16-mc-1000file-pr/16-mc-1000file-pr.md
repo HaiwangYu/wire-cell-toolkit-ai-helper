@@ -496,7 +496,7 @@ today and drift again tomorrow — copying is how this happened. After the fix,
 re-run the 10-event pilot and diff the compiled configs to zero before
 regenerating the 13k.
 
-## RE-RUN IN PROGRESS — synchronised operating point (started 2026-08-30)
+## RE-RUN (superseded by the completion report below) — synchronised operating point (started 2026-08-30)
 
 This campaign was produced **preflip** (issue 17: 160 PR knobs at default). It is
 being re-run on the **synchronised** operating point, on the *identical* input
@@ -520,6 +520,93 @@ Also changed: the re-run uses the **manifest** harness (issue 18) rather than
 the original file-cursor one, which adds the per-event `rse_check` guard and a
 matching summary schema. The MC files are single-run-per-file, so the
 `--nskip` ordering hazard that motivated the manifest does not apply here.
+
+## RE-RUN COMPLETE — synchronised operating point (2026-08-31)
+
+`2026-08-30 15:07 → 2026-08-31 01:24 CDT`, **10 h 17 m**, 26 workers, 249.4 core-h.
+Output: `production-prep/img-clus-match-tag-pr-mc-1000file-sync-2026-08-30/run/`.
+The preflip tree is untouched.
+
+| | preflip | sync |
+|---|---|---|
+| events ok | 13,213 / 13,217 | **13,211 / 13,217** |
+| `audit` FAIL / `rse_check` | 0 / — | **0 / 0** |
+| wall/event | mean 52.4 s | **mean 68.0 s (+30%)**, max 2718 |
+| memory | max 57.8 GB | max 57.7 GB |
+| disk | 76.3 GB | **89.7 GB** |
+| candidates (`kine_reco_Enu>0`) | 5,797 (43.9%) | **5,986 (45.3%)** |
+
+### The A/B, 13,209 matched events
+
+- **candidates: 43.9% → 45.3%** — 280 gained, 90 lost.
+- **`kine_reco_Enu` moved on 96% of events** kept as candidates by both
+  (n=5,704): only 4.1% unchanged, median shift **+0.14%**, p10 −26.0%,
+  p90 +50.7%. The median is ~0 but the spread is large — the sync redistributes
+  energy rather than shifting it.
+- `numu_score > 0`: 27.9% → 29.1%.
+
+### 2 events lost to the timeout, exactly as predicted
+
+The pre-run note flagged 3 events over 1800 s as at risk with the timeout held
+at 3600 s. Two were duly killed:
+
+| event | preflip | sync |
+|---|---|---|
+| 471/89/48 | rc=0, **2520 s** | rc=9, killed at 3660 s |
+| 716/4/15 | rc=0, **2988 s** | rc=9, killed at 3660 s |
+
+So the sync makes these ~30-45% slower, past the limit. Conversely 2 events that
+*failed* under preflip now succeed (714/44/10, 718/51/3 — both former
+`vector::_M_range_check`). Net: 13,209 events in common, and the A/B is stated
+over those.
+
+### What `nue_score` actually is — and why "more flooring" is good news
+
+The A/B first looked alarming: the fraction of candidates at `nue_score = -15.00`
+**rose** from 74% to 92% on MC. It is not a floor-vs-real split. `nue_score` is a
+**discretized discriminant saturating at three values**:
+
+| value | MC preflip | MC sync | nueCC sync |
+|---|---|---|---|
+| **+4.3009** (signal-like) | 0.7% | 0.5% | **45.5%** |
+| −4.3009 | 21.6% | 5.5% | 7.8% |
+| **−15.0000** (background-like) | 74.2% | 91.8% | 28.1% |
+| strictly interior | 25.1% | 7.7% | 26.4% |
+
+On a nueCC **signal** sample 45.5% saturate at the **positive** end; on CV
+background most saturate negative. The discriminant is working. What the sync
+does is push background events from −4.3009 down to −15.0000 — **more decisive
+background rejection**, not a lost score.
+
+The metric that matters is therefore the discriminant's verdict, not the raw
+candidate count:
+
+| sample | `nue_score > 0`, preflip | sync |
+|---|---|---|
+| MC CV | 0.81% | **0.54%** |
+| beam-on data | 0.70% | **0.50%** |
+| beam-off data | 0.20% | **0.00%** (0 of 1000) |
+| nueCC signal ([#19](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/19)) | — | **52.97%** |
+
+Background selection drops by a third on MC, and to **zero** on beam-off. Against
+#19's 52.97% signal efficiency that is a signal-to-background ratio near **98:1**.
+
+**The honest gap:** there is no nueCC *preflip* arm, so this cannot show that
+signal efficiency was preserved — the sync could have cut background and signal
+together. Establishing the improvement needs a preflip nueCC run (a subset would
+do). Until then: background rejection improved, signal efficiency unmeasured
+across the change.
+
+### A build error of mine, recorded
+
+The first attempt at this re-run failed **all 13,217 events** and burned 3 h 16 m.
+My chain script called `run-harness.sh` with four arguments and its fifth
+parameter defaulted to the **data** fcl, so MC files were read looking for
+`sptpc2d:dnnsp` instead of `simtpc2d:dnnsp`. Two fixes, applied to all six copies
+of the harness: the fcl argument is now **required** (a default right for one
+sample and silently wrong for the other is worse than none), and a **fail-fast**
+aborts if the first 20 completed events all fail — verified to stop the same
+mistake in **81 s** instead of 3 h 16 m.
 
 ## Open items
 

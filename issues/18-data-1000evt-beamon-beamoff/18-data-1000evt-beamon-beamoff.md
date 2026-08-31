@@ -378,7 +378,7 @@ The superseded payload was deleted after verification; the pre-fix
 `summary.csv` and memory samples are kept under `logs/pre-pf-fix/` for
 provenance.
 
-## RE-RUN IN PROGRESS — synchronised operating point (started 2026-08-30)
+## RE-RUN (superseded by the completion report below) — synchronised operating point (started 2026-08-30)
 
 Both samples were produced **preflip** (issue 17). They are being re-run on the
 **synchronised** operating point, from the identical merged inputs, so the two
@@ -396,6 +396,97 @@ can be compared per event.
 (23 of them in the anomalous run 18308, mean 1459 s) and 2 over 1800 s. If the
 sync pushes any past 3600 s they will be killed. Beam-on is not at risk — its
 longest event was 192 s.
+
+## RE-RUN COMPLETE — synchronised operating point (2026-08-31)
+
+`2026-08-30 10:26 → 11:43 CDT`, beam-on 33 min at 32 workers then beam-off 44 min
+at 26. Output: `.../img-clus-match-tag-pr-data-1000evt-sync-2026-08-30/`.
+The preflip tree is untouched.
+
+**Both samples 1000/1000, zero audit failures, zero RSE problems, all 1000 events
+matched in each.** No event lost to the timeout.
+
+| | beam-on preflip | beam-on sync | beam-off preflip | beam-off sync |
+|---|---|---|---|---|
+| ok | 1000 | **1000** | 1000 | **1000** |
+| wall/event | 47.8 s | **58.9 s** | 55.2 s | **64.8 s** |
+| candidates | 419 (41.9%) | **443 (44.3%)** | 33 (3.3%) | **55 (5.5%)** |
+| gained / lost | — | 30 / 6 | — | 24 / 2 |
+| `nue_score > 0` | 0.70% | **0.50%** | 0.20% | **0.00%** |
+
+`kine_reco_Enu` moved on almost every event kept by both: beam-on 3.6% unchanged
+(median +0.17%, p10 −30.8%, p90 +47.7%), beam-off 6.5% unchanged (median +7.21%).
+
+The raw candidate rate **rising** on beam-off (3.3% → 5.5%) is not more false
+positives: every one of those 55 candidates scores `nue_score <= 0`, and the
+selected rate went to **zero**. Reach increased; the discriminant still rejects.
+
+### What `nue_score` actually is — and why "more flooring" is good news
+
+The A/B first looked alarming: the fraction of candidates at `nue_score = -15.00`
+**rose** from 74% to 92% on MC. It is not a floor-vs-real split. `nue_score` is a
+**discretized discriminant saturating at three values**:
+
+| value | MC preflip | MC sync | nueCC sync |
+|---|---|---|---|
+| **+4.3009** (signal-like) | 0.7% | 0.5% | **45.5%** |
+| −4.3009 | 21.6% | 5.5% | 7.8% |
+| **−15.0000** (background-like) | 74.2% | 91.8% | 28.1% |
+| strictly interior | 25.1% | 7.7% | 26.4% |
+
+On a nueCC **signal** sample 45.5% saturate at the **positive** end; on CV
+background most saturate negative. The discriminant is working. What the sync
+does is push background events from −4.3009 down to −15.0000 — **more decisive
+background rejection**, not a lost score.
+
+The metric that matters is therefore the discriminant's verdict, not the raw
+candidate count:
+
+| sample | `nue_score > 0`, preflip | sync |
+|---|---|---|
+| MC CV | 0.81% | **0.54%** |
+| beam-on data | 0.70% | **0.50%** |
+| beam-off data | 0.20% | **0.00%** (0 of 1000) |
+| nueCC signal ([#19](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/19)) | — | **52.97%** |
+
+Background selection drops by a third on MC, and to **zero** on beam-off. Against
+#19's 52.97% signal efficiency that is a signal-to-background ratio near **98:1**.
+
+**The honest gap:** there is no nueCC *preflip* arm, so this cannot show that
+signal efficiency was preserved — the sync could have cut background and signal
+together. Establishing the improvement needs a preflip nueCC run (a subset would
+do). Until then: background rejection improved, signal efficiency unmeasured
+across the change.
+
+### CORRECTION: run 18308's slowdown was transient, not a code pathology
+
+This doc previously reported run 18308 as an anomaly — 28 events at **mean
+1459.7 s**, 23× the rest of beam-off, on below-average data volume — and
+concluded it "looks like a degenerate condition in clustering or PR rather than a
+busy detector."
+
+**That conclusion was wrong.** The same 28 events, same input, same physics
+output:
+
+| run | run 18308 mean | max | whole sample mean |
+|---|---|---|---|
+| original 2026-08-21 | **1459.7 s** | 1789 s | 103.5 s |
+| regeneration 2026-08-27 (display-only change, content verified identical) | **50.7 s** | 69 s | 55.2 s |
+| sync 2026-08-30 | **59.0 s** | 111 s | 64.8 s |
+
+A 25–29× difference with identical reconstruction output, so it was
+**environmental** — contention on the shared node, or dCache — not a property of
+the events. The whole-sample mean moved too (103.5 → 55.2 s), i.e. that entire
+run was slow, not just run 18308.
+
+What led me wrong: the Bee and nugraph outputs were normal-sized, which I read as
+"not an occupancy effect, therefore a degenerate code path". The available
+conclusion from *normal data volume with abnormal runtime* was that it might not
+be the events at all, and I did not consider the machine. **A timing anomaly seen
+on one run is not a property of the events until it reproduces.**
+
+Consequence: the preflip/sync timing comparison above uses the **regeneration**
+as the preflip baseline (55.2 s), not the original run's inflated 103.5 s.
 
 ## Caveats
 

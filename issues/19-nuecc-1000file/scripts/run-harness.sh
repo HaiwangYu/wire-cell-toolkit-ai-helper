@@ -19,7 +19,17 @@
 # MemoryTracker/TFileService sqlite files), /usr/bin/time -v for peak RSS,
 # per-event check-pr-run.sh audit, three deliverables named by RSE.
 MANIFEST="$1"; OUT="$2"; NWORK="${3:-32}"; CORESPER="${4:-1}"
-FCL="${5:-wcls-img-clus-matching-xin-data.fcl}"
+FCL="${5:-}"
+# NO DEFAULT.  This harness serves both MC (wcls-img-clus-matching-xin.fcl) and
+# data (…-data.fcl), and the two read different product tags -- simtpc2d vs
+# sptpc2d.  It used to default to the data fcl; a chain script that omitted the
+# argument then ran 13,217 MC events through it and every one threw
+# "sptpc2d:dnnsp not found", costing 3h16m before anyone looked.  A default that
+# is silently wrong for half the callers is worse than no default.
+if [ -z "$FCL" ]; then
+    echo "ERROR: fcl argument (5th) is required -- pass the MC or the data fcl explicitly." >&2
+    exit 2
+fi
 
 source /nashome/y/yuhw/.bashrc >/dev/null 2>&1
 source /exp/sbnd/app/users/yuhw/wcp-porting-img/sbnd/setup-ap.sh >/dev/null 2>&1
@@ -105,6 +115,23 @@ if t and t.GetEntries():
             cp lar.log "$OUT/logs/fail_${ti}_${tag}.log" 2>/dev/null
         fi
         echo "$ti,$k,$run,$sub,$evt,$rc,$((t1-t0)),$rss,$bz,$tz,$nz,$audit,$rse_ok,$fpath" >> "$SUMMARY"
+        # FAILFAST: if the first 20 finished events ALL failed, the run is
+        # misconfigured (wrong fcl, missing product, bad input) and continuing
+        # just burns hours to reach the same verdict.  Checked once, cheaply.
+        if [ ! -f "$OUT/.failfast_ok" ]; then
+            local done_n bad_n
+            done_n=$(( $(wc -l < "$SUMMARY") - 1 ))
+            if [ "$done_n" -ge 20 ]; then
+                bad_n=$(awk -F, 'NR>1 && $6!=0' "$SUMMARY" | wc -l)
+                if [ "$bad_n" -eq "$done_n" ]; then
+                    echo "FAILFAST: first $done_n events ALL failed -- aborting." | tee -a "$OUT/logs/failfast.log"
+                    awk -F, 'NR==2{print "  first failure: rc="$6" rse="$3"/"$4"/"$5}' "$SUMMARY" | tee -a "$OUT/logs/failfast.log"
+                    touch "$OUT/.failfast_abort"
+                fi
+                touch "$OUT/.failfast_ok"
+            fi
+        fi
+        [ -f "$OUT/.failfast_abort" ] && break
         cd "$OUT" || true; rm -rf "$ed"
     done
     echo "worker$wid done $(date +%H:%M:%S)" >> "$OUT/logs/w$wid.log"
