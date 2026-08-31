@@ -17,6 +17,57 @@ Written to be shared. If you only read one section, read
 
 ---
 
+## 0. Final validation: our 1-step **exactly reproduces** Xin's 2-step
+
+Run 2026-08-31, before sharing. Xin's canonical 2-step chain was run on the same
+10 MC events as the Bee set in §4, and compared against our synchronised 1-step
+output **branch by branch**: all 21 `T_kine` branches, all 1216 `T_tagger`
+branches, and every `T_rec_charge` point (x, y, z, q, cluster_id, flag_vertex,
+flag_shower).
+
+| comparison | exact match |
+|---|---|
+| **Xin 2-step vs our 1-step `sync`** | **10 / 10** |
+| Xin 2-step vs our 1-step `preflip` | 6 / 10 |
+
+**All 4 events with a reconstruction match exactly on `sync`.** Under `preflip`
+**all 4 disagree** — the 6 "matches" there are the events where neither chain
+found a candidate, which agree trivially.
+
+| event | charge points, 2-step vs preflip |
+|---|---|
+| 713/0/11 | 147 vs **119** |
+| 713/51/3 | 798 vs **1154** |
+| 713/70/3 | 161 vs **153** |
+| 713/74/3 | same count, `T_kine`/`T_tagger` differ |
+
+So the issue-17 gap was real and material, and closing it made the two chains
+agree exactly rather than approximately. **This is the T1 validation that #13
+opened and #17 answered by config audit — now confirmed by actually running both
+chains.**
+
+### How it was run
+
+Xin's "2-step" is really three stages, and the drivers under `sbnd_xin` hardcode
+`/nfs/data/1/xqian/toolkit-dev` and expect pre-made dumps in a layout we do not
+have. So the **canonical in-tree jsonnets** were driven directly — the same files
+compiled for the #17 audit — with nothing under `sbnd_xin` read or modified:
+
+| stage | what |
+|---|---|
+| A | `lar -c wcls-img-dump.fcl` and `wcls-flash-dump.fcl` → `icluster-apa*.npz`, `opflash_apa*.tar.gz` |
+| B | `wire-cell -c pgrapher/experiment/sbnd/wct-clus-matching-perevt.jsonnet` → `pctree.tar.gz` |
+| C | `wire-cell -c pgrapher/experiment/sbnd/wct-pr-perevt.jsonnet` (production 15-stage pipeline) → `tracking-pr.root` |
+
+Scripts: `scripts/run-twostep.sh` (one event end to end),
+`scripts/deep_compare.py` (the branch-by-branch comparison).
+Outputs kept at `production-prep/twostep-validation-2026-08-31/`.
+
+**Scope of the claim:** 10 MC events, of which 4 have a reconstruction. It
+establishes that the two chains agree exactly where they reconstruct, not that
+they agree on all 13k — and it says nothing about the data or nueCC samples,
+which have no 2-step counterpart here.
+
 ## 1. What was run
 
 The 1-step LArSoft chain: imaging → clustering → Q/L matching → TGM/STM/FC
@@ -216,7 +267,8 @@ chain or the TPC/PMT alignment is wrong and Q/L matching is meaningless.
 ## 7. Open items
 
 1. **No nueCC preflip arm** — signal efficiency across the sync is unmeasured. A
-   subset run would close it (~1 h).
+   subset run would close it (~1 h). (The 2-step validation in §0 confirms the
+   configuration is right; it does not measure signal efficiency.)
 2. **nugraph validation** — nobody has checked the labels.
 3. **The `_M_range_check` bug** — reproducible test cases exist across three
    campaigns; unfixed.
