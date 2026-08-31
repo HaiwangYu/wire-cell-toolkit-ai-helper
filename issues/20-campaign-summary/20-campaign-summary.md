@@ -60,8 +60,39 @@ compiled for the #17 audit — with nothing under `sbnd_xin` read or modified:
 | C | `wire-cell -c pgrapher/experiment/sbnd/wct-pr-perevt.jsonnet` (production 15-stage pipeline) → `tracking-pr.root` |
 
 Scripts: `scripts/run-twostep.sh` (one event end to end),
-`scripts/deep_compare.py` (the branch-by-branch comparison).
+`scripts/deep_compare.py` (the branch-by-branch comparison),
+`scripts/merge_twostep_bee.py` (the Bee merge below).
 Outputs kept at `production-prep/twostep-validation-2026-08-31/`.
+
+### See it: Xin's 2-step in Bee
+
+**<https://www.phy.bnl.gov/twister/bee/set/e477b76e-bbc5-4e8f-8285-766a7ba978a1/event/list/>**
+
+Same 10 events in the same order as the 1-step sets in [§4](#4-bee-links-10-events-each),
+so **event index N is the same physical event in all three** — 2-step, 1-step
+`sync`, 1-step `preflip`.
+
+Two differences to expect, neither a reconstruction discrepancy:
+
+- **12 layers, not 21.** The 2-step has no `sed-*`, `truth_*` or `tagger_*`
+  layers, because all of those come from `wclsTensorSetLabeler`, a LArSoft-side
+  component that exists only in the 1-step. Every reconstruction layer
+  (`clustering-global`, `clustering-pr-global`, `img-global`, `op`,
+  `shower_track`, `track_fit`, `vertices`, dead area) is present.
+- **`mc.json` has one node, not two** — the reco summary only. The truth node
+  comes from that same labeler, so there is no truth half to graft. Event 0
+  reads `reco nu 107.5 MeV numu -1.715 nue -15.000` in **both** chains.
+
+Layer count tracks candidacy identically in both: 12 on the 4 events with a
+candidate, 9 on the 6 without.
+
+**Merge note:** the 2-step writes **four** zips per event
+(`mabc-apa0-face0`, `mabc-apa1-face0`, `mabc-all-apa`, `mabc-pr`) because it has
+no shared Bee sink — one of the deliberate 1-step differences on the #17
+allowlist. `scripts/merge_twostep_bee.py` combines them applying the same
+collision rules the 1-step's shared sink uses: dead area taken once, and the PR
+node's `clustering-global` renamed to `clustering-pr-global`. That is a
+display-side choice in the merge, not a change to any output.
 
 **Scope of the claim:** 10 MC events, of which 4 have a reconstruction. It
 establishes that the two chains agree exactly where they reconstruct, not that
@@ -178,6 +209,7 @@ sync did.
 | nueCC signal | [chain](https://www.phy.bnl.gov/twister/bee/set/0acc7d6a-80bd-44f8-8a0b-23c394f55656/event/list/) · [nugraph](https://www.phy.bnl.gov/twister/bee/set/bb564577-0fe7-4560-93cc-7911b0322ec2/event/list/) | — |
 | beam-on data | [chain](https://www.phy.bnl.gov/twister/bee/set/c7165e24-1261-4c14-9110-e9955b53a324/event/list/) · [nugraph](https://www.phy.bnl.gov/twister/bee/set/df3062c1-4588-4ecc-94f1-85977274e6ac/event/list/) | [chain](https://www.phy.bnl.gov/twister/bee/set/ab182045-96b0-4bbf-8a5c-6de64915e83c/event/list/) · [nugraph](https://www.phy.bnl.gov/twister/bee/set/ab1514e6-ba9a-4c7f-bfac-dae731417d05/event/list/) |
 | beam-off data | [chain](https://www.phy.bnl.gov/twister/bee/set/58e6d925-67fa-4d36-9636-0ab2030d21ef/event/list/) · [nugraph](https://www.phy.bnl.gov/twister/bee/set/0c0756cf-b490-476b-8618-597e9737e3e2/event/list/) | [chain](https://www.phy.bnl.gov/twister/bee/set/1598bf66-e444-4a74-bb44-0ec830a3ec7b/event/list/) · [nugraph](https://www.phy.bnl.gov/twister/bee/set/b4750a68-97a9-40ff-bf8a-f40c5edda232/event/list/) |
+| **Xin's 2-step** (MC, reference) | [chain](https://www.phy.bnl.gov/twister/bee/set/e477b76e-bbc5-4e8f-8285-766a7ba978a1/event/list/) — same 10 events as the MC row; see [§0](#0-final-validation-our-1-step-exactly-reproduces-xins-2-step) | — |
 
 To view any other events, merge their per-event zips and upload:
 
