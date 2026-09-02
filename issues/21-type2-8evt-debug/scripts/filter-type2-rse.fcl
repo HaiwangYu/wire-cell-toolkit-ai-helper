@@ -1,0 +1,49 @@
+# Select 8 specific events from the MCP2025C FallProduction CV reco1 sample and
+# merge them into ONE artROOT file.
+#
+# The events are BEE indices 5, 9, 11, 15, 17, 18, 19, 24 of set
+# 763d6e03-16c1-44a2-be59-23ffd78bd872.  Their true (run, subRun, event) came
+# from that set's truth_unlabeled layer -- the other layers report run/subrun 0
+# because that set predates the RSE fix (ai-helper issue 13 G3).
+#
+# filterruns[i] pairs with filterevts[i]; the module ignores subRun, which is
+# safe here only because all 8 runs are distinct.
+#
+#   lar -c filter-type2-rse.fcl -S reco1-files.lst
+process_name: FilterEventID
+
+services: {}
+
+source:
+{
+  module_type: RootInput
+  maxEvents:  -1
+}
+
+outputs:
+{
+ out1:
+ {
+   module_type: RootOutput
+   fileName:    "/exp/sbnd/data/users/yuhw/wcp-porting-img/sbnd/img-clus-matching-eval/prabhjot-100file-Aug5-type2/type2-8evt-reco1.root"
+   dataTier:    "filtered"
+   SelectEvents: [ filter ]
+ }
+}
+
+physics:
+{
+  filters:
+  {
+    filtereventid: {
+      module_type: FilterEventID
+      filterevts: [ 4, 17, 22, 28, 12, 31, 10, 25 ]
+      filterruns: [ 827, 36, 966, 304, 707, 146, 921, 658 ]
+    }
+  }
+
+  filter: [ filtereventid ]
+  stream1:  [ out1 ]
+  trigger_paths: [ filter ]
+  end_paths:     [ stream1 ]
+}
