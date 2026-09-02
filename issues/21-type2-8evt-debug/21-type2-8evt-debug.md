@@ -100,11 +100,12 @@ true vertex position (SBND active volume is roughly x ±200, y ±200, z 0–500 
 | 707/18/12 | **0.0** | (−260.1, −55.6, 431.9) | no | **outside (\|x\| > 200)** |
 | 966/2/22 | **0.0** | (300.5, −417.1, 1040.0) | no | **outside the TPC** |
 
-So the 7 split cleanly into two groups:
+So the 7 split into two groups — but see the **correction** below: the first
+group is not what it first appeared.
 
-**Three deposit nothing** (Edep = 0.0) with vertices well outside the active
-volume — rock/dirt interactions. There is nothing to reconstruct and no
-candidate is the right answer.
+**Three report Edep = 0.0** with vertices well outside the active volume. My
+first reading was "rock interactions, nothing to reconstruct, correctly
+declined". ~~That is wrong~~ — see §3a.
 
 **Four deposit 155–932 MeV but every in-beam cluster fails containment.**
 Per-event tagger verdicts, from re-runs with the logs kept:
@@ -123,10 +124,50 @@ with a comfortably interior vertex.
 That is consistent — activity starting at a boundary is likely to exit — so on
 this evidence the chain is behaving as designed, not failing.
 
-## 4. The open question
 
-Is `FC=false` **correct** for these four, or is the containment check too
-aggressive near the boundary?
+### 3a. CORRECTION (2026-09-01): the Edep = 0.0 events do have neutrino charge in the TPC
+
+Found while uploading these events to Bee. The three "Edep = 0.0" events carry
+**85–149 neutrino-labelled 3D points, well inside the active volume**:
+
+| event | Edep (Bee truth node) | ν-labelled 3D points | their extent (cm) |
+|---|---|---|---|
+| 707/18/12 | **0.0** | **149** | x[−201, −38] y[116, 200] z[237, 500] |
+| 146/60/31 | **0.0** | **140** | x[−191, 113] y[−199, −70] z[209, 368] |
+| 966/2/22 | **0.0** | **85** | x[−11, −2] y[−200, −126] z[34, 84] |
+| 827/27/4 (for scale) | 475.3 | 161 | x[−48, 82] y[−161, −122] z[4, 108] |
+
+The vertices are outside the TPC, but daughters clearly entered and deposited
+charge that the labeller attributes to the neutrino. **So "nothing to
+reconstruct" was unsupported** — all 7 non-reconstructed events have
+neutrino-attributed charge in the detector, not 4.
+
+Worse, the two numbers disagree with each other. `Edep` is built in
+`TensorSetLabeler.cxx:678-692` by summing `sim::SimEnergyDeposit::Energy()` over
+deposits whose `abs(TrackID)` maps to a beam-neutrino interaction — the comment
+calls it "the visible (reconstructable) energy". The nugraph `y_semantic == 0`
+labels come from **the same truth trackid → neutrino association** in the same
+module. They cannot both be right:
+
+- if `Edep = 0.0` is correct, those 85–149 points are **mislabelled** as neutrino;
+- if the labels are correct, `Edep` is **under-reporting**, and the Bee "mc" node
+  energy is wrong for these events.
+
+**Not resolved here.** It is a truth-labelling question, independent of the
+containment question in §4, and it affects the `nu_edep` event metadata and the
+Bee truth node text wherever it occurs — not just these 3 events.
+
+**Method note for the record:** I drew the original conclusion from a single
+field (`Edep`) without cross-checking it against another view of the same truth.
+The nugraph labels were available the whole time and contradict it.
+
+## 4. The open questions
+
+**(a) Is `FC=false` correct for the four boundary events**, or is the
+containment check too aggressive there?
+
+**(b) Why does `Edep` read 0.0 on events with 85–149 neutrino-labelled 3D
+points** (§3a)? One of the two truth views is wrong.
 
 Deciding it needs more than these 8 events can give:
 
