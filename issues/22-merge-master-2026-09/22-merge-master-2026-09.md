@@ -1,7 +1,7 @@
 # Issue 22 — merge `origin/apply-pointcloud` (master+1) into `ap-yuhw`
 
-**Status: IN PROGRESS.** C++ side complete and reviewed; jsonnet side reconciled
-but the 1-step entry config does not yet compile.
+**Status: CONFIG COMPLETE, GATE AT 0. BUILD BLOCKED** on a broken cvmfs
+dependency that is unrelated to this merge (§Build blocker).
 
 - WIP branch: `merge-master-2026-09-02` @ `5366483af`
 - **`ap-yuhw` is untouched** at `14f0aeeb2`, also tagged `pre-master-merge-2026-09-02`
@@ -89,6 +89,85 @@ public methods (`per_apa`, `all_apa`, `pr`) whose signatures upstream
 restructured, so `pre_mabc` and `rse_from_metadata` need threading through each.
 Two are done (`clus_per_face`, `clus_all_apa`, the top-level entry function,
 `per_apa`); the chain is not finished.
+
+## Update 2026-09-02: config complete, gate at 0
+
+`merge-master-2026-09-02` @ `c1242e49b`. The compiled-config gate against Xin's
+chain reports **0 differences**. All four `sync|preflip` × `sim|data`
+combinations compile, as do both of Xin's entry points.
+
+### What it took beyond the conflict resolution
+
+- **`pr()`: `bee_sink` restored.** Upstream replaced it with a `pr_bee` on/off
+  boolean, which cannot express "write into the shared zip owned by another
+  node" — our G4 design. Re-added with the same idiom `clus_per_face` uses.
+- **`eb_fast` / `po_fast` / `dg_fast`** set on our clustering nodes. Part of the
+  production operating point, but configured on the *clustering* entry points
+  rather than through `pr()`, so the generated PR operating point cannot carry
+  them. **Found by the gate, not by reading.**
+- **Generator: four fixes, each found by a failure**, not by inspection:
+  1. new signature end anchor — upstream inlined `local clus_pr`, so the old
+     `clus_pr(anodes,` terminator vanished; `)::` is the real bound
+  2. **`tcn_knobs` bag** — upstream (doc 77) moved most tagger knobs off
+     `pr()`'s signature into a bag handed to the component verbatim. Now split
+     on the real signature, so a knob moving between the two forms is picked up
+     automatically on regeneration
+  3. **strip `//` comments before extracting parameter names** — `pr()`'s
+     signature is 900+ lines of commented jsonnet, and prose like
+     `// kink_walk_dqdx_stop / kink_break_protect = the 59335 …` matches a
+     `name =` regex, producing a bogus argument and a compile error
+  4. cover `SbndPrMagnifyTrackingVisitor` and both BDT scorers — omitting them
+     silently left `save_in_scope` (the `T_cluster` tree) and `fast_xgb_forest`
+     unset
+
+Result: **22 named args + 212 in `tcn_knobs`**, gate 0.
+
+## Build blocker (not caused by this merge)
+
+The merge adds a new upstream subpackage, `mcs` (`WireCellMcs/MuonMCS.h`), which
+the July-2026 build cache predates — so `clus/src/MuonMCSDriver.cxx` cannot find
+its header and a reconfigure is required.
+
+**The reconfigure cannot currently succeed**, because the cvmfs `spdlog` product
+has changed since July:
+
+- WCT's `Spdlog.h:50` requires spdlog built against **external** fmtlib.
+- `spdlog/v1_14_1` (what the working config used) no longer ships
+  `spdlog/fmt/bundled/core.h`, so wcb's configure check — which does **not**
+  pass `-DSPDLOG_FMT_EXTERNAL` — fails to compile a bare `<spdlog/spdlog.h>`.
+- `spdlog/v1_14_1b` does ship the bundled headers, but is therefore the
+  *bundled-fmt* build, which WCT rejects outright with
+  `#error WCT requires SPDLOG to be compiled against external fmtlib`.
+- Supplying `-DSPDLOG_FMT_EXTERNAL` plus the external `fmt/v11_0_2` include and
+  `-lfmt` gets the check to compile but not to link.
+
+`fmt` is not set up by `setup-local-opt.sh` at all (`SETUP_FMT` empty, not on
+`CPATH`), so the July configure found it by some route the environment no longer
+provides. This is the same class as the 2026-08-11 cvmfs larcv2/root conflict.
+
+### Damage, stated plainly
+
+**I overwrote the working July-2026 build cache.** A configure attempt against
+`v1_14_1b` succeeded and replaced `build/c4che/_cache.py`, which had been the
+last known-good configuration. I then hand-patched that cache back toward
+`v1_14_1`; it still does not build.
+
+- **The installed `opt/` libraries are untouched** (Aug 27 build), so the
+  runtime used by every campaign is unaffected and all existing results stand.
+- Only the *build tree* is broken.
+- `ap-yuhw` is untouched at `14f0aeeb2`.
+- A copy of the damaged cache is at
+  `production-prep/_cache.py.bak`; the original July cache was not backed up
+  before the first configure — that is the mistake to avoid repeating.
+
+### To unblock
+
+Either get a working spdlog/fmt combination (ask whoever maintains the cvmfs
+stack which `spdlog` + `fmt` pair the SBND e26 profile now expects), or
+reconstruct a configure that satisfies `SPDLOG_FMT_EXTERNAL` with external fmt
+linked. Only then can the merge be built, and only after that do the smoke,
+the T0 gate against `prod_prjob.json`, and the 10-event 2-step check mean
+anything.
 
 ## Remaining work
 
