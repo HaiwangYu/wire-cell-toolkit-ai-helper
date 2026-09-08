@@ -1,0 +1,133 @@
+# Portability fixes needed to run sbnd_xin's stage-B driver inside the FNAL
+# SL7 apptainer (bash 4.2.46, python 3.9.15).  Applied to SCRATCH COPIES --
+# sbnd_xin itself is never modified.  Reported upstream on ai-helper issue 22.
+#
+# 1. run_pr_chain_batch.sh:1848 hardcodes libpython3.11.so.1.0 while taking
+#    LIBDIR from the running interpreter -> derive INSTSONAME instead.
+# 2. _runlib.sh:_batch_reap_one uses 'wait -n -p VARNAME' (bash >= 5.1;
+#    'wait -n' alone needs 4.3) -> reap by blocking on all outstanding pids.
+# 3. "\${ARR[@]}" on an EMPTY array trips 'set -u' before bash 4.4, and the
+#    no-TLA-override path this gate requires is exactly when they are empty
+#    -> guard 25 sites with \${ARR[@]+"\${ARR[@]}"}.
+
+--- /exp/sbnd/app/users/yuhw/wcp-porting-img/sbnd/sbnd_xin/run_pr_chain_batch.sh	2026-09-07 15:09:20.346423148 -0500
++++ /exp/sbnd/data/users/yuhw/production-prep/step1a-runner-scratch/sbnd/sbnd_xin/run_pr_chain_batch.sh	2026-09-07 23:37:52.148493543 -0500
+@@ -1845,7 +1845,7 @@
+ 
+ # The embedded interpreter needs libpython loaded RTLD_GLOBAL for the SCN
+ # (DL vertex) import to succeed -- same idiom as run_pr3_evt_dl.sh / M4.
+-PYLIB=$(python3 -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))")/libpython3.11.so.1.0
++PYLIB=$(python3 -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR') + '/' + sysconfig.get_config_var('INSTSONAME'))")  # PORTABILITY FIX (scratch copy): upstream hardcodes libpython3.11.so.1.0 while taking LIBDIR from the running python; FNAL SL7 here is 3.9.15.
+ [ -r "$PYLIB" ] || { echo "ERROR: libpython not found: $PYLIB" >&2; exit 1; }
+ 
+ process_event() {
+@@ -1909,12 +1909,12 @@
+             `# they are gone.  PIPELINE stays explicit -- this chain adds the`
+             `# neutrino taggers + BDT scorers on top of the default list.`
+             --tla-code "pipeline_names=[$(echo "$PIPELINE" | sed "s/[^,]\+/'&'/g")]"
+-            "${TFJSON_TLA[@]}"
+-            "${CATH_TLA[@]}"
++            ${TFJSON_TLA[@]+"${TFJSON_TLA[@]}"}
++            ${CATH_TLA[@]+"${CATH_TLA[@]}"}
+             `# doc 87: SBND_PR_PCTREE=0 => no save_tensors TLA => the job default`
+             `# '' => TensorFileSink dump_mode => nothing written.  The sink NODE`
+             `# stays in the graph; dropping it would break Pgrapher connectivity.`
+-            "${PCTREE_TLA[@]}"
++            ${PCTREE_TLA[@]+"${PCTREE_TLA[@]}"}
+         )
+         # doc pr/97 sec.5: compile in a SEPARATE short-lived wcsonnet process
+         # so this long job never hosts gojsonnet's Go runtime.  In-process, that
+@@ -1928,7 +1928,7 @@
+         if [ "${SBND_PRECOMPILE_CFG:-1}" = 1 ]; then
+             _cfgjson="$PRDIR/.wct-cfg-evt${EVT_ID}.json"
+             rm -f "$_cfgjson"
+-            if wcsonnet "${_TLA[@]}" -o "$_cfgjson" "$JSONNET"; then
++            if wcsonnet ${_TLA[@]+"${_TLA[@]}"} -o "$_cfgjson" "$JSONNET"; then
+                 _CFG=(-c "$_cfgjson")
+                 _TLA=()
+             else
+@@ -1939,8 +1939,8 @@
+         timeout --signal=TERM --kill-after=60 "${PR_TIMEOUT:-3600}" \
+         wire-cell \
+             -l stderr -l "${LOG}:${SBND_WCT_LOGLEVEL:-debug}" -L "${SBND_WCT_LOGLEVEL:-debug}" \
+-            "${_TLA[@]}" \
+-            "${_CFG[@]}"
++            ${_TLA[@]+"${_TLA[@]}"} \
++            ${_CFG[@]+"${_CFG[@]}"}
+         echo "rc=$?" > "$PRDIR/rc.txt"
+     ) > "$PRDIR/stdout.log" 2>&1
+     rm -f "$PRDIR/trash-pr.tar.gz"
+@@ -1982,7 +1982,7 @@
+         _NX+=(--prtree "$PRDIR/pctree-pr-evt${EVT_ID}.tar.gz")
+     [ -f "$QLDIR/mabc-all-apa.zip" ] && _NX+=(--qlbee "$QLDIR/mabc-all-apa.zip")
+     python3 "$SX/nusel_extract.py" \
+-        --pctree "$PCT" --prlog "$LOG" "${_NX[@]}" \
++        --pctree "$PCT" --prlog "$LOG" ${_NX[@]+"${_NX[@]}"} \
+         --beam-window "$PR_BEAM_WINDOW_US" \
+         --run "$RUN_NO" --subrun "$SUBRUN_NO" \
+         --out "$PRDIR/nusel-evt${EVT_ID}.tsv" 2>>"$PRDIR/stdout.log"
+@@ -2035,7 +2035,7 @@
+ 
+     # The sinks do not create directories -- the runner must.
+     local evt
+
+--- /exp/sbnd/app/users/yuhw/wcp-porting-img/sbnd/sbnd_xin/_runlib.sh	2026-08-05 20:27:31.916486571 -0500
++++ /exp/sbnd/data/users/yuhw/production-prep/step1a-runner-scratch/sbnd/sbnd_xin/_runlib.sh	2026-09-07 23:37:52.165494060 -0500
+@@ -120,7 +120,7 @@
+ list_events() {
+     echo "Sample: input-${SBND_SAMPLE}evt-<mode>   (${#SBND_EVENTS[@]} events)"
+     echo "Available SBND events (1-based index → event ID):"
+-    for i in "${!SBND_EVENTS[@]}"; do
++    for i in ${SBND_EVENTS[@]+"${!SBND_EVENTS[@]}"}; do
+         printf '  idx %-3d → evt %d\n' "$((i+1))" "${SBND_EVENTS[$i]}"
+     done
+ }
+@@ -132,7 +132,7 @@
+     local idx="$1" n="${#SBND_EVENTS[@]}"
+     if ! echo "$idx" | grep -qE '^[0-9]+$' || [ "$idx" -lt 1 ] || [ "$idx" -gt "$n" ]; then
+         echo "ERROR: invalid event index '$idx' — must be 1..$n" >&2
+-        for i in "${!SBND_EVENTS[@]}"; do
++        for i in ${SBND_EVENTS[@]+"${!SBND_EVENTS[@]}"}; do
+             printf '    %d → %d\n' "$((i+1))" "${SBND_EVENTS[$i]}" >&2
+         done
+         return 1
+@@ -170,15 +170,31 @@
+ # Reap one finished background job; update BATCH_OK / BATCH_FAIL.
+ # Requires bash >= 5.1 for 'wait -n -p VARNAME'.
+ _batch_reap_one() {
++    # PORTABILITY FIX (scratch copy).  Upstream uses `wait -n -p VARNAME`, which
++    # needs bash >= 5.1 (`wait -n` alone needs 4.3).  The FNAL SL7 apptainer this
++    # runs in has bash 4.2.46, where BOTH are absent: `_pid` was never assigned
++    # and `set -u` aborted the batch at the first reap
++    # ("_runlib.sh: line 179: _pid: unbound variable").
++    #
++    # Reap by BLOCKING on every outstanding pid instead of on the next one to
++    # finish.  That converts streaming scheduling into wave scheduling: a slot
++    # frees only when the whole wave is done.  Accounting is unchanged, so
++    # BATCH_OK / BATCH_FAIL / BATCH_FAIL_LIST stay exactly as upstream computes
++    # them.  Cost is idle cores at the tail of each wave, which for a 19-event
++    # arm at PR_JOBS=8 is 3 waves -- acceptable, and it keeps the comparison
++    # itself bit-for-bit unaffected (each event still runs in its own process
++    # with identical arguments).
+     local _pid _st
+-    wait -n -p _pid 2>/dev/null && _st=0 || _st=$?
+-    if [ "$_st" -eq 0 ]; then
+-        BATCH_OK=$((BATCH_OK + 1))
+-    else
+-        BATCH_FAIL=$((BATCH_FAIL + 1))
+-        BATCH_FAIL_LIST+=("${BATCH_PIDS[$_pid]:-pid:$_pid}")
+-    fi
+-    unset "BATCH_PIDS[$_pid]"
++    for _pid in ${BATCH_PIDS[@]+"${!BATCH_PIDS[@]}"}; do
++        wait "$_pid" && _st=0 || _st=$?
++        if [ "$_st" -eq 0 ]; then
++            BATCH_OK=$((BATCH_OK + 1))
++        else
++            BATCH_FAIL=$((BATCH_FAIL + 1))
++            BATCH_FAIL_LIST+=("${BATCH_PIDS[$_pid]:-pid:$_pid}")
++        fi
++        unset "BATCH_PIDS[$_pid]"
++    done
+ }
+ 
+ batch_wait_slot() {
