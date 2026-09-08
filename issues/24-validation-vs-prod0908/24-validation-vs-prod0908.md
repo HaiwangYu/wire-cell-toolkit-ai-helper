@@ -1,6 +1,6 @@
 # Issue 24 — our 1-step chain vs Xin's 2-step, at the prod0908 production point
 
-**Status: PLAN v2 (revised to the owner's two purposes), build running.** Nothing pushed from the toolkit.
+**Status: PLAN v2 (revised to the owner's two purposes). Gate 0 PASS — built.** Nothing pushed from the toolkit.
 
 ## The two purposes, and what each compares
 
@@ -35,6 +35,31 @@ a real merge, one union-resolved conflict. `c8b2821b` = `eacacafe` (the commit
 prod0908 was produced at) + 3 build-system commits touching nothing in
 cfg/sbnd, clus, root, match. **We start config-exact to production, with our
 features on top.** Building now (WCT → larwirecell → hand-copy), all in SL7.
+
+## Gate 0 result (2026-09-08 16:15) — PASS, one hazard recorded
+
+WCT `rc=0` (9m20s), larwirecell `rc=0`, 0 error lines. 19 libs incl. `libWireCellMcs.so`;
+`__libc_single_threaded` undefined = 0 (SL7 build); RUNPATH → `spdlog/v1_14_1`; `miniz.h` present;
+**all seven config keys present in the installed libs** — the four 09-08 flips
+(`excl_t0_frame`, `kine_dqdx_skip_zero_dx`, `kine_near_pointing_impact`,
+`long_muon_cathode_bridge_track_types`), the two doc-99 flash knobs, and our
+`rse_from_metadata`.
+
+larwirecell: 9 of 11 libs byte-identical to the previous deploy; **2 changed**
+(`libWireCellQLMatch.so`, `libWireCellAIML.so`) — because they gained a dependency on
+the new `libWireCellMcs.so`. Deployed; `ldd` shows no cvmfs `wirecell` product anywhere.
+
+**Hazard (pre-existing, not from this merge):** the *installed* WCT libraries carry
+`DT_RPATH` entries into `wire-cell-toolkit/build/` (wcb's `rpathify`; `libWireCellClus.so`
+has 6, `libWireCellRoot.so` 7; the Sep-2 build had 5). `DT_RPATH` is transitive and
+beats `LD_LIBRARY_PATH`, so at runtime **seven WCT libs load from the build tree**, not
+from `opt/lib` (`Util`, `Iface`, `Aux`, `Clus`, `Mcs`, `Quickhull`, `PyUtil`). Today all
+seven are byte-identical to their `opt` copies, so runs are correct — but `rm -rf build`
+(done before every reconfigure) would break the deployed `opt` at runtime, and a partial
+rebuild in `build/` would make jobs silently run mixed binaries. **Rule for this round:
+do not touch `build/` while runs are in flight.** Follow-up: strip the build-tree RPATH
+entries from the installed libs (`patchelf`), or fix the install. New gate-0 item: `ldd`
+of the run libs shows no build-tree paths, or every such lib is byte-identical to `opt`.
 
 ## Chains
 
