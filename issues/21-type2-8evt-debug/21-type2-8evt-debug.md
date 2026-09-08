@@ -192,3 +192,135 @@ run-harness.sh chain/lists/type2.manifest chain/run 8 1 wcls-img-clus-matching-x
 
 Scripts and the BEE→RSE→file audit trail (`found.map`, `rse.csv`) are in this
 folder and in the work dir.
+
+---
+
+## 7. Extension: the full 25-event list (2026-09-02)
+
+The original extraction took only the 8 events I had been asked to look up by
+BEE index.  On request, the same method was re-run for **all 25 events** of BEE
+set `763d6e03-16c1-44a2-be59-23ffd78bd872`, merged into one artROOT.
+
+**Output:** `/exp/sbnd/data/users/yuhw/wcp-porting-img/sbnd/img-clus-matching-eval/prabhjot-100file-Aug5-debug-25evt/`
+- `debug-25evt-reco1.root` -- 0.66 GB, exactly 25 events, 76 products
+- `rse.csv`, `found.map`, `reco1-files.lst`, `filter-25evt-rse.fcl`, `filter.log`, `README.md`
+
+Both traps from S3 applied unchanged: RSEs come only from the
+`truth_unlabeled` layer, and the samweb query is
+`defname:<DEF> and run_number <run>.<subrun>` (MC has no
+`sbnd.event_number_list` and no `event_number` dimension).
+
+### New wrinkle at 25 events: file and pair collisions
+
+The 8-event subset happened to hit 8 distinct run/subruns.  The full list does
+not -- **20 unique files carry the 25 events**:
+
+| run.subrun | selected events |
+|---|---|
+| 105.23 | 2, 5, 21 |
+| 651.84 | 12, 34 |
+| 890.21 | 16, 39 |
+| 921.29 | 10, 41 |
+
+Two consequences:
+
+1. `found.map` contains repeats, so it **must** be deduplicated before being
+   handed to `lar -S`; the list is 20 lines, not 25.
+2. `FilterEventID` matches on `(run, event)` and **ignores subRun** (see
+   `FilterEventID_module.cc:111`).  With several subruns of the same run now in
+   play, that could silently admit an unrequested event.  Checked before
+   running: all 25 `(run, event)` pairs are unique here, so the filter is
+   exact.  **This check is mandatory for any future extraction** -- a
+   same-`(run, event)` in a different subRun would pass the filter, and the
+   only way you would notice is the final `EventAuxiliary` comparison.
+
+### Verification
+
+`lar -c filter-25evt-rse.fcl -S reco1-files.lst` -- 1m58s, rc=0, 25
+`is_in_list: 1`.  Reading `EventAuxiliary` via PyROOT, the set of
+`(run, subrun, event)` in the output is an **exact match** for the 25 requested
+triplets: nothing missing, nothing extra.
+
+The full-chain run (`img-clus-match-tag-pr`) on these 25 events has **not** been
+done yet -- only the 8-event subset in S4-S6 above has chain results.
+
+## 8. Full chain on the 25 events (2026-09-02)
+
+`img-clus-match-tag-pr` over all 25, same harness as S4 (per-EVENT manifest,
+one `lar` per event, `taskset`, `/usr/bin/time -v`, `check-pr-run.sh` audit,
+Trun-authoritative renaming).
+
+**25/25 ok, 2m38s wall, 16 workers x 1 core**, 1.8-2.3 GB peak RSS and 44-155 s
+per event.  Zero failures, zero audit failures, zero RSE mismatches.
+fcl `wcls-img-clus-matching-xin.fcl`, `pr_operating_point` default = **sync**.
+
+- Bee (25 evt): <https://www.phy.bnl.gov/twister/bee/set/98bb8bb8-2f81-4a4e-bed1-2b70fd99ad9b/event/list/>
+- nugraph sp: <https://www.phy.bnl.gov/twister/bee/set/95bca6c8-2842-4a54-810d-67398339313f/event/list/>
+- outputs + `summary.csv` + `lists/bee-order.txt` (Bee index -> RSE) under
+  `.../prabhjot-100file-Aug5-debug-25evt/chain/`
+
+### Candidate rate 15/25 = 60%
+
+`tracking-pr` splits cleanly in two, with nothing in between:
+
+| class | n | size | trees |
+|---|---|---|---|
+| reconstructed | 15 | 227-324 kB | + `T_proj_data`, `T_rec_charge`, `T_kine`, `T_tagger` |
+| empty | 10 | ~8 kB | `Trun`, `T_bad_ch`, `T_proj` only |
+
+The empty ones have **no** `T_rec_charge`/`T_kine`/`T_tagger` -- no PR candidate
+was selected at all.  Consistent with the `kine_reco_Enu > 0` definition of
+"usable reconstruction" adopted in issue 20.  Empty: 105/23/21, 146/60/31,
+272/2/30, 304/6/28, 411/27/8, 658/38/25, 707/18/12, 827/27/4, 921/29/10,
+966/2/22.  These 10 are the natural work list for the debugging this event set
+was assembled for.
+
+### The 8-event subset reproduces byte-for-byte
+
+All three deliverables for the 8 overlapping events are byte-identical between
+the S4 run and this one (e.g. 36/77/17: bee 6492302, tracking-pr 243078,
+nugraph 1542012 in both).  Worth stating explicitly: it means the config was
+restored exactly, so the 10 empty-PR events are a property of the events, not
+of a drifted configuration.
+
+### Trap: the run needs BOTH trees at the pre-merge state
+
+Two smoke attempts failed first, because the checkouts had drifted onto the
+issue-22 merge work while `opt/` still holds the pre-merge build:
+
+| tree on merge state | error at job construction |
+|---|---|
+| `wcp-porting-img` jsonnet (`eb_fast/po_fast/dg_fast`) | `unknown graph flavor relaxed_fast` |
+| `wire-cell-toolkit` on `merge-master-2026-09-02` (its `cfg/`) | `function has no parameter assoc_clear_on_merge` |
+
+Both are config-vs-installed-library mismatches: the source trees are read at
+runtime (`WIRECELL_PATH` points into the WCT checkout's `cfg/`), so switching a
+branch silently changes what a job runs even though nothing was rebuilt.
+**Any campaign run while issue 22 is open must pin `wire-cell-toolkit` to
+`ap-yuhw` (`14f0aeeb2`) and keep the wcp-porting-img jsonnets at HEAD.**  Both
+trees were returned to their merge-WIP state afterwards (WIP backed up to the
+scratchpad first, since in wcp-porting-img it is working-tree-only and exists
+in no branch).
+
+### Re-uploaded with the source set's event numbering
+
+The first upload numbered Bee events by the RSE sort, which does not line up
+with the source set 763d6e03 and so cannot be cross-referenced against it.
+Re-packed in the original index order and re-uploaded:
+
+- Bee (25 evt): <https://www.phy.bnl.gov/twister/bee/set/9bcfbad4-4091-4ae3-b955-e3df51e81c66/event/list/>
+- nugraph sp: <https://www.phy.bnl.gov/twister/bee/set/84a6695f-70d8-4e1c-8d16-537a85f3f932/event/list/>
+- superseded (RSE-sorted): bee `98bb8bb8-...`, nugraph `95bca6c8-...`
+
+Bee index now equals the source set's index for all 25 -- idx 5 = 827/27/4,
+idx 9 = 36/77/17, matching the two the source set was originally queried for.
+Verified by reading `runNo`/`subRunNo`/`eventNo` back out of the JSON payloads
+in the packed zip, not by trusting the file order.
+
+`package-bee.sh` now takes an explicit order file (`<idx> <run> <sub> <evt>`)
+instead of the manifest, and **asserts** it is contiguous from 0 and that every
+event has a Bee zip.  `merge_bee.py` renumbers by argument position, so a gap or
+a non-contiguous index column would silently shift every later event's number --
+the one failure mode that produces a plausible-looking but wrong set.  Two order
+files are kept: `lists/bee-orig-order.txt` (source-set numbering, used here) and
+`lists/bee-order.txt` (RSE-sorted).

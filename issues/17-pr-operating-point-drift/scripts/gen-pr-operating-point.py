@@ -46,11 +46,20 @@ xin  = idx(os.path.join(compiled, 'xin-both.json'))
 clus_src = open(clus_path).read().splitlines()
 try:
     start = next(i for i, l in enumerate(clus_src) if re.match(r'\s*pr\(anodes\s*,', l))
-    end   = next(i for i, l in enumerate(clus_src[start:], start)
-                 if re.search(r'clus_pr\(anodes\s*,', l))
+    # End at pr()'s own signature terminator.  The previous anchor was the
+    # `clus_pr(anodes,` call that used to close it; upstream inlined `local
+    # clus_pr` at the 2026-09 merge and that anchor vanished, so the locator
+    # raised StopIteration.  `)::` is the method-signature terminator and is
+    # what actually bounds the argument list.
+    end = next(i for i, l in enumerate(clus_src[start:], start) if re.search(r'\)::', l))
 except StopIteration:
     sys.exit("FATAL: cannot locate pr() in %s -- has clus.jsonnet been restructured?" % clus_path)
-sig = "\n".join(clus_src[start:end])
+# Strip // comments BEFORE extracting parameter names.  pr()'s signature is
+# 900+ lines of heavily commented jsonnet, and prose like
+#   "// pass; kink_walk_dqdx_stop / kink_break_protect = the 59335 ..."
+# matches a `name =` regex perfectly.  Emitting such a name as a real argument
+# produces "function has no parameter kink_break_protect" at compile time.
+sig = "\n".join(re.sub(r'//.*$', '', l) for l in clus_src[start:end])
 # ALL names on a line, not just the first: the signature packs several per line
 # (e.g. "main_vertex_require_descriptor=false, main_vertex_candidate_flag=false,"),
 # and an anchored ^ regex silently drops every one but the first.
@@ -61,7 +70,12 @@ pr_args = sorted(set(re.findall(r'(?:^|[,(\s])([a-z_0-9]+)\s*=', sig, re.M)))
 # not here -- they belong to a different clus maker function.
 PR_COMPONENTS = ['TaggerCheckNeutrino', 'ClusteringProtectBundle', 'CreateSteinerGraph',
                  'ClusteringUnmergeBundle', 'TaggerCheckTGM', 'TaggerCheckSTM',
-                 'TaggerCheckFC', 'UbooneTaggerOutputVisitor']
+                 'TaggerCheckFC', 'UbooneTaggerOutputVisitor',
+                 # Added 2026-09-02: these are configured through pr() too, and
+                 # leaving them out silently left save_in_scope (the T_cluster
+                 # tree) and fast_xgb_forest unset -- caught only by the gate.
+                 'SbndPrMagnifyTrackingVisitor', 'UbooneNueBDTScorer',
+                 'UbooneNumuBDTScorer']
 
 # A few component keys are DERIVED inside clus_pr() from an upstream pr()
 # argument rather than being settable directly, e.g.
@@ -82,6 +96,10 @@ DERIVED = {
     ('TaggerCheckNeutrino', 'fiducial'):                   'neutrino_consistent_fv',
     ('TaggerCheckTGM',      'exempt_demoted_main_pairs'):  'tgm_exempt_demoted_main',
     ('TaggerCheckNeutrino', 'nu_per_bundle_demoted_acts'): 'evaluate_demoted_mains',
+    # doc 80: ONE flag derives both the TaggerCheckNeutrino computation key
+    # (mcs_enable) and this T_kine branch key, inside pr(), so the
+    # computation gate and the schema gate can never disagree.
+    ('UbooneTaggerOutputVisitor', 'mcs_output'): 'mcs_enable',
 }
 
 def pr_arg_for(knob):
@@ -93,7 +111,7 @@ def pr_arg_for(knob):
         return cands[0]
     return None   # ambiguous or absent: reported, and the gate will catch it
 
-wanted, unmapped, ambiguous = {}, [], []
+wanted, bag, unmapped, ambiguous = {}, {}, [], []
 for (ty, nm), xdata in sorted(xin.items()):
     if ty not in PR_COMPONENTS:
         continue
@@ -120,8 +138,18 @@ for (ty, nm), xdata in sorted(xin.items()):
             continue
         a = pr_arg_for(k)
         if a is None:
-            (ambiguous if [x for x in pr_args if x.endswith('_' + k)] else unmapped).append(
-                "%s:%s.%s" % (ty, nm, k))
+            if [x for x in pr_args if x.endswith('_' + k)]:
+                # more than one plausible pr() argument -- refuse to guess
+                ambiguous.append("%s:%s.%s" % (ty, nm, k))
+                continue
+            if ty == 'TaggerCheckNeutrino':
+                # Not a named pr() argument: it rides the tcn_knobs bag, which
+                # pr() hands to the component verbatim.  This is the normal case
+                # after the doc-77 restructure, not a failure -- the bag is where
+                # most tagger knobs now live.
+                bag[k] = (xdata[k], "%s:%s" % (ty, nm), k)
+                continue
+            unmapped.append("%s:%s.%s" % (ty, nm, k))
             continue
         # A pr() arg feeding two components must not get two different values.
         if a in wanted and wanted[a][0] != xdata[k]:
@@ -185,10 +213,25 @@ lines = [
  "",
  "    // ---- generated operating point ----",
 ]
-for a in sorted(wanted):
-    v, comp, key = wanted[a]
+# Upstream (doc 77 round 2) moved most TaggerCheckNeutrino knobs off pr()'s
+# signature into a single `tcn_knobs` bag that the job builds and pr() hands to
+# the component as-is.  Anything pr() still names is passed by name; the rest
+# goes in the bag.  Splitting on the real signature (not a guess) means a knob
+# that moves between the two forms is picked up automatically on regeneration.
+named = wanted
+bagged = bag
+for a in sorted(named):
+    v, comp, key = named[a]
     note = "" if a == key else "  // %s.%s" % (comp, key)
     lines.append("    %s=%s,%s" % (a, json.dumps(v), note))
+if bagged:
+    lines.append("")
+    lines.append("    // ---- tcn_knobs bag: knobs pr() does not name individually ----")
+    lines.append("    tcn_knobs={")
+    for a in sorted(bagged):
+        v, comp, key = bagged[a]
+        lines.append("      %s: %s," % (a, json.dumps(v)))
+    lines.append("    },")
 lines[-1] = lines[-1].replace(",  //", ")  //", 1) if lines[-1].rstrip().endswith(",") is False else lines[-1]
 # close the call cleanly
 lines.append("  )")
@@ -200,7 +243,7 @@ open(out_path, 'w').write("\n".join(lines) + "\n")
 if unmapped or ambiguous:
     sys.exit("FATAL: %d unmapped, %d ambiguous -- refusing to write a partial "
              "operating point.  Fix the name mapping first." % (len(unmapped), len(ambiguous)))
-print("  synchronised knobs : %d" % len(wanted))
+print("  synchronised knobs : %d named + %d in tcn_knobs" % (len(wanted), len(bag)))
 print("  unmapped (no pr arg): %d %s" % (len(unmapped), unmapped[:8]))
 print("  ambiguous          : %d %s" % (len(ambiguous), ambiguous[:8]))
 print("  wrote %s" % out_path)
