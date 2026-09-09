@@ -142,6 +142,39 @@ finding to report, not something to tune away.
 `r2-scale/{nuecc48,mcp1k}/` (each with `work-B`, `work-Bpr`, `run-C`, `GATE.txt`,
 `t3-*.tsv`), `r2-scale/memwatch.log`.
 
+### DL neutrino-vertex model used (checked 2026-09-09)
+
+Both sides ran the **same DL vertex model**, the uBooNE-trained SCN net:
+
+```
+dl_weights = uboone/scn_vtx/t48k-m16-l5-lr5d-res0.5-CP24.pth
+```
+
+resolved via `WIRECELL_PATH` to
+`/exp/sbnd/app/users/yuhw/wire-cell-data/uboone/scn_vtx/t48k-m16-l5-lr5d-res0.5-CP24.pth`
+(md5 `9cc1413e053c09534edc2d37cdfdc1d4`). No SBND-trained vertex model is in
+play. Re-compiled with #17's `compile-both.sh` on the `master-2026-09-08+yuhw`
+tree:
+
+| arm | where the setting comes from | `dl_weights` | other DL knobs |
+|---|---|---|---|
+| Xin's 2-step (`wct-pr-perevt.jsonnet`) | cfg default, `wct-pr-perevt.jsonnet:898` | `...CP24.pth` | `dl_vtx_dual_chain=true, dl_vtx_rerank=true, dl_vtx_min_accept_score=10, dl_vtx_top_k=5, dl_vtx_score_scale=1000` |
+| chain B (his driver on our binary) | `run_pr_chain_batch.sh` emits no `dl_weights` TLA unless `SBND_NO_DL=1`; unset in our runs | `...CP24.pth` in every per-event compiled cfg | same |
+| chain C (our 1-step) | `clus.jsonnet:981` default through `clus_maker.pr()` | `...CP24.pth` | identical |
+| Xin's `d102mpr` | no logs staged; inferred from B reproducing it 308/308 (nusel + pctree hash) with the DL vertex on | same | — |
+
+Two caveats:
+
+1. **The pin `ref/prod-2026-09-08/prod_prjob.json` says `dl_weights: ""`.** That
+   is the pin artifact already noted above: Xin compiles the pin with
+   `-A dl_weights=` deliberately so the T0 config diff is DL-independent. The pin
+   does not reflect the production setting; the compiled job configs do.
+2. **No silent fallback happened.** The DL vertex needs libpython preloaded
+   `RTLD_GLOBAL`; if the SCN import fails it drops to the geometric vertex with
+   only a `WARN DL vertex failed` line. Chain B and chain C logs for ncpi0,
+   nuecc48 and mcp1k have 0 such lines (T1 already counts this). Had C fallen
+   back, P2 could not have been exact 308/308 against B.
+
 ## ncpi0 detail (first sample; the operating-point resync happened here)
 
 | | comparison | result |
