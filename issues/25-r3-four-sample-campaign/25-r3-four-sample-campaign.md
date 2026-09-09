@@ -1,0 +1,181 @@
+# Round 3: re-run the four SBND samples on the validated 1-step chain
+
+Supersedes the #16/#18/#19 datasets (summarised in #20) with outputs from the
+chain validated in #24: toolkit `master-2026-09-08+yuhw` `0ad64223`, `opt`
+RPATH-stripped, operating point resynced at the 09-08 epoch, P1/P2 exact
+308/308 on data. **Nothing is rebuilt for this round** — the whole point is to
+run the validated binaries+cfg as they are.
+
+Samples: MC BNB CV, MC nueCC (same inputs as before), beam-on and beam-off data
+(**10,000 events each**, up from 1,000). Budget: 20 cores, 50 GB, host
+sbndbuild/sbndgpvm.
+
+Status: **PLAN — pilot done (P2 exact 18/18); awaiting owner decisions (§6) before step 2.**
+
+---
+
+## 0. Pre-flight — all measured 2026-09-09, none of it re-run for this round
+
+| check | result |
+|---|---|
+| toolkit tree | `master-2026-09-08+yuhw` `0ad64223`, clean; `origin/master` still `c8b2821b` (0 behind) |
+| `opt/lib` RPATH | `opt/lib:<cvmfs …>:spdlog v1_14_1/lib64:fmt v11_0_2/lib64` — no build-tree entries |
+| operating point | `compile-both.sh` (PR_OP=sync) **0 differences** at this tree |
+| DL vertex | `uboone/scn_vtx/t48k-m16-l5-lr5d-res0.5-CP24.pth` md5 `9cc1413e…`, identical in 1-step and 2-step compiled cfgs; `dl_vtx_{dual_chain,rerank}=true, min_accept=10, top_k=5, score_scale=1000` |
+| BDT weights | 41 `uboone/weights/*.xml` referenced, the **same set** in both compiled cfgs; all resolve under `wire-cell-data` (incl. the untracked `XGB_nue_seed2_0923.xml`) |
+| reco1 reader | `wire-cell-sbnd-reco1` `85b7932`, RPATH patched |
+| host | 64 cores, 125 GB; `/exp/sbnd/data` 87 TB free of 125 TB; `users/yuhw` = 362 GB |
+
+**Gap this round closes:** #24 validated P2 on *data* (ncpi0, nuecc48, mcp1k are
+all real data, `sptpc2d`). MC (`simtpc2d`, truth labeler) was last shown exact
+vs the 2-step in #20 at the 08-30 epoch, 10 events. The pilot (§1) is the MC
+check at the current epoch.
+
+## 1. Pilot — MC BNB CV, one random reco1 file (18 events), chain B vs chain C
+
+`production-prep/r3-pilot-mccv/`. Input: one file drawn with `random.seed(20260909)`
+from the #16 `files-1000.lst` (run 717 subrun 29, 18 events) — a random file, not
+the manifest head (#18 showed head sampling is 2× biased).
+
+**Result: P2 exact 18/18** (`deep_compare.py`: `T_kine`+`T_tagger` hashes and every
+`T_rec_charge` point identical on all 18; 5 events carry a reconstruction —
+1914/515/787/281/36 charge points — 13 have none).
+
+| arm | how | result |
+|---|---|---|
+| chain B | Xin's drivers (scratch copy), `run_chain_group.sh … sim --size 16 --layout perevt` → `run_pr_chain_batch.sh … sim`, `PR_EXTRA_STAGES=pr_display` | `STAGEA_RC=0 STAGEB_RC=0`; 18 pctrees, 0 corrupt; 18 `tracking-pr.root`; 0 `DL vertex failed`; 16:37→16:50 |
+| chain C | `run-harness.sh pilot.manifest run-C 18 1 wcls-img-clus-matching-xin.fcl` | 18/18 rc=0, `audit=ok` 18, `rse_check=ok` 18; wall mean **95 s** (40–263), peak RSS mean 1.81 / max 2.29 GB, 6.83 MB/evt; 4.5 min wall |
+
+So MC at the current epoch is in sync with the 2-step, on top of #24's data result.
+Two caveats: 18 events with 5 reconstructions is a pilot, not a population
+statement; and the 95 s/event is ~1.4× the 68 s the same chain averaged in the
+08-30 MC run — the host had other users' jobs on it during the pilot, and the
+09-08 toolkit added stages (MCS, long-muon chain), so §2 quotes the estimate as a
+range until the first campaign hour measures it.
+
+**Stage A on MC needed one driver change.** `run_chain_group.sh` is data-only:
+it hardcodes `caf_offset_mode=product` (needs `FrameShiftInfo`, which MC has none
+of) and the `sptpc2d/Reco1` product names. The scratch copy now keys on
+`reality=sim` to pass exactly what Xin's own MC recipe passes
+(`scripts/dbg25_stage.sh`): `caf_offset_mode=none`,
+`wire_product=recob::Wires_simtpc2d_dnnsp_DetSim.`,
+`badmask_product=ints_simtpc2d_badmasks_DetSim.`,
+`summary_product=doubles_simtpc2d_wienersummary_DetSim.`, `frameshift_product=`.
+`reality=data` is byte-identical to before. Patch: `scripts/run_chain_group-sim.patch`.
+
+## 2. Resources
+
+Per-event cost measured on this host in the #16/#18/#19 sync runs (same event
+mix; the toolkit moved since, so the pilot numbers are the cross-check):
+
+| sample | events | wall/evt (mean, p99) | peak RSS mean / max | out MB/evt |
+|---|---|---|---|---|
+| MC CV | 13,217 | 68 s, 160 s | 2.16 / 3.55 GB | 6.8 |
+| nueCC | 8,877 | 81.5 s, 240 s | 2.35 / 3.64 GB | 8.0 |
+| beam-on | 10,000 | 58.9 s, 140 s | 2.07 / 2.31 GB | 2.5 |
+| beam-off | 10,000 | 64.8 s, 150 s | 2.48 / 2.90 GB | 2.4 |
+
+Sizing rule from #16: budget on *sampled concurrent* RSS (~1.9–2.5 GB/job),
+not sum of peaks, and run `memwatch.sh` so the number is measured, not assumed.
+
+| sample | workers | core-h | wall | mean concurrent RSS | outputs |
+|---|---|---|---|---|---|
+| MC CV | 20 | 250 | **12.5 h** | ~43 GB | 90 GB |
+| nueCC | 18 | 201 | **11.2 h** | ~42 GB | 71 GB |
+| beam-on | 20 | 164 | **8.2 h** | ~41 GB | 25 GB |
+| beam-off | 18 | 180 | **10.0 h** | ~45 GB | 24 GB |
+| **total** | | **~795 core-h** | **~42 h sequential** | | **~210 GB** |
+
+If the pilot's 95 s/event (vs 68 s) is the new MC cost rather than host load,
+MC CV becomes ~17.5 h and nueCC ~15.5 h: **42–55 h** total, i.e. 2–2.5 days at
+20 cores. The first hour of each sample gives the real number.
+
+18 rather than 20 workers on the two heavy samples keeps the 50 GB cap with
+headroom for the 3.6 GB tails; both #18 and #19 had to back off from 32 to 26 for
+the same reason at 64 GB.
+
+**Disk**: outputs ~210 GB + staged frameshifted data inputs ~78 GB (2 × 10 ×
+3.9 GB; deletable after the run) → **~290 GB peak**, settling to ~210 GB.
+`/exp/sbnd/data` has 87 TB free; `users/yuhw` is at 362 GB, of which the #16/#19/#18
+sync datasets are 156 GB and become retirable once this round passes. No per-user
+quota is visible from here — owner to confirm.
+
+## 3. Inputs
+
+### MC — same samples as before (owner: confirm §6 Q1)
+
+| | list | files | events |
+|---|---|---|---|
+| MC BNB CV | `img-clus-match-tag-pr-mc-1000file-sync-2026-08-30/lists/files-1000.lst` | 1,000 | 13,217 |
+| MC nueCC | `img-clus-match-tag-pr-nuecc-1000file-2026-08-29/lists/files-1000.lst` | 1,000 (1 unreadable) | 8,877 |
+
+`prodgenie_corsika_proton_rockbox0p1_sbnd` Gen2_2026 CV `v10_14_02_03`, and
+Gen2_Exclusive_2026 nuecc `v10_14_02_05`. Read in place from `/pnfs`; the
+existing RSE-sorted manifests are reused as-is (single run per file, so the
+`--nskip` FileIndex-order trap does not bite; `Trun` is verified anyway).
+
+### Data — availability on `/pnfs` (counted 2026-09-09, 8 files sampled per campaign for events/file)
+
+| campaign | reco1 files | events/file | ≈ events | frameshifted? | used before |
+|---|---|---|---|---|---|
+| **beam-on** `v10_14_02/Fall25-Run1_BNB_Dev_bnblight` | 3,335 | 50 | **~167k** | no | yes (#18, 1k of 3k staged) |
+| **beam-off (a)** `v10_14_00/FallValidationII_RollingDev_offbeamlight` | 738 | 50 | **~36.9k** | no | yes (#18: the 1k came from here) |
+| **beam-off (b)** `v10_14_02/Fall25-Run1_InTime_offbeamlight` | 1,525 | 45–50 | **~68k** | no | no |
+
+So **10,000 each is available** — beam-on comfortably, beam-off from either
+source. (a) is what #18 used but is a different campaign and sbndcode version
+from beam-on (`FallValidationII_RollingDev` v10_14_00 vs `Fall25-Run1` v10_14_02);
+(b) is the same campaign/version as beam-on but has not been used here and its
+"InTime" selection needs confirming with SBND before it is treated as the plain
+beam-off stream. **Owner decision, §6 Q2.**
+
+Every Gen2 data file must get the `FrameShift` product first
+(`run_frameshift.fcl`; memory `reference_gen2_frameshift`). Cost is small: 40–80 s
+and 3.9 GB per 1,000-event merged file. Plan: 200 files per sample chosen at
+random (seeded) across the campaign, merged in 10 × 1,000-event chunks, then
+`prep-beam-off.sh`-style verification that the product actually landed, an
+RSE-uniqueness check across chunks, and the RSE-sorted manifest.
+
+## 4. Run plan
+
+Gates are the #24 procedure's; nothing new. Stop at the first failure.
+
+| step | what | gate | cost |
+|---|---|---|---|
+| 0 | pre-flight (§0) — re-check tree/RPATH/opset **immediately before** step 3 | clean tree at `0ad64223`; `compile-both.sh` 0 differences | 5 min |
+| 1 | pilot (§1) | chain B and C both 18/18; `deep_compare.py` **exact 18/18** | done |
+| 2 | stage data: select 2×200 files, frameshift-merge 2×10 chunks, verify, manifests | FrameShift product present in every chunk; 10,000 unique RSE per sample; manifest indices spot-checked at 0/1/4999/9999 against `Trun` | ~30 min |
+| 2b | 10-event chain B vs C spot-check on **each** data sample (B via the reader, `data`) | exact 10/10 | ~20 min each |
+| 3 | smoke: 10 random events per sample through the campaign fcl (`-xin.fcl` MC, `-xin-data.fcl` data) | rc=0, `audit=ok`, `rse_check=ok`, 8 trees | 15 min |
+| 4 | run, one sample at a time, `memwatch.sh` alongside: **beam-on → beam-off → nueCC → MC CV** (short first, so a problem shows in hours not a day) | T1: rc=0 all, `audit=ok`, `rse_check=ok`, 0 `DL vertex failed`; sampled RSS ≤ 50 GB | ~42 h |
+| 5 | per sample: 10-event Bee (chain + nugraph), candidate / `nue_score>0` rates vs the #20 table | rates move only where the 09-08 knobs moved them; no rc≠0 event unexplained | 1 h |
+| 6 | close-out: summary doc, delete staged inputs (78 GB), owner decides on retiring the 156 GB of #16/#18/#19 sync outputs | | |
+
+Concurrency: 20/18/20/18 workers × 1 core as in §2; `taskset` the TBB pool;
+`timeout -k 60 3600` per event. Same harness (`run-harness.sh`) and the same
+`(run,subrun,event)`-named three deliverables per event as #20.
+
+## 5. Traps carried forward (from #24 and the procedure doc)
+
+- **Operating point**: the gate is re-run in step 0 even though nothing moved —
+  round 2 lost half a day to a "6 differences" that nobody re-read.
+- **Pin the branch, not the build**: any `git checkout` in `wire-cell-toolkit`
+  changes what every job runs via `WIRECELL_PATH`. No toolkit work during the run.
+- **fcl is not defaulted**: MC → `wcls-img-clus-matching-xin.fcl`, data →
+  `-data.fcl`. The wrong one once cost 3 h and 13,217 failed events.
+- **Merged data files + `--nskip`**: FileIndex (RSE-sorted) order; the harness
+  names outputs from `Trun` and flags `rse_check=MISMATCH`.
+- **Select on `kine_reco_Enu > 0`**, never on file size; `T_tagger`/`T_kine`
+  carry no RSE.
+- **DL vertex silent fallback**: `audit=ok` per event + 0 `DL vertex failed`.
+- **`pkill -f` self-match**: `-x` only.
+- **Head-of-manifest pilots are biased 2×** — sample randomly.
+
+## 6. Owner decisions needed before step 2
+
+1. **MC inputs**: the same two `files-1000.lst` lists as #16/#19 (13,217 + 8,877 events)?
+2. **Beam-off source**: (a) `FallValidationII_RollingDev_offbeamlight` v10_14_00 — used before, 36.9k available; or (b) `Fall25-Run1_InTime_offbeamlight` v10_14_02 — same campaign/version as beam-on, 68k available, never used here.
+3. **Beam-on selection**: fresh random 200 files across the 3,335 (recommended — spans runs 18255…18587), or must the 3,000 already-frameshifted events (`first1000ev`, `2nd1k_part1/2`) be included?
+4. **Disk**: is there a per-user quota on `/exp/sbnd/data`? OK to retire the 156 GB of #16/#18/#19 sync outputs after this round passes?
+5. **nugraph `.h5`**: keep producing it (WIP, unvalidated; ~17% of MC disk) or drop it this round?
+6. **Step 2b** (10-event 2-step spot check on each data sample, ~40 min total): worth it, or is #24's 308/308 on data enough?

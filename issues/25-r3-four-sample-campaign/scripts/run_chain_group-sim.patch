@@ -1,0 +1,27 @@
+--- run_chain_group.sh.pre-mc	2026-09-09 16:33:29.777816598 -0500
++++ run_chain_group.sh	2026-09-09 16:33:29.798817258 -0500
+@@ -201,10 +201,22 @@
+     fi
+     if [ "$FROM" = img ] && [ ! -s "$GDIR/frames-dnn.tar.bz2" ]; then
+         local FS_TLA=(); [ -n "$FSPRODUCT" ] && FS_TLA=(--tla-str "frameshift_product=$FSPRODUCT")
++        # SL7 scratch (2026-09-09, yuhw): MC reco1 files carry no FrameShiftInfo and
++        # use the simtpc2d/DetSim product names, so reality=sim selects Xin's MC dump
++        # settings verbatim from scripts/dbg25_stage.sh (caf_offset_mode=none + the
++        # three MC product TLAs).  reality=data is byte-identical to before.
++        local -a CAF_TLA=(--tla-str "caf_offset_mode=product" --tla-str "caf_offset_override=0")
++        if [ "$REALITY" = sim ]; then
++            CAF_TLA=(--tla-str "caf_offset_mode=none" --tla-str "caf_offset_override=0"
++                     --tla-str "wire_product=recob::Wires_simtpc2d_dnnsp_DetSim."
++                     --tla-str "badmask_product=ints_simtpc2d_badmasks_DetSim."
++                     --tla-str "summary_product=doubles_simtpc2d_wienersummary_DetSim."
++                     --tla-str "frameshift_product=")
++            FS_TLA=()
++        fi
+         local -a _TLA=(--tla-str "input=$INPUT"
+                        --tla-str "output_dir=$GDIR"
+-                       --tla-str "caf_offset_mode=product"
+-                       --tla-str "caf_offset_override=0"
++                       "${CAF_TLA[@]}"
+                        ${FS_TLA[@]+"${FS_TLA[@]}"}
+                        --tla-str "entry=-1"
+                        --tla-str "entry_begin=$BEG"
