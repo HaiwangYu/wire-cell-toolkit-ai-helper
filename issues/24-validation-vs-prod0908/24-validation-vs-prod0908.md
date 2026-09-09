@@ -2,6 +2,8 @@
 
 **Status: 308-EVENT GATE COMPLETE (ncpi0 19 + nuecc48 48 + mcp1k 241) — P1 PASS, P2 EXACT 308/308, T3 0 movers.** Toolkit and wcp-porting-img commits local, not pushed.
 
+**Documents:** procedure [`docs/sbnd-1step-build-run-validate.md`](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/blob/main/docs/sbnd-1step-build-run-validate.md) · narrative + lessons [`sbnd/docs/8-build-and-run-both-chains.md`](https://github.com/WireCell/wcp-porting-validation/blob/main/sbnd/docs/8-build-and-run-both-chains.md) (§7 = this round).
+
 ## The two purposes, and what each compares
 
 | | purpose | comparison | proves |
