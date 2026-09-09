@@ -118,9 +118,12 @@ The four issues in order:
 `clus_maker.pr()` with 7 arguments where Xin's entry point passes 351, so it
 silently inherited conservative defaults — 139 of the missing knobs on the
 neutrino tagger alone. That is now fixed and gated; #16 and #18 were re-run on
-the corrected configuration, and **both versions are kept**.
+the corrected configuration. Both versions were kept until 2026-09-09; the
+**preflip output arms were then deleted** to reclaim ~90 GB (see §2).
 
-- **`preflip`** — the original, missing the 160 knobs.
+- **`preflip`** — the original, missing the 160 knobs. **Outputs deleted
+  2026-09-09**; only the run records (`summary.csv`, lists, logs, scripts) and
+  the 10-event Bee sets in §4 remain.
 - **`sync`** — the SBND production operating point, verified by compiled diff
   against Xin's chain (gate at 0 differences).
 
@@ -131,14 +134,24 @@ the corrected configuration, and **both versions are kept**.
 | dataset | events | location (under `/exp/sbnd/data/users/yuhw/production-prep/`) | size |
 |---|---|---|---|
 | **MC CV — sync** | 13,211 | `img-clus-match-tag-pr-mc-1000file-sync-2026-08-30/run/` | 84 G |
-| MC CV — preflip | 13,213 | `img-clus-match-tag-pr-mc-1000file-2026-08-20/` | 84 G |
+| ~~MC CV — preflip~~ | 13,213 | `img-clus-match-tag-pr-mc-1000file-2026-08-20/` — **deleted 2026-09-09**, `summary.csv` kept | — |
 | **nueCC signal — sync** | 8,866 | `img-clus-match-tag-pr-nuecc-1000file-2026-08-29/run/` | 67 G |
 | **beam-on data — sync** | 1,000 | `img-clus-match-tag-pr-data-1000evt-sync-2026-08-30/beam-on/` | 2.3 G |
 | **beam-off data — sync** | 1,000 | `img-clus-match-tag-pr-data-1000evt-sync-2026-08-30/beam-off/` | 2.3 G |
-| beam-on data — preflip | 1,000 | `img-clus-match-tag-pr-data-1000evt-2026-08-21/beam-on/` | 2.3 G |
-| beam-off data — preflip | 1,000 | `img-clus-match-tag-pr-data-1000evt-2026-08-21/beam-off/` | 2.3 G |
+| ~~beam-on data — preflip~~ | 1,000 | `img-clus-match-tag-pr-data-1000evt-2026-08-21/beam-on/` — **deleted 2026-09-09** | — |
+| ~~beam-off data — preflip~~ | 1,000 | `img-clus-match-tag-pr-data-1000evt-2026-08-21/beam-off/` — **deleted 2026-09-09** | — |
 
 There is **no nueCC preflip** dataset — that sample was only ever run on `sync`.
+
+**Deleted 2026-09-09:** the preflip *output* arms (`bee/`, `nugraph/`,
+`tracking-pr/` under `...-mc-1000file-2026-08-20/`; `beam-on/`, `beam-off/`,
+pilots and smoke under `...-data-1000evt-2026-08-21/`) — ~90 GB of results
+produced with the 160-knob-adrift operating point, superseded by `sync` and
+shown in §0 to disagree with Xin's 2-step on every reconstructed event. Kept
+on purpose: `img-clus-match-tag-pr-data-1000evt-2026-08-21/beam-off-prep/data_beamoff_reco1_frameshift_1k.root`
+(4.1 G) — it is the **input** of the sync beam-off arm and the sole copy; the
+sync `lists/beam-off.manifest` points at it by absolute path. Also kept: the
+preflip `summary.csv`, `lists/`, `logs/`, `scripts/` (< 10 MB) as the record.
 
 Every dataset has the same three deliverables, one file per event, named for its
 `(run, subrun, event)` so the three join on the filename:
