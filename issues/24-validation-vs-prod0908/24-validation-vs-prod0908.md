@@ -1,6 +1,6 @@
 # Issue 24 — our 1-step chain vs Xin's 2-step, at the prod0908 production point
 
-**Status: PLAN v2 (revised to the owner's two purposes). Gate 0 PASS — built.** Nothing pushed from the toolkit.
+**Status: RUNNING on ncpi0. Gate 0 PASS, RPATH hazard FIXED, chain A PASS, chain C DIFFERS (18/19) — chain B in flight to attribute it.** Nothing pushed from the toolkit.
 
 ## The two purposes, and what each compares
 
@@ -60,6 +60,66 @@ rebuild in `build/` would make jobs silently run mixed binaries. **Rule for this
 do not touch `build/` while runs are in flight.** Follow-up: strip the build-tree RPATH
 entries from the installed libs (`patchelf`), or fix the install. New gate-0 item: `ldd`
 of the run libs shows no build-tree paths, or every such lib is byte-identical to `opt`.
+
+## Owner decisions (2026-09-08)
+
+`d102mpr` copied (19/48/1000 complete). ncpi0 first, then scale; upload Xin's PR
+and our chain C to Bee for a hand scan. Run chain A. P2 gate exact first; if it
+fails on FP, discuss. **Fix the DT_RPATH hazard first** — done, below.
+
+## DT_RPATH hazard — FIXED
+
+18 installed WCT libs + `wire-cell` + `wcsonnet` carried `DT_RPATH` entries into
+`wire-cell-toolkit/build/<pkg>`; each such path names a subpackage `opt/lib` also
+holds. Collapsed them to a single leading `opt/lib` entry with `patchelf`
+(20 files; cvmfs entries kept verbatim; originals backed up to
+`production-prep/opt-rpath-backup-2026-09-08`). **Proof:** with `build/` hidden,
+every run lib and `wire-cell` resolve with 0 unresolved and 0 non-opt WireCell
+deps; `libWireCellMcs.so` now resolves from `opt/lib` for Clus/QLMatch/AIML.
+`build/` may be deleted freely again.
+
+Same defect in `wire-cell-sbnd-reco1`'s cmake install: **no RPATH at all**, so
+the reader could not find `libspdlog.so.1.14` on its own. Rebuilt against the new
+WCT (`cmake`, `lib64`), then given the same opt+spdlog+fmt RPATH.
+
+## Results so far (ncpi0, 19 events)
+
+| chain | run | vs `d102mpr` | verdict |
+|---|---|---|---|
+| **A** — Xin's stage B on **his** `d102m` pctree, our binary | 19/19 ok | `nusel-evt` **19/19 byte-identical**; census **only** `T_rec_charge:{q,reduced_chi2}` (the known FP drift) | **PASS** — stage B alone reproduces production on our build |
+| **C** — our 1-step end to end from reco1 | 19/19 rc=0, audit ok, RSE ok | **1/19 exact, 18/19 differ** in `T_kine`, `T_tagger` **and charge-point counts** | **FINDING**, see below |
+| **B** — Xin's stage A+B from reco1, our binary | in flight | — | the attribution: if B == `d102mpr`, the gap is our 1-step (P2); if B ≠, it is the build/machine (P1) |
+
+### The chain-C finding
+
+Not FP noise: charge-point counts differ (e.g. 463 vs 504, 269 vs 319) and
+`kine_reco_Enu` moves by up to ~70 % on some events (21073: 958 vs 1624 MeV;
+399860: 1323 vs 978; 506746: 1711 vs 2141). Others agree to <0.1 %
+(114446 exact, 84229 1492.6 vs 1492.2).
+
+Two facts bound it before chain B lands:
+
+- **A passes**, so the PR stage is not the source — the divergence enters at
+  **stage A** (imaging / clustering / Q/L), i.e. upstream of the pctree.
+- Our own 09-05 → 09-08 1-step runs (same events) changed charge counts on only
+  **3/19**, so the operating-point flip is not the main driver either.
+
+What *is* new at stage A this epoch on Xin's side: `d102m` is produced in
+**group mode** (`run_chain_group.sh --size 16`, reco1 read by the standalone
+`wire-cell-sbnd-reco1` reader) rather than per-event through LArSoft. Our 1-step
+reads `recob::Wire` via `wclsCookedFrameSource` one event per process. Chain B
+replays Xin's exact group-mode recipe on our binary; where B lands decides P1 vs P2.
+
+### Two SL7 blockers hit on chain B (fixed in the scratch copy)
+
+1. `run_chain_group.sh` hardcodes `${SBND_RECO1}/lib`; cmake installs to `lib64`.
+2. `wait -n` (bash ≥ 4.3) → polling loop; 12 empty-array `set -u` sites guarded.
+3. **The reco1 reader segfaults unless LArSoft dictionaries are scrubbed from
+   `LD_LIBRARY_PATH`** — ROOT saw two `recob::Wire` dictionaries and destroyed a
+   `lar::sparse_vector` with the wrong layout (`__pointer=<vtable for recob::Wire+32>`).
+   This is the issue-#494 rule from `run-reco1-dump.sh`; applied verbatim.
+   Note the stack trace *looked* like a Go-runtime crash (gojsonnet frames) —
+   those were idle threads; the faulting frame was in ROOT I/O.
 
 ## Chains
 
