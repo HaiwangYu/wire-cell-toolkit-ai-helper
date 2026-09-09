@@ -1,6 +1,6 @@
 # Issue 24 — our 1-step chain vs Xin's 2-step, at the prod0908 production point
 
-**Status: RUNNING on ncpi0. Gate 0 PASS, RPATH hazard FIXED, chain A PASS, chain C DIFFERS (18/19) — chain B in flight to attribute it.** Nothing pushed from the toolkit.
+**Status: ncpi0 (19) COMPLETE — P1 PASS, P2 PASS (exact 19/19). Bee sets up for hand scan.** Toolkit and wcp-porting-img commits local, not pushed.
 
 ## The two purposes, and what each compares
 
@@ -82,7 +82,58 @@ Same defect in `wire-cell-sbnd-reco1`'s cmake install: **no RPATH at all**, so
 the reader could not find `libspdlog.so.1.14` on its own. Rebuilt against the new
 WCT (`cmake`, `lib64`), then given the same opt+spdlog+fmt RPATH.
 
-## Results so far (ncpi0, 19 events)
+## RESULT — ncpi0, 19 events: both purposes hold
+
+| | comparison | result |
+|---|---|---|
+| **P1** | chain B (Xin's 2-step, our binary) vs Xin's `d102mpr` | `nusel-evt` **19/19 byte-identical**; census 24 985 branch instances, only `T_rec_charge:{q,reduced_chi2}` (cross-machine FP, ~1e-12) |
+| **P1, stage A alone** | chain B's pctrees vs Xin's `d102m` | **member-hash identical 19/19** — imaging, clustering and Q/L reproduce production bit-for-bit here |
+| **P2** | chain C (our 1-step) vs chain B — same binary, same machine | **exact 19/19**: every `T_kine`/`T_tagger` branch, every `T_rec_charge` point |
+| closing the loop | chain C vs `d102mpr` directly | census: only the two FP branches → PASS |
+| T3 | vs `products/prod0908` | **0 movers of 19**, 0 label flips |
+| A (pre-check) | Xin's stage B on his pctree, our binary | 19/19, PASS |
+
+**Bee, for the hand scan** (both in `gate308-ncpi0.txt` order, so index k is the same event in both; idx→event verified 19/19 each):
+- Xin's prod0908 PR: <https://www.phy.bnl.gov/twister/bee/set/59df7232-82cd-47f4-966f-f8ad6f30a160/event/list/>
+- our chain C: <https://www.phy.bnl.gov/twister/bee/set/7a209bcc-adff-452d-a4fa-faa0d418bc7c/event/list/>
+
+### P2 failed first (18/19), and the cause was ours — the operating point was stale
+
+The initial chain C differed from production on 18/19 with different charge-point
+counts and `Enu` off by up to ~70 %. Localisation, in order: chain A passed ⇒ not the
+PR code; chain B passed ⇒ not the build/machine; stage-A pctrees identical ⇒ not
+imaging/clustering/Q/L; clustering Bee layers identical ⇒ not the handoff. A
+component diff of the PR-stage config then showed **exactly six keys** present in
+Xin's per-event `.wct-cfg` and absent in ours — the six 09-08 flips
+(`excl_t0_frame`, `kine_dqdx_skip_zero_dx`, `kine_near_pointing_{impact,miss_deg}`,
+`long_muon_cathode_bridge_{track_types,tail_min_len}`), i.e. precisely
+`ref/prod-2026-09-08/README.md`'s listed drift.
+
+`sbnd/pr-operating-point.jsonnet` had been regenerated against `700226d5` (09-05 +
+ours) and never re-run after the master merge. The issue-17 gate already read
+**6 differences**; I had not re-run it. Resynced with `resync-operating-point.sh`
+(22 named + 218 `tcn_knobs`, only the six added), gate 0, committed as
+wcp-porting-img `2a30e50a`. Chain C re-run → 19/19.
+
+Lesson, on the record: **the operating-point gate must be re-run after every
+toolkit merge**, before any event runs. It is cheap and it would have saved the
+whole detour. (Also: a first regeneration attempt bypassed the bare-baseline step
+and emitted only the six new knobs, dropping ~200 — reverted; use the script.)
+
+### Two false alarms on the way, both from a stale reco1 reader
+
+Chain B first came back 16/19 with a census "PASS" on **16** events. The 3 missing
+had **no `tracking-pr.root`**: their stage-A pctrees were gzip-corrupt ("trailing
+garbage") because **both stage-A groups had processed all 19 events and raced on the
+same output files**. Our `wire-cell-sbnd-reco1` was the July build, which ignores
+`entry_begin`/`entry_count`; upstream was exactly one commit ahead
+(`85b7932 Stream an entry RANGE`). Pulled, rebuilt, RPATH set → 19/19.
+
+Two rules that follow: check tree *presence* before trusting a batch's `ok` count
+(the job exits 0 on an empty pctree); and read the census's "compared N events"
+line, not only its verdict.
+
+## Results so far (ncpi0, 19 events) — superseded by the table above
 
 | chain | run | vs `d102mpr` | verdict |
 |---|---|---|---|
