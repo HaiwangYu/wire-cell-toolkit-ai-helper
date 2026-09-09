@@ -1,6 +1,6 @@
 # Issue 24 — our 1-step chain vs Xin's 2-step, at the prod0908 production point
 
-**Status: ncpi0 (19) COMPLETE — P1 PASS, P2 PASS (exact 19/19). Bee sets up for hand scan.** Toolkit and wcp-porting-img commits local, not pushed.
+**Status: 308-EVENT GATE COMPLETE (ncpi0 19 + nuecc48 48 + mcp1k 241) — P1 PASS, P2 EXACT 308/308, T3 0 movers.** Toolkit and wcp-porting-img commits local, not pushed.
 
 ## The two purposes, and what each compares
 
@@ -82,7 +82,65 @@ Same defect in `wire-cell-sbnd-reco1`'s cmake install: **no RPATH at all**, so
 the reader could not find `libspdlog.so.1.14` on its own. Rebuilt against the new
 WCT (`cmake`, `lib64`), then given the same opt+spdlog+fmt RPATH.
 
-## RESULT — ncpi0, 19 events: both purposes hold
+## RESULT — the full 308-event gate: both purposes hold
+
+Run at the 50 GB / 64-core sizing (stage A 32 groups, stage B 32 jobs, chain C 20
+workers; sized on measured peak RSS — A 0.9, B 1.3, C 2.1 GB/proc). Measured peak
+total RSS **41.3 GB**. Xin's per-sample stage-A recipe used verbatim (`d102m_stageA.sh`:
+`--fsproduct` for ncpi0 only, `--size 16 --layout perevt`); mcp1k stage A over all
+1000 events as he did, stage B and chain C on the 241 gate.
+
+| sample | N | B & C integrity | **P1** `nusel` B vs `d102mpr` | **P1** pctree B vs `d102m` | **P2** C vs B (exact) | T3 vs `prod0908` |
+|---|---|---|---|---|---|---|
+| ncpi0 | 19 | 19/19, 0 corrupt | **19/19** | **19/19** | **19/19** | 0 movers |
+| nuecc48 | 48 | 48/48, 0 corrupt | **48/48** | **48/48** | **48/48** | 0 movers |
+| mcp1k | 241 | 241/241 (1000 pctrees, 0 corrupt) | **241/241** | **241/241** | **241/241** | 0 movers |
+| **total** | **308** | | **308/308** | **308/308** | **308/308** | **0 / 308** |
+
+**P2 — our 1-step ≡ Xin's 2-step on the same binary — is exact on all 308 events**:
+every `T_kine` and `T_tagger` branch hashed, every `T_rec_charge` point. That is the
+owner's second purpose, settled. **P1 — our binaries/cfg ≡ Xin's** — holds at the
+selection level on all 308 (`nusel` byte-identical, pctrees member-hash identical,
+0 movers), with the branch-level residual below.
+
+### P1 branch-level residual on mcp1k: two classes, neither a selection difference
+
+The exhaustive census on the 241 gate events (148 175 branch instances) flags 36
+differing (tree, branch) pairs. Two are the known cross-machine FP drift
+(`T_rec_charge:{q,reduced_chi2}`, 107 / 105 events, ≤1e-12). The other 34 resolve
+to exactly two things:
+
+1. **`T_kine:kine_mcs_ambiguity`, 2 events** (66118, 71640): relative differences
+   **6.3e-8 and 7.2e-8**. Single-precision FP noise out of the MCS fit — the same
+   cross-machine family, one more branch that carries it.
+2. **Event 57661, alone, 32 branches**: `kine_energy_excluded` 58.62 → 59.84 and
+   the whole `shw_sp_*` shower-dQ/dx family (`shw_sp_n_highest` **4 → 5**,
+   `shw_sp_highest_dQ_dx` 1.26 → 0.86, the 20-element `shw_sp_vec_dQ_dx_*`,
+   `mean/median_dedx`). A discrete change in shower sampling — a real
+   reconstruction difference, not noise — **that stays entirely below the
+   selection layer**: its `nusel-evt57661.tsv` is byte-identical, `numu_score`
+   identical to 7 digits (3.0727074), `nue_score` identical (−15.0), label
+   `nu-candidate` both sides. It is 1 of 241 (0.4 %), and it is **P1-side only**:
+   chain C reproduces chain B exactly on this event too.
+
+Reading: at 308 events the cross-machine FP drift has one more visible face
+(`kine_mcs_ambiguity`), and one event shows FP-seeded divergence reaching a
+discrete shower-sampling decision without reaching any score or label. This is the
+"numeric-drift shape" the wcgpu1 side predicted, at a rate (1/241) consistent with
+the 34/3067 between-binary movers Xin measured for a *larger* change. It is a
+finding to report, not something to tune away.
+
+**Bee for the hand scan** (ncpi0, `gate308-ncpi0.txt` order, idx→event verified):
+- Xin's prod0908 PR: <https://www.phy.bnl.gov/twister/bee/set/59df7232-82cd-47f4-966f-f8ad6f30a160/event/list/>
+- our chain C: <https://www.phy.bnl.gov/twister/bee/set/7a209bcc-adff-452d-a4fa-faa0d418bc7c/event/list/>
+
+### Where the results live
+
+`production-prep/r2-chainA-ncpi0/`, `r2-chainB-ncpi0/`, `r2-chainC-ncpi0/`,
+`r2-scale/{nuecc48,mcp1k}/` (each with `work-B`, `work-Bpr`, `run-C`, `GATE.txt`,
+`t3-*.tsv`), `r2-scale/memwatch.log`.
+
+## ncpi0 detail (first sample; the operating-point resync happened here)
 
 | | comparison | result |
 |---|---|---|
@@ -92,10 +150,6 @@ WCT (`cmake`, `lib64`), then given the same opt+spdlog+fmt RPATH.
 | closing the loop | chain C vs `d102mpr` directly | census: only the two FP branches → PASS |
 | T3 | vs `products/prod0908` | **0 movers of 19**, 0 label flips |
 | A (pre-check) | Xin's stage B on his pctree, our binary | 19/19, PASS |
-
-**Bee, for the hand scan** (both in `gate308-ncpi0.txt` order, so index k is the same event in both; idx→event verified 19/19 each):
-- Xin's prod0908 PR: <https://www.phy.bnl.gov/twister/bee/set/59df7232-82cd-47f4-966f-f8ad6f30a160/event/list/>
-- our chain C: <https://www.phy.bnl.gov/twister/bee/set/7a209bcc-adff-452d-a4fa-faa0d418bc7c/event/list/>
 
 ### P2 failed first (18/19), and the cause was ours — the operating point was stale
 
