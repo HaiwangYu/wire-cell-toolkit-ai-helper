@@ -10,7 +10,7 @@ Samples: MC BNB CV, MC nueCC (same inputs as before), beam-on and beam-off data
 (**10,000 events each**, up from 1,000). Budget: 20 cores, 50 GB, host
 sbndbuild/sbndgpvm.
 
-Status: **PLAN — pilot done (P2 exact 18/18); awaiting owner decisions (§6) before step 2.**
+Status: **RUNNING — MC BNB CV launched 2026-09-09 19:34 CDT** (20 workers, `production-prep/r3-mc-cv-2026-09-09/`). Owner decisions taken (§6): same MC lists; fresh random 200 beam-on files; **no nugraph this round**; 10-event B-vs-C + Bee of both chains for every sample. Beam-off source still open (§3).
 
 ---
 
@@ -122,6 +122,18 @@ existing RSE-sorted manifests are reused as-is (single run per file, so the
 | **beam-off (a)** `v10_14_00/FallValidationII_RollingDev_offbeamlight` | 738 | 50 | **~36.9k** | no | yes (#18: the 1k came from here) |
 | **beam-off (b)** `v10_14_02/Fall25-Run1_InTime_offbeamlight` | 1,525 | 45–50 | **~68k** | no | no |
 
+**SAM check (2026-09-09, `samweb` in SL7):** a reco1 definition for (b) does exist —
+`data_MCP2025C_Fall25-Run1_InTime_offbeamlight_v10_14_02_reco1_sbnd`, 1,525 files,
+308 GB, matching the 1,525 reco1 artROOT files on `/pnfs` (alongside its
+`caf/flatcaf/histreco2/larcvreco1` siblings). Metadata of one file: parent
+`data_EventBuilder6_art2_run18259_4_strmOffBeamLight_…`, fcl chain
+`run_decoders_job / run_DigitalNoiseEventFilter / reco1_data / reco2_data /
+run_sbndbnbextinfo_sbn / cafmakerjob_sbnd_data_sce_offbeamlight`, v10_14_02 —
+i.e. the same decode→reco1 chain as beam-on (`run_sbndbnbinfo` ↔ `…bnbextinfo`),
+from the OffBeamLight stream. (a)'s chain is the same minus the ext-info step,
+at v10_14_00. What "InTime" selects on top of OffBeamLight is not in the
+metadata — that is the SBND production question to settle before using (b).
+
 So **10,000 each is available** — beam-on comfortably, beam-off from either
 source. (a) is what #18 used but is a different campaign and sbndcode version
 from beam-on (`FallValidationII_RollingDev` v10_14_00 vs `Fall25-Run1` v10_14_02);
@@ -171,11 +183,29 @@ Concurrency: 20/18/20/18 workers × 1 core as in §2; `taskset` the TBB pool;
 - **`pkill -f` self-match**: `-x` only.
 - **Head-of-manifest pilots are biased 2×** — sample randomly.
 
-## 6. Owner decisions needed before step 2
+### Pilot Bee sets (same 18 events, same order — index N is the same event in both)
 
-1. **MC inputs**: the same two `files-1000.lst` lists as #16/#19 (13,217 + 8,877 events)?
+- Xin's 2-step (chain B): <https://www.phy.bnl.gov/twister/bee/set/72b1738a-0736-4b18-88f6-a17a45f3569d/event/list/>
+- our 1-step (chain C): <https://www.phy.bnl.gov/twister/bee/set/92129f66-99c5-4275-9a23-54012cd1ae68/event/list/>
+
+Order in `r3-pilot-mccv/bee-upload/bee-order.txt` (event ids ascending: 4, 6, 7, 11, …, 47).
+
+### nugraph off — verified inert
+
+`enable_nugraph_h5` (new fcl param → `labeler_truth.hdf5_output`) set `"false"` in
+both fcls. Re-ran chain C on the 18 pilot events: `deep_compare` vs chain B still
+**exact 18/18**, and every Bee zip's members hash-identical to the h5-on run.
+`compile-both.sh` passes `enable_nugraph_h5=true` explicitly and still reads 0
+differences. Change is in `wcp-porting-img` working tree, uncommitted (owner to
+review); the diff is saved next to the run record.
+
+## 6. Owner decisions (2026-09-09)
+
+1. **MC inputs**: same two `files-1000.lst` lists as #16/#19 — **yes**.
 2. **Beam-off source**: (a) `FallValidationII_RollingDev_offbeamlight` v10_14_00 — used before, 36.9k available; or (b) `Fall25-Run1_InTime_offbeamlight` v10_14_02 — same campaign/version as beam-on, 68k available, never used here.
-3. **Beam-on selection**: fresh random 200 files across the 3,335 (recommended — spans runs 18255…18587), or must the 3,000 already-frameshifted events (`first1000ev`, `2nd1k_part1/2`) be included?
-4. **Disk**: is there a per-user quota on `/exp/sbnd/data`? OK to retire the 156 GB of #16/#18/#19 sync outputs after this round passes?
-5. **nugraph `.h5`**: keep producing it (WIP, unvalidated; ~17% of MC disk) or drop it this round?
-6. **Step 2b** (10-event 2-step spot check on each data sample, ~40 min total): worth it, or is #24's 308/308 on data enough?
+3. **Beam-on selection**: **fresh random 200 files** across the 3,335.
+4. **Disk**: no known per-user quota. Retiring the old sync outputs: decide after the round.
+5. **nugraph `.h5`**: **off this round** (see above).
+6. **Step 2b**: **yes** — 10-event chain B vs C on every sample, plus Bee of both chains per sample.
+
+2 (beam-off source) is still open; the SAM check is in §3.
