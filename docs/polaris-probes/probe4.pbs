@@ -1,0 +1,39 @@
+#!/bin/bash
+#PBS -N wct-polaris-probe4
+#PBS -A neutrinoGPU::debug
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:55:00
+#PBS -l filesystems=home:eagle:grand
+#PBS -j oe
+#PBS -o /lus/eagle/projects/neutrinoGPU/yuhw/polaris-probe/probe4.out
+set -u
+unset LD_PRELOAD
+export HTTP_PROXY=http://proxy.alcf.anl.gov:3128 HTTPS_PROXY=http://proxy.alcf.anl.gov:3128 http_proxy=http://proxy.alcf.anl.gov:3128 https_proxy=http://proxy.alcf.anl.gov:3128
+echo "=== START $(date) on $(hostname)"
+APP=/soft/spack/testing/0.8.1/apptainer/install/linux-sles15-zen3/gcc-12.3.0/apptainer-1.3.6-7czfylw7oeizgfklnroabhww7kygmtjt/bin/apptainer
+export APPTAINER_CACHEDIR=/local/scratch/apptainer-cache APPTAINER_TMPDIR=/local/scratch/apptainer-tmp; mkdir -p $APPTAINER_CACHEDIR $APPTAINER_TMPDIR
+echo "=== private cvmfsexec copy on node-local disk"
+time rsync -a --exclude .git --exclude 'dist/var/lib/cvmfs/*' --exclude 'log/*' /lus/eagle/projects/neutrinoGPU/yuhw/cvmfsexec/ /local/scratch/cvmfsexec/
+mkdir -p /local/scratch/cvmfs-cache; cat /local/scratch/cvmfsexec/dist/etc/cvmfs/default.local
+RECO1=/lus/eagle/projects/neutrinoGPU/abhat/sbnd/sample_generation_port/reference/extracted/02_workflow_test/test/output/prodgenie_bnb_nu_cosmic_sbnd_GenieGen-20260104T000516_G4-20260104T003738_74082e81-457f-4799-9688-74013c58255b_DetSim-20260104T190953_DecoReco_CellTreeAPA0-20260105T001812.root
+cd /local/scratch/cvmfsexec
+WB=/local/scratch/larB; mkdir -p $WB
+echo "=== RECIPE B: cold cache: mount + setup sbndcode + lar --version + eventdump 1 event"
+( time timeout 2400 ./cvmfsexec sbnd.opensciencegrid.org sbn.opensciencegrid.org larsoft.opensciencegrid.org fermilab.opensciencegrid.org singularity.opensciencegrid.org -- bash -c "
+  echo mounted at \$(date +%T)
+  time $APP exec --userns -B /cvmfs -B /lus/eagle -B /local/scratch /cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest bash -c '
+    cat /etc/redhat-release; echo in-container at \$(date +%T)
+    time { source /cvmfs/sbnd.opensciencegrid.org/products/sbnd/setup_sbnd.sh >/dev/null 2>&1; echo setup_sbnd_rc=\$?; }
+    time { setup sbndcode v10_14_02_0602 -q e26:prof >/dev/null 2>&1; echo setup_sbndcode_rc=\$? SBNDCODE_DIR=\$SBNDCODE_DIR; }
+    setup spdlog v1_14_1 -q e26:prof; echo SPDLOG_FQ_DIR=\$SPDLOG_FQ_DIR
+    which lar; time lar --version 2>&1 | tail -1
+    cd $WB; time lar -c eventdump.fcl -s $RECO1 -n 1 > dump.log 2>&1; echo lar_rc=\$?; grep -E \"sim::SimEnergyDeposit|recob::Wire\" dump.log | head -4; tail -1 dump.log
+    echo \"--- warm lar --version:\"; time lar --version 2>&1 | tail -1
+    echo \"--- warm eventdump:\"; time lar -c eventdump.fcl -s $RECO1 -n 1 > dump2.log 2>&1; echo lar_rc=\$?
+    echo \"--- 16 concurrent eventdump -n 1 (warm libs, same file):\"
+    time ( for i in \$(seq 1 16); do ( mkdir -p w\$i; cd w\$i; lar -c eventdump.fcl -s $RECO1 --nskip \$i -n 1 > dump.log 2>&1; echo w\$i rc=\$? ) & done; wait ) 2>&1 | sort | uniq -c | sort -rn | head -3
+    echo RECIPE_B_DONE'
+") 2>&1 | grep -v -E "^ln: |CernVM-FS: (loading|mounted)" | tail -45
+echo "=== cvmfs cache size"; du -sh /local/scratch/cvmfs-cache 2>/dev/null
+echo "=== END $(date)"

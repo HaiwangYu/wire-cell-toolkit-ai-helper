@@ -1,0 +1,56 @@
+#!/bin/bash
+#PBS -N wct-polaris-probe
+#PBS -A neutrinoGPU::debug
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:40:00
+#PBS -l filesystems=home:eagle
+#PBS -j oe
+#PBS -o /lus/eagle/projects/neutrinoGPU/yuhw/polaris-probe/probe.out
+set -u
+echo "=== START $(date) on $(hostname)"; cat /etc/os-release | head -3; uname -r
+echo "=== cpu/mem"; nproc; lscpu | grep -E "Model name|^CPU\(s\)|Thread|Core|Socket"; free -g | head -2
+echo "=== gpus"; nvidia-smi -L 2>&1 | head -4
+echo "=== local scratch"; ls -ld /local/scratch /tmp 2>&1; df -h /local/scratch /tmp /dev/shm 2>&1
+echo "=== cgroup"; cat /proc/self/cgroup; C=$(sed 's/^0:://' /proc/self/cgroup); for f in cpu.max memory.max pids.max; do echo "$f: $(cat /sys/fs/cgroup$C/$f 2>/dev/null)"; done
+echo "=== ulimit -s/-n/-u"; ulimit -s; ulimit -n; ulimit -u
+echo "=== userns/fuse"; cat /proc/sys/user/max_user_namespaces; unshare -U -r true && echo "unshare -U ok"; ls -l /dev/fuse; which fusermount3 fusermount
+echo "=== network direct"; timeout 10 curl -sI https://github.com 2>&1 | head -1 || echo "direct github: fail"
+timeout 8 bash -c 'echo > /dev/tcp/fndcadoor.fnal.gov/1094' 2>&1 && echo "direct xrootd fndcadoor:1094 ok" || echo "direct xrootd: fail"
+timeout 10 curl -sI http://cvmfs-s1fnal.opensciencegrid.org:8000/cvmfs/sbnd.opensciencegrid.org/.cvmfspublished 2>&1 | head -1 || echo "direct stratum1: fail"
+echo "=== network via proxy"; export HTTP_PROXY=http://proxy.alcf.anl.gov:3128 HTTPS_PROXY=http://proxy.alcf.anl.gov:3128 http_proxy=http://proxy.alcf.anl.gov:3128 https_proxy=http://proxy.alcf.anl.gov:3128
+timeout 15 curl -sI https://github.com 2>&1 | head -1 || echo "proxy github: fail"
+timeout 15 curl -sI http://cvmfs-s1fnal.opensciencegrid.org:8000/cvmfs/sbnd.opensciencegrid.org/.cvmfspublished 2>&1 | head -1 || echo "proxy stratum1: fail"
+echo "=== apptainer module"; module use /soft/modulefiles; module load spack-pe-base 2>&1 | tail -1; module load apptainer 2>&1 | tail -2; which apptainer; apptainer --version
+echo "=== cvmfsexec on compute (proxy)"; cd /lus/eagle/projects/neutrinoGPU/yuhw/cvmfsexec
+export CVMFS_CACHE_BASE=/local/scratch/cvmfs-cache-$USER; mkdir -p $CVMFS_CACHE_BASE || export CVMFS_CACHE_BASE=/tmp/cvmfs-cache-$USER
+export CVMFSEXEC_CVMFS_HTTP_PROXY=http://proxy.alcf.anl.gov:3128
+sed -i 's|^CVMFS_HTTP_PROXY=.*|CVMFS_HTTP_PROXY="http://proxy.alcf.anl.gov:3128;DIRECT"|' dist/etc/cvmfs/default.local
+( time timeout 300 ./cvmfsexec sbnd.opensciencegrid.org larsoft.opensciencegrid.org fermilab.opensciencegrid.org singularity.opensciencegrid.org -- bash -c '
+  ls /cvmfs/sbnd.opensciencegrid.org/products/sbnd/sbndcode/ | tail -3
+  ls /cvmfs/larsoft.opensciencegrid.org/products/spdlog/ | head -3
+  ls -d /cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest && ls /cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest | head -5
+  echo "--- apptainer inside cvmfsexec, sl7 sandbox from cvmfs:"
+  time apptainer exec -B /cvmfs -B /lus /cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest bash -c "cat /etc/redhat-release; ls /cvmfs/sbnd.opensciencegrid.org/products/sbnd | head -2; echo INSIDE_SL7_OK"
+' ) 2>&1 | tail -30
+echo "=== apptainer pull small image via proxy"; export APPTAINER_CACHEDIR=/local/scratch/apptainer-cache-$USER APPTAINER_TMPDIR=/local/scratch/apptainer-tmp-$USER; mkdir -p $APPTAINER_CACHEDIR $APPTAINER_TMPDIR
+( time timeout 300 apptainer exec docker://almalinux:9 cat /etc/os-release ) 2>&1 | head -6
+echo "=== END $(date)"
+
+echo "=== RECIPE A: slf7.sif + larsoft_hpc squashfs overlays (Avinay/twester)"
+IMG=/lus/eagle/projects/neutrinoGPU/larsoft_hpc/images
+( time apptainer exec --fakeroot --bind /lus/eagle --bind /lus/grand \
+   --overlay $IMG/larsoft-v10_14_02.squashfs:ro --overlay $IMG/sbnd-v10_14_02_05_delta.squashfs:ro \
+   /lus/grand/projects/neutrinoGPU/software/containers/slf7.sif \
+   bash -lc 'cat /etc/redhat-release; ldd --version | head -1; bash --version | head -1; source /lus/eagle/projects/neutrinoGPU/larsoft_hpc/envs/sbndcode-v10_14_02_05.env; echo SBNDCODE_DIR=$SBNDCODE_DIR; echo WIRECELL_VERSION=$WIRECELL_VERSION LARWIRECELL_VERSION=$LARWIRECELL_VERSION SPDLOG_VERSION=$SPDLOG_VERSION; which lar; lar --version; ls -d /products/spdlog/* 2>/dev/null; ls -d $(dirname $SBNDCODE_DIR)/../spdlog/*/ 2>/dev/null | head' ) 2>&1 | tail -20
+echo "=== RECIPE A no-fakeroot variant"
+( time apptainer exec --bind /lus/eagle --bind /lus/grand --overlay $IMG/larsoft-v10_14_02.squashfs:ro --overlay $IMG/sbnd-v10_14_02_05_delta.squashfs:ro /lus/grand/projects/neutrinoGPU/software/containers/slf7.sif bash -c 'echo NOFAKEROOT_OK' ) 2>&1 | tail -4
+
+echo "=== RECIPE B: cvmfsexec + FNAL SL7 image from cvmfs + UPS setup sbndcode from cvmfs"
+cd /lus/eagle/projects/neutrinoGPU/yuhw/cvmfsexec
+( time timeout 900 ./cvmfsexec sbnd.opensciencegrid.org larsoft.opensciencegrid.org fermilab.opensciencegrid.org singularity.opensciencegrid.org -- bash -c '
+  time apptainer exec -B /cvmfs -B /lus/eagle -B /lus/grand /cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest bash -c "
+    cat /etc/redhat-release; source /cvmfs/sbnd.opensciencegrid.org/products/sbnd/setup_sbnd.sh >/dev/null 2>&1 || source /cvmfs/sbnd.opensciencegrid.org/products/sbnd/setup 2>/dev/null; setup sbndcode v10_14_02_0602 -q e26:prof 2>&1 | tail -2; echo SBNDCODE_DIR=\$SBNDCODE_DIR; which lar; time lar --version; setup spdlog v1_14_1 -q e26:prof 2>&1 | tail -1; echo SPDLOG_FQ_DIR=\$SPDLOG_FQ_DIR; ls \$SPDLOG_FQ_DIR/lib64 | head -3; echo RECIPE_B_OK"
+' ) 2>&1 | tail -25
+echo "=== dCache https via proxy"; timeout 20 curl -skI --proxy http://proxy.alcf.anl.gov:3128 https://fndca1.fnal.gov:2880/ 2>&1 | head -1
+echo "=== END2 $(date)"
