@@ -57,7 +57,7 @@ Two container recipes are available:
   `spdlog v1_14_1` + `fmt v11_0_2` would have to be built with twester's
   `larsoft_hpc/scripts/create_layered_stack.sh`.
 - **Recipe B (snehadri, extended): cvmfsexec + the FNAL SL7 image from CVMFS.**
-  `cvmfsexec sbnd.opensciencegrid.org sbn.opensciencegrid.org sbn.osgstorage.org
+  `cvmfsexec sbnd.opensciencegrid.org sbn.opensciencegrid.org
   larsoft.opensciencegrid.org fermilab.opensciencegrid.org
   singularity.opensciencegrid.org -- apptainer exec --userns -B /cvmfs -B /lus/eagle
   /cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7:latest bash -lc '...'`.
