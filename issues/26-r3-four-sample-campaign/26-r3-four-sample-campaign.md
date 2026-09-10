@@ -138,7 +138,9 @@ quota is visible from here — owner to confirm.
 | MC nueCC | `img-clus-match-tag-pr-nuecc-1000file-2026-08-29/lists/files-1000.lst` | 1,000 (1 unreadable) | 8,877 |
 
 `prodgenie_corsika_proton_rockbox0p1_sbnd` Gen2_2026 CV `v10_14_02_03`, and
-Gen2_Exclusive_2026 nuecc `v10_14_02_05`. Read in place from `/pnfs`; the
+Gen2_Exclusive_2026 nuecc `v10_14_02_05` — i.e. subsets (verified 2026-09-10, 20/20 sampled files each) of SAM
+`aurora_SBND2026A_gen2_BNBLight_prodgenie_corsika_proton_rockbox0p1_sbnd_CV_v10_14_02_03_reco1_sbnd` (749,339 files)
+and `…_EX_nuecc_v10_14_02_05_reco1_sbnd` (14,231 files). Read in place from `/pnfs`; the
 existing RSE-sorted manifests are reused as-is (single run per file, so the
 `--nskip` FileIndex-order trap does not bite; `Trun` is verified anyway).
 

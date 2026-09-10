@@ -20,8 +20,8 @@ The one missing MC CV event (run 471 subrun 18 event 33) crashes the clustering 
 
 | sample | source | selection |
 |---|---|---|
-| MC BNB CV | `prodgenie_corsika_proton_rockbox0p1_sbnd` Gen2_2026 **CV** reco1, sbndcode `v10_14_02_03`, `/pnfs/sbn/data_add/sbn_nd/aurora/mc/v10_14_02_03/…/CV/reco1/` | the same 1,000 reco1 files as the earlier #16 campaign (`lists/files-1000.lst`), all events |
-| MC nueCC | `prodgenie_corsika_proton_rockbox0p1_sbnd` Gen2_Exclusive_2026 **nuecc** reco1, `v10_14_02_05` | the same 1,000 files as #19 (`lists/files-1000.lst`) |
+| MC BNB CV | SAM `aurora_SBND2026A_gen2_BNBLight_prodgenie_corsika_proton_rockbox0p1_sbnd_CV_v10_14_02_03_reco1_sbnd` (749,339 files, 9.9 M events; `/pnfs/sbn/data_add/sbn_nd/aurora/mc/v10_14_02_03/…/Gen2_2026/CV/reco1/`) | 1,000 of those files (the same list as the earlier #16 campaign, `lists/files-1000.lst`; membership verified with samweb), all 13,217 events |
+| MC nueCC | SAM `aurora_SBND2026A_gen2_BNBLight_prodgenie_corsika_proton_rockbox0p1_sbnd_EX_nuecc_v10_14_02_05_reco1_sbnd` (14,231 files, 124 k events; `…/v10_14_02_05/…/Gen2_Exclusive_2026/nuecc/reco1/`) | 1,000 of those files (same as #19, `lists/files-1000.lst`), all 8,877 events |
 | beam-on | SAM `data_MCP2025C_Fall25-Run1_BNB_FixedDev_bnblight_v10_14_02_reco1_sbnd` (runs 18255, 18259; 1,820 files) | 220 random files (seeded), merged + **FrameShift** added, first 10,000 events in art order — 7,270 from run 18255, 3,667 from 18259 (cut at 10k) |
 | beam-off | SAM `data_SBND2026A_gen2_InTime-Run1_v10_14_02_02_reco1_sbnd` (49,020 files, 2.2 M events, Run 1) | 240 random files (seeded), merged + FrameShift, first 10,000 events — 94 runs |
 
@@ -70,4 +70,5 @@ No nugraph `.h5` this round (switched off; it was an unvalidated side output).
 | Xin's reference | `ref/prod-2026-09-08` (prod0908); our chain reproduces it bit-for-bit on data (#24) |
 
 ## 6. Change log
+- 2026-09-10 15:05 — MC input SAM definitions named (our 1,000-file lists are subsets of the two `aurora_SBND2026A_gen2_BNBLight_…` reco1 definitions).
 - 2026-09-10 14:35 — first version: MC CV done, nueCC running, data staged (beam-on re-selected from FixedDev, beam-off from SBND2026A InTime).
