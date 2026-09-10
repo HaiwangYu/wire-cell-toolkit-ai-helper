@@ -10,7 +10,7 @@ Samples: MC BNB CV, MC nueCC (same inputs as before), beam-on and beam-off data
 (**10,000 events each**, up from 1,000). Budget: 20 cores, 50 GB, host
 sbndbuild/sbndgpvm.
 
-Status: **RUNNING — MC BNB CV launched 2026-09-09 19:34 CDT** (20 workers, `production-prep/r3-mc-cv-2026-09-09/`). Owner decisions taken (§6): same MC lists; fresh random 200 beam-on files; **no nugraph this round**; 10-event B-vs-C + Bee of both chains for every sample. Beam-off = `Fall25-Run1_InTime_offbeamlight` v10_14_02 (owner, 2026-09-09). Data staged (§3a), data spot checks exact 16/16 + 16/16 (§1a).
+Status: **RUNNING — MC BNB CV DONE 13,216/13,217 (2026-09-10 10:23; 1 deterministic toolkit crash, see issue comments); nueCC running since 10:37.** MC CV launched 2026-09-09 19:34 CDT (20 workers, `production-prep/r3-mc-cv-2026-09-09/`). Owner decisions taken (§6): same MC lists; fresh random 200 beam-on files; **no nugraph this round**; 10-event B-vs-C + Bee of both chains for every sample. Beam-off = `Fall25-Run1_InTime_offbeamlight` v10_14_02 (owner, 2026-09-09). Data staged (§3a), data spot checks exact 16/16 + 16/16 (§1a).
 
 ---
 
