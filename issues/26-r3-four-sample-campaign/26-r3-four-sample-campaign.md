@@ -242,6 +242,32 @@ both fcls. Re-ran chain C on the 18 pilot events: `deep_compare` vs chain B stil
 differences. Change is in `wcp-porting-img` working tree, uncommitted (owner to
 review); the diff is saved next to the run record.
 
+## 5a. Open defect — to fix ourselves later (owner, 2026-09-10)
+
+**MC CV event 471/18/33 crashes deterministically in both chains** (1 of 13,217;
+in the 2-step's group mode it takes its whole 14-event group). Not filed upstream;
+we fix it in our tree when the campaign is done.
+
+- Where: stack overflow — 34,370 recursive `nanoflann::KDTreeBaseClass::divideTree`
+  frames — from `DynamicPointCloud::index_new_points` (`clus/src/DynamicPointCloud.cxx:245`,
+  the per-plane 2D k-d tree `kd2d.append`) ← `DynamicPointCloud::add_points` (`:153`)
+  ← `clustering_connect1` (`clus/src/clustering_connect.cxx:702`,
+  `global_skeleton_cloud->add_points(make_points_linear_extrapolation(…))`) ←
+  `ClusteringConnect1::visit` ← `MultiAlgBlobClustering::operator()` (`:3961`).
+- Hypothesis (unverified): a non-finite `dir1` / `extending_dis` / 2D projection for
+  one cluster gives nanoflann points it cannot split on, so `middleSplit_` never
+  makes progress. First thing to check: print/assert `std::isfinite` on the points
+  returned by `make_points_linear_extrapolation` for this event.
+- Fix shape, to decide: guard in `DynamicPointCloud::add_points` (drop non-finite
+  points, log once) and/or fix the producer in `clustering_connect1`. Then re-run
+  the event through both chains; the rest of the sample must stay byte-identical.
+- Reproducer (~2 min): `production-prep/r3-crash-471-18-33/work-B/g0/.wct-cfg-ql.json`
+  → `wire-cell -c` under gdb in SL7 (see `gdb-ql.log` there). Reco1 file
+  `…/CV/reco1/000017/000170/reco1-detsim-g4-gen-Gen2_2026-67a3-4e42-52e3-19f7.root`,
+  `--nskip 7`. Condensed backtrace: `crash-471-18-33-backtrace.txt` in this folder.
+- Campaign impact: MC CV delivered 13,216/13,217; this event is absent from
+  `run/bee` and `run/tracking-pr` and marked rc=11 in `summary-merged.csv`.
+
 ## 6. Owner decisions (2026-09-09)
 
 1. **MC inputs**: same two `files-1000.lst` lists as #16/#19 — **yes**.
