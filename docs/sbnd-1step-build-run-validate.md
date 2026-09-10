@@ -187,6 +187,18 @@ of ours (opflash_time; issue-10 NF/SP; w-gap rebase).
   missing product (`caf_offset_mode=product but no product …`) — our 1-step does
   not. Staged frameshifted inputs are large and deletable after the run, but if
   a manifest points at one (the #18 beam-off manifest does), keep it.
+- **FrameShift is silent in the 1-step.** `wclsOpFlashSource` looks up art label
+  `frameshift`; if the product is absent the shift is **0 and nothing fails** (Xin's
+  reader aborts instead). The only gate is the staging step's branch check. MC has
+  no product by design, so 0 is right there.
+- **Data vs MC is exactly five things** (compiled sim-vs-data diff, #26): per-TPC
+  `pos_offset` point shift → `y_cor/z_cor` coords (data), `QLMatching data=true,
+  QtoL=0.86`, FrameShift, the four `simtpc2d`↔`sptpc2d` product tags, and the
+  labeler's `reality`. `use_sce=false` in both. Everything else — operating point,
+  DL/BDT weights, `time_offset`, windows — is identical. Reality and tags flip
+  together only via `-xin-data.fcl`; a silent mismatch is not possible in the
+  1-step (it is in the 2-step, hence Xin's `.lineage_reality` check).
+  `issues/26-*/scripts/compile-realities.sh` regenerates the diff.
 - Sizing: measured peak RSS **2.1 GB** per `lar` process. Size on *sampled
   concurrent* RSS, not sum of peaks; run a sampler (`memwatch.sh`) so the budget
   is measured. `taskset` the TBB pool.
