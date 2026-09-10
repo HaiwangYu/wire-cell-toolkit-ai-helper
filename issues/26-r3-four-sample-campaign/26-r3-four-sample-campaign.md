@@ -10,7 +10,7 @@ Samples: MC BNB CV, MC nueCC (same inputs as before), beam-on and beam-off data
 (**10,000 events each**, up from 1,000). Budget: 20 cores, 50 GB, host
 sbndbuild/sbndgpvm.
 
-Status: **RUNNING — MC BNB CV DONE 13,216/13,217 (2026-09-10 10:23; 1 deterministic toolkit crash, see issue comments); nueCC running since 10:37.** MC CV launched 2026-09-09 19:34 CDT (20 workers, `production-prep/r3-mc-cv-2026-09-09/`). Owner decisions taken (§6): same MC lists; fresh random 200 beam-on files; **no nugraph this round**; 10-event B-vs-C + Bee of both chains for every sample. Beam-off = `Fall25-Run1_InTime_offbeamlight` v10_14_02 (owner, 2026-09-09). Data staged (§3a), data spot checks exact 16/16 + 16/16 (§1a).
+Status: **RUNNING — MC BNB CV DONE 13,216/13,217 (2026-09-10 10:23; 1 deterministic toolkit crash, see issue comments); nueCC running since 10:37.** MC CV launched 2026-09-09 19:34 CDT (20 workers, `production-prep/r3-mc-cv-2026-09-09/`). Owner decisions taken (§6): same MC lists; fresh random 200 beam-on files; **no nugraph this round**; 10-event B-vs-C + Bee of both chains for every sample. Beam-off = **`data_SBND2026A_gen2_InTime-Run1_v10_14_02_02_reco1_sbnd`** (owner, 2026-09-10, on a colleague's advice; supersedes the 09-09 choice). Data staged (§3a), data spot checks exact 16/16 + 16/16 (§1a).
 
 ---
 
@@ -191,6 +191,33 @@ sort, cross-chunk duplicate check (0 duplicates), cut at 10,000. Run coverage:
 beam-on 55 runs, beam-off 68 runs, both dominated by 18255/18259 (≈40%/16%).
 The staged inputs are deletable after the run; the manifests point at them.
 
+### 3b. Beam-off re-staged from the SBND2026A production (2026-09-10 12:02–12:08)
+
+Owner switched beam-off to `data_SBND2026A_gen2_InTime-Run1_v10_14_02_02_reco1_sbnd`
+(a colleague's recommendation): **49,020 reco1 files, 2.23 M events, 9.5 TB**, on
+dCache under `/pnfs/…/SBND2026A/v10_14_02_02/gen2_InTime-Run1/reco1/offbeamlight/`,
+v10_14_02_02, same decode→reco1 chain and `sptpc2d` products, OffBeamLight stream.
+12 random files opened fine (18–50 events each). Selection: 240 random files
+(`seed 20260910`) → 12 FrameShift chunks, all 12 verified for the
+`FrameShiftInfo_frameshift__FRAMESHIFT.` branch, 10,631 events → manifest cut at
+**10,000**, 0 duplicates, **94 runs** (18250…). The 09-09 `Fall25-Run1_InTime_offbeamlight`
+staging and its spot check were deleted (41 GB).
+
+Spot check on the new sample (one 16-entry group of `chunk00`, chain B vs C):
+**exact 16/16**, 0 `DL vertex failed` — but **0 of the 16 carry a reconstruction**
+(beam-off is a ~5 % candidate stream), so this agreement is the trivial kind #20
+warned about. Follow-up recorded in §4: after the beam-off run, take 10 events with
+`kine_reco_Enu > 0` from `summary.csv` and run chain B on them for a non-trivial
+exact check. Bee, both chains, same order:
+[2-step](https://www.phy.bnl.gov/twister/bee/set/5b2ae9aa-43c3-4411-9abd-5358b6f13a03/event/list/) ·
+[1-step](https://www.phy.bnl.gov/twister/bee/set/568162f1-9ab1-4a43-a846-ee86e28e4cfd/event/list/).
+
+The same production has the beam-on counterpart
+`data_SBND2026A_gen2_BNB-Run1_v10_14_02_02_reco1_sbnd` (100,934 files, 4.8 M events,
+same version). Our staged beam-on is MCP2025C `Fall25-Run1_BNB_Dev_bnblight`
+v10_14_02. **Open: switch beam-on too for a version-matched pair?** (~15 min to
+re-stage; beam-on has not run.)
+
 ## 4. Run plan
 
 Gates are the #24 procedure's; nothing new. Stop at the first failure.
@@ -203,7 +230,8 @@ Gates are the #24 procedure's; nothing new. Stop at the first failure.
 | 2b | 16-event chain B vs C spot-check on each data sample (§1a) | exact | **done: 16/16, 16/16** |
 | 3 | smoke: 10 random events per sample through the campaign fcl (`-xin.fcl` MC, `-xin-data.fcl` data) | rc=0, `audit=ok`, `rse_check=ok`, 8 trees | 15 min |
 | 4 | run, one sample at a time, `memwatch.sh` alongside: **MC CV (running since 19:34) → nueCC → beam-on → beam-off** | T1: rc=0 all, `audit=ok`, `rse_check=ok`, 0 `DL vertex failed`; sampled RSS ≤ 50 GB | ~42 h |
-| 5 | per sample: 10-event Bee (chain + nugraph), candidate / `nue_score>0` rates vs the #20 table | rates move only where the 09-08 knobs moved them; no rc≠0 event unexplained | 1 h |
+| 4b | beam-off only: after the run, chain B on 10 events with `kine_reco_Enu > 0` (the spot-check group had none) | exact 10/10 | ~20 min |
+| 5 | per sample: 10-event Bee, candidate / `nue_score>0` rates vs the #20 table | rates move only where the 09-08 knobs moved them; no rc≠0 event unexplained | 1 h |
 | 6 | close-out: summary doc, delete staged inputs (78 GB), owner decides on retiring the 156 GB of #16/#18/#19 sync outputs | | |
 
 Concurrency: 20/18/20/18 workers × 1 core as in §2 (MC CV is running at 20: first 1,926 events 43 s/evt mean, max concurrent RSS 33.6 GB, 5.7 MB/evt, ETA ~03:45 CDT); `taskset` the TBB pool;
