@@ -337,4 +337,4 @@ Polaris compute nodes.**
 Login node (`cvmfsexec-login`): Recipe B cold 52 s; `setup sbndcode` 34 s.
 
 Scripts: `/lus/eagle/projects/neutrinoGPU/yuhw/polaris-probe/probe{,2,3,4}.pbs`
-(copied to `docs/polaris-probes/` with the two `default.local` files).
+(copied to `issues/27-polaris-production/scripts/` with the two `default.local` files). Tracking issue: https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/27
