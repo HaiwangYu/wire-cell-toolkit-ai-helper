@@ -191,8 +191,20 @@ of ours (opflash_time; issue-10 NF/SP; w-gap rebase).
   concurrent* RSS, not sum of peaks; run a sampler (`memwatch.sh`) so the budget
   is measured. `taskset` the TBB pool.
 - `timeout -k 60 3600` — plain `timeout` sends only SIGTERM and never fires.
+- **Kerberos: a run longer than the ticket lifetime dies silently.** FNAL tickets
+  live 26 h. Inside SL7 the PATH has `/nashome/…/.local/bin` *before* `/usr/bin`,
+  so once the ticket expires every `exec` walks through Kerberized NFS and the job
+  fails in ~20 s with rc=126 and `/usr/bin/time: cannot run timeout: Key has
+  expired` — the harness keeps pulling tasks and failing them (1,087 events lost
+  between 04:00 and 08:57 in #26 before a login renewed the ticket). Before any
+  multi-hour run: `kinit` fresh, then keep **`krb-renew.sh`** (hourly `kinit -R`,
+  renewable 7 days; `issues/26-*/scripts/`) running on the **same** `KRB5CCNAME`
+  the harness inherits (check `/proc/<harness pid>/environ`). Afterwards, grep
+  `summary.csv` for `rc=126` and re-run those rows (`retry-failed.sh` pattern:
+  retry manifest → separate out dir → copy deliverables → merged summary); never
+  count them as done.
 
-**Gate (T1):** rc=0 all; `audit=ok` (checks the DL vertex did not silently fall back
+**Gate (T1):** rc=0 all (an rc=126 block means the ticket lapsed — see above); `audit=ok` (checks the DL vertex did not silently fall back
 to geometric); `rse_check=ok`; 8 trees in `tracking-pr.root` with `T_tagger`/`T_kine`
 at 1 entry; 0 `DL vertex failed` in logs.
 
