@@ -1,0 +1,18 @@
+Thread 1 "wire-cell" received signal SIGSEGV, Segmentation fault.
+0x00007fffbc801527 in nanoflann::KDTreeBaseClass<nanoflann::KDTreeSingleIndexDynamicAdaptor_<nanoflann::L2_Simple_Adaptor<double, WireCell::NFKDVec::Tree<double, WireCell::NFKDVec::IndexDynamic, nanoflann::metric_L2_Simple>, double, unsigned int>, WireCell::NFKDVec::Tree<double, WireCell::NFKDVec::I
+1209	    void middleSplit_(
+#0  0x00007fffbc801527 in nanoflann::KDTreeBaseClass<nanoflann::KDTreeSingleIndexDynamicAdaptor_<nanoflann::L2_Simple_Adaptor<double, WireCell::NFKDVec::Tree<double, WireCell::NFKDVec::IndexDynamic, nanoflann::metric_L2_Simple>, double, unsigned int>, WireCell::NFKDVec::Tree<double, WireCell::NFKDVe
+#1  0x00007fffbc801c58 in nanoflann::KDTreeBaseClass<nanoflann::KDTreeSingleIndexDynamicAdaptor_<nanoflann::L2_Simple_Adaptor<double, WireCell::NFKDVec::Tree<double, WireCell::NFKDVec::IndexDynamic, nanoflann::metric_L2_Simple>, double, unsigned int>, WireCell::NFKDVec::Tree<double, WireCell::NFKDVe
+... (34382 frames, #1..#34369 all nanoflann::KDTreeBaseClass<...>::divideTree)
+#34370 WireCell::Clus::Facade::DynamicPointCloud::index_new_points (this=0x897ad10, original_size=<optimized out>) at ../clus/src/DynamicPointCloud.cxx:245
+#34371 0x00007fffbc7f17fa in WireCell::Clus::Facade::DynamicPointCloud::add_points (this=<optimized out>, points=...) at ../clus/src/DynamicPointCloud.cxx:153
+#34372 0x00007fffbcd59065 in clustering_connect1 (live_grouping=..., dv=..., scope=..., use_flash_t0=false, flash_t0_window=80, iso_max_dis=50, allow_mixed_faces=<optimized out>, respect_separate_family=false, deterministic_order=<optimized out>) at ../clus/src/clustering_connect.cxx:702
+#34373 0x00007fffbcd5c530 in non-virtual thunk to ClusteringConnect1::visit(WireCell::Clus::Facade::Ensemble&) const () at ../clus/src/clustering_connect.cxx:58
+#34374 0x00007fffbc8ce4b3 in WireCell::Clus::MultiAlgBlobClustering::operator() (this=<optimized out>, ints=..., outts=...) at ../clus/src/MultiAlgBlobClustering.cxx:3961
+#34375 0x00007ffff769ad8d in WireCell::IFunctionNode<WireCell::ITensorSet, WireCell::ITensorSet>::operator() (this=0x893b08, anyin=..., anyout=...) at ../iface/inc/WireCellIface/IFunctionNode.h:43
+#34376 0x00007fffbe6e358e in WireCell::Pgraph::Function::operator() (this=0x2c833c0) at ../pgraph/inc/WireCellPgraph/Wrappers.h:173
+#34377 0x00007fffbe6ee458 in WireCell::Pgraph::Graph::call_node (this=this@entry=0x89f6e8, node=node@entry=0x2c833c0) at ../pgraph/src/Graph.cxx:174
+#34378 0x00007fffbe6f1d55 in WireCell::Pgraph::Graph::execute (this=this@entry=0x89f6e8) at ../pgraph/src/Graph.cxx:143
+#34379 0x00007fffbe6fb484 in WireCell::Pgraph::Pgrapher::execute (this=0x89f660) at ../pgraph/src/Pgrapher.cxx:78
+#34380 0x00007ffff7966857 in WireCell::Main::operator() (this=0x7ffffffde3a0) at ../apps/src/Main.cxx:414
+#34381 0x000000000041a613 in main (argc=7, argv=0x7ffffffde648) at ../apps/apps/wire-cell.cxx:20
