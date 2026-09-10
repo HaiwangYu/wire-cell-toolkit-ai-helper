@@ -10,7 +10,7 @@ Samples: MC BNB CV, MC nueCC (same inputs as before), beam-on and beam-off data
 (**10,000 events each**, up from 1,000). Budget: 20 cores, 50 GB, host
 sbndbuild/sbndgpvm.
 
-Status: **RUNNING — MC BNB CV launched 2026-09-09 19:34 CDT** (20 workers, `production-prep/r3-mc-cv-2026-09-09/`). Owner decisions taken (§6): same MC lists; fresh random 200 beam-on files; **no nugraph this round**; 10-event B-vs-C + Bee of both chains for every sample. Beam-off source still open (§3).
+Status: **RUNNING — MC BNB CV launched 2026-09-09 19:34 CDT** (20 workers, `production-prep/r3-mc-cv-2026-09-09/`). Owner decisions taken (§6): same MC lists; fresh random 200 beam-on files; **no nugraph this round**; 10-event B-vs-C + Bee of both chains for every sample. Beam-off = `Fall25-Run1_InTime_offbeamlight` v10_14_02 (owner, 2026-09-09). Data staged (§3a), data spot checks exact 16/16 + 16/16 (§1a).
 
 ---
 
@@ -62,6 +62,32 @@ of) and the `sptpc2d/Reco1` product names. The scratch copy now keys on
 `badmask_product=ints_simtpc2d_badmasks_DetSim.`,
 `summary_product=doubles_simtpc2d_wienersummary_DetSim.`, `frameshift_product=`.
 `reality=data` is byte-identical to before. Patch: `scripts/run_chain_group-sim.patch`.
+
+## 1a. Data spot checks — beam-on and beam-off, chain B vs chain C: exact 16/16 each
+
+Run 2026-09-09 20:45–21:07 alongside the MC campaign (6 workers, inside the 50 GB).
+One 16-entry reader group of each sample's `chunk00.root` (groups 37 and 11 —
+arbitrary, not the head); chain B = Xin's drivers `data`, stage A via the reader
+(`caf_offset_mode=product`, FrameShift present), stage B `PR_EXTRA_STAGES=pr_display`;
+chain C = `run-harness.sh … wcls-img-clus-matching-xin-data.fcl` on the same 16 RSE
+from the campaign manifest.
+
+| sample | chain B | chain C | `deep_compare` | reconstructed |
+|---|---|---|---|---|
+| beam-on | `STAGEA_RC=0 STAGEB_RC=0`, 16 pctrees, 16 `tracking-pr.root` | 16/16 rc=0, audit ok, rse ok | **exact 16/16** | 8/16 |
+| beam-off | same | same | **exact 16/16** | 1/16 |
+
+0 `DL vertex failed` in any log. Bee, both chains, same order (`spot-*/bee-upload/bee-order.txt`):
+
+| | Xin's 2-step | our 1-step |
+|---|---|---|
+| beam-on | <https://www.phy.bnl.gov/twister/bee/set/68608c5d-15d0-4770-ba9d-8af3f507c036/event/list/> | <https://www.phy.bnl.gov/twister/bee/set/1c94a5dc-9465-425e-b2ab-33b8b9b07217/event/list/> |
+| beam-off | <https://www.phy.bnl.gov/twister/bee/set/b37fba4f-a105-4c8d-8fae-e69a3174bdb9/event/list/> | <https://www.phy.bnl.gov/twister/bee/set/a40ff0c4-325b-4b07-b483-4eda67bbe8db/event/list/> |
+
+With the MC pilot (§1) that is all three realities/streams the campaign runs
+shown exact against the 2-step at this epoch, on inputs drawn from the campaign
+itself. nueCC (MC, same fcl and products as MC CV) gets its own 10-event check
+before its run, per the owner's instruction.
 
 ## 2. Resources
 
@@ -148,6 +174,23 @@ random (seeded) across the campaign, merged in 10 × 1,000-event chunks, then
 `prep-beam-off.sh`-style verification that the product actually landed, an
 RSE-uniqueness check across chunks, and the RSE-sorted manifest.
 
+### 3a. Data staged (2026-09-09 20:30–20:45) — `production-prep/r3-data-stage-2026-09-09/`
+
+| | source files | selection | staged | events | manifest |
+|---|---|---|---|---|---|
+| beam-on | 3,335 (`…BNB_Dev_bnblight` v10_14_02 reco1) | 200 random (`seed 20260909`) + 6 top-up (`seed 20260910`, disjoint) | 11 chunks, 39 GB | 10,121 | **10,000** |
+| beam-off | 1,525 (`…InTime_offbeamlight` v10_14_02 reco1) | 200 random + 18 top-up | 11 chunks, 41 GB | 10,196 | **10,000** |
+
+Each chunk = `lar -c run_frameshift.fcl -S <20 files> -o chunkNN.root` (45–80 s,
+1.3 GB RSS), accepted only after a branch check finds
+`sbnd::timing::FrameShiftInfo_frameshift__FRAMESHIFT.` — all 22 chunks did. Top-ups
+were needed because InTime off-beam files are short (777–1000 events per 20 files;
+one had 9 events), and beam-on had two 950s. Manifests: EventAuxiliary RSE per
+entry, sorted into art FileIndex order per chunk, `--nskip` index assigned on the
+sort, cross-chunk duplicate check (0 duplicates), cut at 10,000. Run coverage:
+beam-on 55 runs, beam-off 68 runs, both dominated by 18255/18259 (≈40%/16%).
+The staged inputs are deletable after the run; the manifests point at them.
+
 ## 4. Run plan
 
 Gates are the #24 procedure's; nothing new. Stop at the first failure.
@@ -155,15 +198,15 @@ Gates are the #24 procedure's; nothing new. Stop at the first failure.
 | step | what | gate | cost |
 |---|---|---|---|
 | 0 | pre-flight (§0) — re-check tree/RPATH/opset **immediately before** step 3 | clean tree at `0ad64223`; `compile-both.sh` 0 differences | 5 min |
-| 1 | pilot (§1) | chain B and C both 18/18; `deep_compare.py` **exact 18/18** | done |
-| 2 | stage data: select 2×200 files, frameshift-merge 2×10 chunks, verify, manifests | FrameShift product present in every chunk; 10,000 unique RSE per sample; manifest indices spot-checked at 0/1/4999/9999 against `Trun` | ~30 min |
-| 2b | 10-event chain B vs C spot-check on **each** data sample (B via the reader, `data`) | exact 10/10 | ~20 min each |
+| 1 | pilot (§1) | chain B and C both 18/18; `deep_compare.py` **exact 18/18** | **done** |
+| 2 | stage data (§3a) | FrameShift product present in every chunk; 10,000 unique RSE per sample | **done** (`Trun` check happens per event in the harness) |
+| 2b | 16-event chain B vs C spot-check on each data sample (§1a) | exact | **done: 16/16, 16/16** |
 | 3 | smoke: 10 random events per sample through the campaign fcl (`-xin.fcl` MC, `-xin-data.fcl` data) | rc=0, `audit=ok`, `rse_check=ok`, 8 trees | 15 min |
-| 4 | run, one sample at a time, `memwatch.sh` alongside: **beam-on → beam-off → nueCC → MC CV** (short first, so a problem shows in hours not a day) | T1: rc=0 all, `audit=ok`, `rse_check=ok`, 0 `DL vertex failed`; sampled RSS ≤ 50 GB | ~42 h |
+| 4 | run, one sample at a time, `memwatch.sh` alongside: **MC CV (running since 19:34) → nueCC → beam-on → beam-off** | T1: rc=0 all, `audit=ok`, `rse_check=ok`, 0 `DL vertex failed`; sampled RSS ≤ 50 GB | ~42 h |
 | 5 | per sample: 10-event Bee (chain + nugraph), candidate / `nue_score>0` rates vs the #20 table | rates move only where the 09-08 knobs moved them; no rc≠0 event unexplained | 1 h |
 | 6 | close-out: summary doc, delete staged inputs (78 GB), owner decides on retiring the 156 GB of #16/#18/#19 sync outputs | | |
 
-Concurrency: 20/18/20/18 workers × 1 core as in §2; `taskset` the TBB pool;
+Concurrency: 20/18/20/18 workers × 1 core as in §2 (MC CV is running at 20: first 1,926 events 43 s/evt mean, max concurrent RSS 33.6 GB, 5.7 MB/evt, ETA ~03:45 CDT); `taskset` the TBB pool;
 `timeout -k 60 3600` per event. Same harness (`run-harness.sh`) and the same
 `(run,subrun,event)`-named three deliverables per event as #20.
 
