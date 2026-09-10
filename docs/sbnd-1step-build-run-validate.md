@@ -167,11 +167,26 @@ of ours (opflash_time; issue-10 NF/SP; w-gap rebase).
 
 - fcl: `wcls-img-clus-matching-xin.fcl` (MC, `simtpc2d`) or `-data.fcl` (data,
   `sptpc2d`). A silently-wrong default once cost 3h16m and 13 217 failed events.
+- nugraph HDF5 is a side output switched by the fcl param `enable_nugraph_h5`
+  (`"false"` since round 3, #26). It never feeds Bee or `tracking-pr.root`
+  (deep_compare exact 18/18 either way); `compile-both.sh` passes it as `true`.
 - Manifest: `<file>\t<nskip>\t<run>\t<subrun>\t<event>`. **`--nskip k` counts in
   art's FileIndex (RSE-sorted) order, not Events-tree order** — assign `k` over the
   RSE sort or a merged file mislabels every output. The harness renames from the
   job's own `Trun`, so a wrong prediction shows up as `rse_check=MISMATCH`, not as
   silently wrong files.
+- **Gen2 real data must carry the `FrameShift` product BEFORE any of this** —
+  MC never needs it, data always does. Reco1 files as produced (`/pnfs/.../reco1/`)
+  do **not** have it; `run_frameshift.fcl` (memory `reference_gen2_frameshift`;
+  recipe `production-prep/add-frameshift-data-2nd-2k-2026-08-15/scripts/run-frameshift.sh`,
+  ~1 min + 3.9 GB per 1,000-event merged file) adds it. Without it the flash
+  time alignment is wrong and Q/L matching is meaningless — and nothing fails.
+  Verify the product landed (branch grep for `sbnd::timing::FrameShiftInfo`) rather
+  than assuming; the instance name differs per production (`__FRAMESHIFT.` vs the
+  ncpi0 file's `__FILTERFRAMESHIFT.`). Xin's stage-A reader aborts loudly on a
+  missing product (`caf_offset_mode=product but no product …`) — our 1-step does
+  not. Staged frameshifted inputs are large and deletable after the run, but if
+  a manifest points at one (the #18 beam-off manifest does), keep it.
 - Sizing: measured peak RSS **2.1 GB** per `lar` process. Size on *sampled
   concurrent* RSS, not sum of peaks; run a sampler (`memwatch.sh`) so the budget
   is measured. `taskset` the TBB pool.
@@ -213,6 +228,12 @@ settings are in `scripts/d102m_stageA.sh`; use them verbatim.
 All fixes go in a **scratch copy** (`production-prep/step1a-runner-scratch/`);
 patch at `issues/24-*/scripts/sl7-runner-portability.patch`. Nothing in `sbnd_xin`
 is ever modified.
+
+- **MC through the reader**: `run_chain_group.sh` is data-only as shipped
+  (`caf_offset_mode=product` + `sptpc2d/Reco1` names). The scratch copy keys on
+  `reality=sim` to pass Xin's own MC settings from `scripts/dbg25_stage.sh`
+  (`caf_offset_mode=none`, `simtpc2d/DetSim` products, `frameshift_product=`);
+  patch at `issues/26-*/scripts/run_chain_group-sim.patch`.
 
 **Gate:** `STAGEA_RC=0`, `STAGEB_RC=0`, **and** every expected `ql_evt*/pctree*.tar.gz`
 passes `gzip -t` with no "trailing garbage", **and** every `pr_evt*/tracking-pr.root`

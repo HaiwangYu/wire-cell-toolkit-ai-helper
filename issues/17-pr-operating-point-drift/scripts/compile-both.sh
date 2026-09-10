@@ -28,6 +28,7 @@ PIPE_TLA="pipeline_names=[$(echo "$PIPELINE" | sed "s/[^,]\+/'&'/g")]"
 wcsonnet \
   --ext-str reality=sim \
   --ext-str enable_tracking_root=true \
+  --ext-str enable_nugraph_h5=true \
   --ext-str "pr_operating_point=${PR_OP:-sync}" \
   --ext-code 'recobwire_tags=["simtpc2d:dnnsp", "simtpc2d:dnnsp"]' \
   --ext-code 'trace_tags=["gauss", "wiener"]' \
