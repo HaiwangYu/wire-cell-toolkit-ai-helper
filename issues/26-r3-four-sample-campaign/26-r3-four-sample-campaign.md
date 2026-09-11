@@ -12,7 +12,7 @@ Samples: MC BNB CV, MC nueCC (same inputs as before), beam-on and beam-off data
 (**10,000 events each**, up from 1,000). Budget: 20 cores, 50 GB, host
 sbndbuild/sbndgpvm.
 
-Status: **RUNNING — MC BNB CV DONE 13,216/13,217 (2026-09-10 10:23; 1 deterministic toolkit crash, see issue comments); nueCC DONE 8,877/8,877 (19:58); beam-on DONE 10,000/10,000 (09-11 01:19); beam-off running since 09-11 01:23.** MC CV launched 2026-09-09 19:34 CDT (20 workers, `production-prep/r3-mc-cv-2026-09-09/`). Owner decisions taken (§6): same MC lists; fresh random 200 beam-on files; **no nugraph this round**; 10-event B-vs-C + Bee of both chains for every sample. Beam-off = **`data_SBND2026A_gen2_InTime-Run1_v10_14_02_02_reco1_sbnd`** (owner, 2026-09-10, on a colleague's advice; supersedes the 09-09 choice). Data staged (§3a), data spot checks exact 16/16 + 16/16 (§1a).
+Status: **COMPLETE 2026-09-11 07:02 CDT.** MC BNB CV 13,216/13,217 (1 deterministic toolkit crash, §5a) · nueCC 8,877/8,877 · beam-on 10,000/10,000 · beam-off 10,000/10,000. 42,093 events, 162 GB, zero unexplained failures. Summary in §7. MC CV launched 2026-09-09 19:34 CDT (20 workers, `production-prep/r3-mc-cv-2026-09-09/`). Owner decisions taken (§6): same MC lists; fresh random 200 beam-on files; **no nugraph this round**; 10-event B-vs-C + Bee of both chains for every sample. Beam-off = **`data_SBND2026A_gen2_InTime-Run1_v10_14_02_02_reco1_sbnd`** (owner, 2026-09-10, on a colleague's advice; supersedes the 09-09 choice). Data staged (§3a), data spot checks exact 16/16 + 16/16 (§1a).
 
 ---
 
@@ -254,6 +254,19 @@ Gates are the #24 procedure's; nothing new. Stop at the first failure.
 Concurrency: 20/18/20/18 workers × 1 core as in §2 (MC CV is running at 20: first 1,926 events 43 s/evt mean, max concurrent RSS 33.6 GB, 5.7 MB/evt, ETA ~03:45 CDT); `taskset` the TBB pool;
 `timeout -k 60 3600` per event. Same harness (`run-harness.sh`) and the same
 `(run,subrun,event)`-named three deliverables per event as #20.
+
+## 7. Campaign summary (2026-09-11)
+
+| sample | events | wall | s/evt | max concurrent RSS | out | candidates | `nue_score>0` | 2-step exact check |
+|---|---|---|---|---|---|---|---|---|
+| MC BNB CV | 13,216 / 13,217 | 14 h (+46 min retry) | 53.0 | 37.0 GB (20 w) | 73 GB | 45.43 % | 0.59 % | 18/18 (pilot) |
+| MC nueCC | 8,877 / 8,877 | 9 h 21 m | 66.6 | 35.6 GB (18 w) | 60 GB | 93.55 % | 53.18 % | 12/12 (pilot) |
+| beam-on | 10,000 / 10,000 | 5 h 17 m | 36.6 | 31.2 GB (20 w) | 15 GB | 44.36 % | 0.35 % | 16/16 (6 reco) |
+| beam-off | 10,000 / 10,000 | 5 h 39 m | 34.4 | 29.3 GB (18 w) | 14 GB | 5.85 % | 0.07 % (7) | 16/16 (0 reco) **+ 10/10 candidates (step 4b)** |
+
+All rates within counting / knob-flip range of the #20 table; the only qualitative change is beam-off `nue_score>0`: 7/10,000 where #20 saw 0/1,000 (0.7 expected). Those 7 are listed in `beamoff-nue_score-positive.txt` and on Bee for hand scan.
+Failures: 1,087 rc=126 from the Kerberos lapse (all re-run, merged), 1 deterministic crash (§5a). Total ~34 h wall over 09-09 19:34 → 09-11 07:02 at ≤20 cores, peak 37 GB.
+Inputs still staged: `r3-data-stage-2026-09-09/` 86 GB (the data manifests point at these chunks) — owner decides whether to keep.
 
 ## 5. Traps carried forward (from #24 and the procedure doc)
 

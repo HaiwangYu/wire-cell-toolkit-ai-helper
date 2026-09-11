@@ -3,7 +3,7 @@
 For colleagues who want to *use* the outputs. Tracking issue: [ai-helper #26](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/26).
 Everything is under `/exp/sbnd/data/users/yuhw/production-prep/` on the SBND data disk (group `sbnd`, read in place — please do not copy 200 GB around). **Validation output, not a production release**: no stability guarantee; the version pins are in §5.
 
-_Last updated 2026-09-11 01:30 CDT — MC BNB CV, MC nueCC and beam-on done; beam-off running._
+_Last updated 2026-09-11 08:10 CDT — **all four samples done.**_
 
 ## 1. Status
 
@@ -12,7 +12,7 @@ _Last updated 2026-09-11 01:30 CDT — MC BNB CV, MC nueCC and beam-on done; bea
 | **MC BNB CV** (BNB ν + cosmics, GENIE CV) | **13,216** / 13,217 | **done** 2026-09-10 | `r3-mc-cv-2026-09-09/run/` | 73 GB |
 | **MC nueCC** (intrinsic νe CC, filtered) | **8,877** / 8,877 | **done** 2026-09-10 19:58 | `r3-nuecc-2026-09-10/run/` | 60 GB |
 | **beam-on data** (BNB light trigger, Run 1, runs 18255/18259) | **10,000** / 10,000 | **done** 2026-09-11 01:19 | `r3-beam-on-2026-09-10/run/` | 15 GB |
-| **beam-off data** (off-beam light trigger, Run 1) | 10,000 | **running** (started 2026-09-11 01:23) | `r3-beam-off-2026-09-11/run/` | ~15 GB expected |
+| **beam-off data** (off-beam light trigger, Run 1) | **10,000** / 10,000 | **done** 2026-09-11 07:02 | `r3-beam-off-2026-09-11/run/` | 14 GB |
 
 The one missing MC CV event (run 471 subrun 18 event 33) crashes the clustering deterministically in both this chain and Xin's standalone chain; it is an open toolkit defect (#26 §5a), not a data problem.
 
@@ -49,7 +49,11 @@ signal-processed reco1 wires (`dnnsp`) → 3D imaging → clustering → optical
 - `T_rec_charge`: the reconstructed 3D charge points — `x y z q nq chi2 ndf pu pv pw pt reduced_chi2 flag_vertex flag_shower rr cluster_id real_cluster_id sub_cluster_id particle_id` (cm, e⁻).
 - `Trun`: run/subrun/event and the trigger/timing words.
 
-**Bee zip** — `data/<i>/<i>-<layer>.json`, one index per event (single-event zips here, so `i=0`). Layers: `img-global`, `clustering-apa{0,1}-face0`, `clustering-global`, `clustering-pr-global` (post-PR clusters), `shower_track-global`, `track_fit-global`, `vertices-global`, `mc` (the reconstructed neutrino summary; on MC also the truth tree), `op` (flashes), `channel-deadarea-*`, `tagger_{tgm,stm,fc,lm}` (tagger verdicts per cluster); MC only: `truth_*`, `sed-*` (energy deposits). Upload a zip at <https://www.phy.bnl.gov/twister/bee/> to view. Pre-uploaded 10-event samplers are linked from #26.
+**Bee zip** — `data/<i>/<i>-<layer>.json`, one index per event (single-event zips here, so `i=0`). Layers: `img-global`, `clustering-apa{0,1}-face0`, `clustering-global`, `clustering-pr-global` (post-PR clusters), `shower_track-global`, `track_fit-global`, `vertices-global`, `mc` (the reconstructed neutrino summary; on MC also the truth tree), `op` (flashes), `channel-deadarea-*`, `tagger_{tgm,stm,fc,lm}` (tagger verdicts per cluster); MC only: `truth_*`, `sed-*` (energy deposits). Upload a zip at <https://www.phy.bnl.gov/twister/bee/> to view. Pre-uploaded 10-event samplers (first 10 manifest events of each sample):
+MC CV [6a27f2c6](https://www.phy.bnl.gov/twister/bee/set/6a27f2c6-4bdb-49b4-ab64-f7f09606754a/event/list/) ·
+nueCC [87a47c67](https://www.phy.bnl.gov/twister/bee/set/87a47c67-73fb-41cb-abcb-42cc45e9361b/event/list/) ·
+beam-on [03e4909f](https://www.phy.bnl.gov/twister/bee/set/03e4909f-7370-4b29-afa4-ab2a8d67c355/event/list/) ·
+beam-off [d4dc333f](https://www.phy.bnl.gov/twister/bee/set/d4dc333f-df88-492f-b8cf-1b992a51ce35/event/list/).
 
 No nugraph `.h5` this round (switched off; it was an unvalidated side output).
 
@@ -57,7 +61,7 @@ No nugraph `.h5` this round (switched off; it was an unvalidated side output).
 1. **Select candidates on `kine_reco_Enu > 0`** (or on the presence of `T_kine`), never on file size.
 2. **`T_tagger` / `T_kine` / `T_rec_charge` carry no run/subrun/event** — only `Trun` does. If you `TChain` them you lose event identity; join on the filename instead.
 3. **`nue_score` is a discretized BDT output** saturating at −15.0000 / −4.3009 / +4.3009; −15 means background-like, not "not evaluated".
-4. Population numbers to sanity-check against (this round): MC CV candidates 45.4 %, `nue_score > 0` 0.59 %; MC nueCC candidates 93.6 %, `nue_score > 0` 53.2 %; beam-on candidates 44.4 %, `nue_score > 0` 0.35 %.
+4. Population numbers to sanity-check against (this round): MC CV candidates 45.4 %, `nue_score > 0` 0.59 %; MC nueCC candidates 93.6 %, `nue_score > 0` 53.2 %; beam-on candidates 44.4 %, `nue_score > 0` 0.35 %; beam-off candidates 5.85 %, `nue_score > 0` 0.07 % (7 events, listed in `issues/26-r3-four-sample-campaign/beamoff-nue_score-positive.txt`, Bee <https://www.phy.bnl.gov/twister/bee/set/4986c203-37c3-4413-a7a5-752ef34d0ab4/event/list/>).
 
 ## 5. Version pins
 
@@ -70,6 +74,7 @@ No nugraph `.h5` this round (switched off; it was an unvalidated side output).
 | Xin's reference | `ref/prod-2026-09-08` (prod0908); our chain reproduces it bit-for-bit on data (#24) |
 
 ## 6. Change log
+- 2026-09-11 08:10 — beam-off done (10,000/10,000, no failures). **Campaign complete: 42,093 events, 162 GB.** Step-4b check: Xin's 2-step on 10 random beam-off candidates exact 10/10.
 - 2026-09-11 01:30 — beam-on done (10,000/10,000, no failures); beam-off launched.
 - 2026-09-10 20:25 — nueCC done (8,877/8,877, no failures); beam-on launched.
 - 2026-09-10 15:05 — MC input SAM definitions named (our 1,000-file lists are subsets of the two `aurora_SBND2026A_gen2_BNBLight_…` reco1 definitions).

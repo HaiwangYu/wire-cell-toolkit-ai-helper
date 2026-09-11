@@ -1,0 +1,7 @@
+r18253_s1_e143524 nue_score 5.842 numu_score -0.231 Enu 2137.2 MeV
+r18390_s1_e59254 nue_score 0.558 numu_score 1.478 Enu 1583.3 MeV
+r18416_s1_e201283 nue_score 0.116 numu_score -1.350 Enu 316.1 MeV
+r18467_s1_e538441 nue_score 4.150 numu_score 1.555 Enu 700.0 MeV
+r18490_s1_e45326 nue_score 6.374 numu_score -2.196 Enu 5019.5 MeV
+r18503_s1_e179510 nue_score 2.385 numu_score 0.294 Enu 3087.2 MeV
+r18521_s1_e55333 nue_score 4.452 numu_score -1.658 Enu 2318.4 MeV
