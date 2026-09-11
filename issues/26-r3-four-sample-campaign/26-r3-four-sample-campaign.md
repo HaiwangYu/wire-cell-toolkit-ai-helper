@@ -228,7 +228,7 @@ Owner: use `data_MCP2025C_Fall25-Run1_BNB_FixedDev_bnblight_v10_14_02_reco1_sbnd
 dimensions show `Dev` = `FixedDev` (runs 18255, 18259; 1,820 files) ∪ `RollingDev`
 (other runs; 1,515 files): our 09-09 draw had come from `Dev`, i.e. 55 runs, so it
 was replaced. Now: 220 random FixedDev files (`seed 20260910`) → 11 FrameShift-verified
-chunks, 10,937 events → manifest cut at **10,000** (18255: 7,270; 18259: 3,667), 0
+chunks, 10,937 events → manifest cut at **10,000** (18255: 6,633; 18259: 3,367 — the pre-cut staged counts were 7,270 / 3,667), 0
 duplicates. Spot check (group 29 of `chunk00`, chain B vs C): **exact 16/16, 6
 reconstructed**, 0 `DL vertex failed`. Bee:
 [2-step](https://www.phy.bnl.gov/twister/bee/set/ce1eca75-dd3d-4e06-b0ff-6706cd670629/event/list/) ·
