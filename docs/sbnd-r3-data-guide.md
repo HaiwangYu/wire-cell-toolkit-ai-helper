@@ -3,15 +3,15 @@
 For colleagues who want to *use* the outputs. Tracking issue: [ai-helper #26](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/26).
 Everything is under `/exp/sbnd/data/users/yuhw/production-prep/` on the SBND data disk (group `sbnd`, read in place — please do not copy 200 GB around). **Validation output, not a production release**: no stability guarantee; the version pins are in §5.
 
-_Last updated 2026-09-10 14:35 CDT — MC BNB CV done; nueCC running; beam-on/off staged, not run._
+_Last updated 2026-09-10 20:25 CDT — MC BNB CV and MC nueCC done; beam-on running; beam-off staged._
 
 ## 1. Status
 
 | sample | events | status | output dir | size |
 |---|---|---|---|---|
 | **MC BNB CV** (BNB ν + cosmics, GENIE CV) | **13,216** / 13,217 | **done** 2026-09-10 | `r3-mc-cv-2026-09-09/run/` | 73 GB |
-| **MC nueCC** (intrinsic νe CC, filtered) | 8,877 | **running** (started 2026-09-10 10:37) | `r3-nuecc-2026-09-10/run/` | ~70 GB expected |
-| **beam-on data** (BNB light trigger, Run 1) | 10,000 | staged, not run | `r3-beam-on-…/run/` (tbd) | ~25 GB expected |
+| **MC nueCC** (intrinsic νe CC, filtered) | **8,877** / 8,877 | **done** 2026-09-10 19:58 | `r3-nuecc-2026-09-10/run/` | 60 GB |
+| **beam-on data** (BNB light trigger, Run 1) | 10,000 | **running** (started 2026-09-10 20:02) | `r3-beam-on-2026-09-10/run/` | ~25 GB expected |
 | **beam-off data** (off-beam light trigger, Run 1) | 10,000 | staged, not run | `r3-beam-off-…/run/` (tbd) | ~25 GB expected |
 
 The one missing MC CV event (run 471 subrun 18 event 33) crashes the clustering deterministically in both this chain and Xin's standalone chain; it is an open toolkit defect (#26 §5a), not a data problem.
@@ -57,7 +57,7 @@ No nugraph `.h5` this round (switched off; it was an unvalidated side output).
 1. **Select candidates on `kine_reco_Enu > 0`** (or on the presence of `T_kine`), never on file size.
 2. **`T_tagger` / `T_kine` / `T_rec_charge` carry no run/subrun/event** — only `Trun` does. If you `TChain` them you lose event identity; join on the filename instead.
 3. **`nue_score` is a discretized BDT output** saturating at −15.0000 / −4.3009 / +4.3009; −15 means background-like, not "not evaluated".
-4. Population numbers to sanity-check against (MC CV, this round): candidates 45.4 %, `nue_score > 0` 0.59 %.
+4. Population numbers to sanity-check against (this round): MC CV candidates 45.4 %, `nue_score > 0` 0.59 %; MC nueCC candidates 93.6 %, `nue_score > 0` 53.2 %.
 
 ## 5. Version pins
 
@@ -70,5 +70,6 @@ No nugraph `.h5` this round (switched off; it was an unvalidated side output).
 | Xin's reference | `ref/prod-2026-09-08` (prod0908); our chain reproduces it bit-for-bit on data (#24) |
 
 ## 6. Change log
+- 2026-09-10 20:25 — nueCC done (8,877/8,877, no failures); beam-on launched.
 - 2026-09-10 15:05 — MC input SAM definitions named (our 1,000-file lists are subsets of the two `aurora_SBND2026A_gen2_BNBLight_…` reco1 definitions).
 - 2026-09-10 14:35 — first version: MC CV done, nueCC running, data staged (beam-on re-selected from FixedDev, beam-off from SBND2026A InTime).
