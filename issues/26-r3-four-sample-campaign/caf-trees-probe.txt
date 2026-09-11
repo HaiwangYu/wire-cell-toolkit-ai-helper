@@ -1,0 +1,72 @@
+== t_prodgenie_corsika_proton_rockbox0p1_sbnd_CV | file bytes 10387406 | events(recTree) 13
+   recTree                          entries       13  zip    8623505  tot   24193024
+   globalTree                       entries        1  zip    1445271  tot    1452080
+   globalTree                       entries        1  zip    1445271  tot    1452080
+   env/envtree                      entries     1137  zip      58848  tot     229108
+   env/envtree                      entries     1137  zip      58848  tot     229108
+   GenieEvtRecTree                  entries       24  zip      17900  tot      39607
+   metadata/metatree                entries       20  zip        962  tot       1045
+   sum zip of trees 11650605
+== ta_MCP2025C_Fall25-Run1_BNB_FixedDev_bnblight | file bytes 6880442 | events(recTree) 50
+   recTree                          entries       50  zip    6724543  tot   16995336
+   env/envtree                      entries      944  zip      26267  tot     128370
+   env/envtree                      entries      944  zip      26267  tot     128370
+   metadata/metatree                entries        0  zip          0  tot          0
+   sum zip of trees 6777077
+== ta_MCP2025C_Fall25-Run1_BNB_FixedDev_bnblight | file bytes 8315947 | events(recTree) 50
+   recTree                          entries       50  zip    8053209  tot   16255449
+   env/envtree                      entries      944  zip      36929  tot     128363
+   env/envtree                      entries      944  zip      36929  tot     128363
+   metadata/metatree                entries        0  zip          0  tot          0
+   sum zip of trees 8127067
+== data_SBND2026A_gen2_InTime-Run1 | file bytes 132106 | events(recTree) 0
+   env/envtree                      entries      944  zip      26305  tot     128653
+   env/envtree                      entries      944  zip      26305  tot     128653
+   recTree                          entries        0  zip          0  tot          0
+   metadata/metatree                entries        0  zip          0  tot          0
+   sum zip of trees 52610
+== data_SBND2026A_gen2_InTime-Run1 | file bytes 205296 | events(recTree) 0
+   env/envtree                      entries      944  zip      36951  tot     128655
+   env/envtree                      entries      944  zip      36951  tot     128655
+   recTree                          entries        0  zip          0  tot          0
+   metadata/metatree                entries        0  zip          0  tot          0
+   sum zip of trees 73902
+== 2026A_gen2_run1_BNBLight_Data_FixedDev_Respin | file bytes 8631457 | events(recTree) 50
+   recTree                          entries       50  zip    8469044  tot   21491635
+   env/envtree                      entries      944  zip      26451  tot     129415
+   env/envtree                      entries      944  zip      26451  tot     129415
+   metadata/metatree                entries        0  zip          0  tot          0
+   sum zip of trees 8521946
+== 2026A_gen2_run1_BNBLight_Data_FixedDev_Respin | file bytes 5866535 | events(recTree) 29
+   recTree                          entries       29  zip    5591804  tot   10988939
+   env/envtree                      entries      944  zip      37146  tot     129417
+   env/envtree                      entries      944  zip      37146  tot     129417
+   metadata/metatree                entries        0  zip          0  tot          0
+   sum zip of trees 5666096
+== genie_corsika_proton_rockbox0p1_sbnd_EX_nuecc | file bytes 8097628 | events(recTree) 8
+   recTree                          entries        8  zip    6322473  tot   16679200
+   globalTree                       entries        1  zip    1445271  tot    1452080
+   globalTree                       entries        1  zip    1445271  tot    1452080
+   env/envtree                      entries     1175  zip      58876  tot     213637
+   env/envtree                      entries     1175  zip      58876  tot     213637
+   GenieEvtRecTree                  entries       14  zip      14015  tot      30979
+   metadata/metatree                entries       20  zip        972  tot       1056
+   sum zip of trees 9345754
+== data_SBND2026A_gen2_InTime-Run1 | file bytes 132093 | events(recTree) 0
+   env/envtree                      entries      944  zip      26294  tot     128655
+   env/envtree                      entries      944  zip      26294  tot     128655
+   recTree                          entries        0  zip          0  tot          0
+   metadata/metatree                entries        0  zip          0  tot          0
+   sum zip of trees 52588
+== data_SBND2026A_gen2_InTime-Run1 | file bytes 666483 | events(recTree) 3
+   recTree                          entries        3  zip     510888  tot    1075304
+   env/envtree                      entries      944  zip      26316  tot     128676
+   env/envtree                      entries      944  zip      26316  tot     128676
+   metadata/metatree                entries        0  zip          0  tot          0
+   sum zip of trees 563520
+== data_SBND2026A_gen2_InTime-Run1 | file bytes 205295 | events(recTree) 0
+   env/envtree                      entries      944  zip      36950  tot     128653
+   env/envtree                      entries      944  zip      36950  tot     128653
+   recTree                          entries        0  zip          0  tot          0
+   metadata/metatree                entries        0  zip          0  tot          0
+   sum zip of trees 73900
