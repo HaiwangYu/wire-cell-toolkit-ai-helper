@@ -225,6 +225,35 @@ Consequences:
 
 ---
 
+### 1.7 Phase-1 build traps (2026-09-15, Recipe B on the login node)
+
+Wrapper `issues/27-polaris-production/scripts/in-polaris-sl7.sh` (+ `setup-polaris-opt.sh`,
+`setup-polaris-ap.sh`, `configure-wct-polaris.sh`) is the Polaris `in-gpvm-sl7.sh`.
+Each of these cost a configure attempt:
+
+| symptom | cause | fix (in the scripts) |
+|---|---|---|
+| `wcb configure`: "could not configure a C++ compiler", `config.log` shows `CXX -> nvc++ ... not executable` | Polaris `PrgEnv-nvidia` exports `CXX=nvc++`/`CC=nvc` and apptainer forwards the host env | `apptainer exec --cleanenv`; forward only proxies, `USER`, `SL7_SETUP` (`PASS_ENV=` for more) |
+| same message, `config.log`: "Could not determine the compiler version ['g++','-dM','-E','-']" while `g++` works by hand | waf's pre-forked subprocess pool does not work inside the userns container | `export WAF_NO_PREFORK=1` (in `setup-polaris-opt.sh`) |
+| configure dies at "Location for BZIP2 libs" | `fnal-wn-sl7` (worker-node image) has no `-devel` headers; FNAL builds ran in `fnal-dev-sl7` | image = `/cvmfs/singularity.opensciencegrid.org/fermilab/fnal-dev-sl7:latest` (`SL7_IMAGE=` to override) |
+| two `in-polaris-sl7.sh` at once on the login node | shared `dist/` (see 1.2) | second copy `cvmfsexec-login2` with its own cache; pass `CVMFSEXEC=` |
+| `wcb install -j8` on the login node: 131 objects in 70 min, then the processes died with the terminal session | 8-CPU cgroup + CPU throttling + cold CVMFS through a Lustre-backed cache; login processes do not survive a session end | build in a `debug` job: `build-wct-lwc.pbs` (1 node, private cvmfsexec on NVMe, `-j48`): **whole WCT install + gates in 5.5 min** |
+| WCT `master` `67e2eba7` stops with `-Werror` in `WireCellClus` (dangling `bounds()` reference in `improvecluster_1.cxx`; misleading indentation in `CheckSTM_Michel.cxx`) | code, not environment | branch `polaris-build-fixes` = master + `9195180d` (two one-line fixes); to be offered upstream |
+| job script: `setup: command not found`, `mrbsetenv: command not found` | the wrapper sources the setup in the parent shell; the job's own `bash -c` is a child, and shell functions/aliases do not cross | `setup-polaris-opt.sh` now `export -f`s `setup`/`unsetup`/path helpers; `mrbsetenv` is an alias -> `source $MRB_DIR/libexec/mrbSetEnv` |
+| larwirecell: `spdlog/fmt/fmt.h: fatal error: fmt/core.h: No such file` | ambient UPS `spdlog v1_9_2` (bundled fmt) while WCT headers need `v1_14_1` + external `fmt v11_0_2` | `setup-polaris-opt.sh`: `unsetup spdlog; setup spdlog v1_14_1 -q e26:prof; setup fmt v11_0_2 -q e26:prof` (what the untracked FNAL `setup-local-opt.sh` evidently did); `mrb z` before rebuilding so cmake forgets the old `spdlog_DIR` |
+| DL vertex would silently fall back to geometric | `scn v01_00_00` lives on `/cvmfs/uboone.opensciencegrid.org` | wrapper mounts the uboone repo; `setup-polaris-dlvtx.sh` / `setup-polaris-run.sh`; always `grep -c 'DL vertex failed'` |
+
+Configure (cold CVMFS cache) took 4.5 min; `INCLUDES_SPDLOG`/`LIBPATH_SPDLOG`
+in `build/c4che/_cache.py` name `spdlog/v1_14_1` + `fmt/v11_0_2` `lib64` as
+required by the procedure doc §1. WCT install gates (job `7623429`): 19 libs
+incl. `Mcs`, `__libc_single_threaded` 0, `NEEDED fmt` 0, RUNPATH ->
+`spdlog/v1_14_1/.../lib64`, 20 RPATHs stripped, `ldd` with `build/` hidden 0
+not found, `miniz.h` installed. MRB area for larwirecell:
+`/lus/eagle/projects/neutrinoGPU/yuhw/larsoft-wct/v10_14_02` (`mrb newDev -v
+v10_14_02_02 -q e26:prof`, sbndcode `v10_14_02_03`), `srcs/larwirecell` =
+clone of the local `dev-v10_14_02_02` (`a02a1a4`). `wire-cell-data` cloned to
+`yuhw/wire-cell-data` (706 MB; carries the SCN `dl_weights` file).
+
 ## 2. Sizing
 
 Per-event cost of the chain, single-threaded `lar`:

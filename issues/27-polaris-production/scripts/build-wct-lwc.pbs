@@ -1,0 +1,83 @@
+#!/bin/bash
+#PBS -N wct-lwc-build
+#PBS -A neutrinoGPU::debug
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=home:eagle
+#PBS -j oe
+#PBS -o /lus/eagle/projects/neutrinoGPU/yuhw/polaris-build-logs/build-wct-lwc.out
+# Build WCT (master) into $OPT and larwirecell (dev-v10_14_02_02) in the MRB area,
+# on one Polaris compute node inside the SL7 container (Recipe B).  The login
+# node's 8-CPU cgroup managed 131 objects in 70 min; a node does the whole
+# build in well under the hour.  Re-runnable: wcb and make are incremental.
+set -u
+Y=/lus/eagle/projects/neutrinoGPU/yuhw
+S=$Y/wire-cell-toolkit-ai-helper/issues/27-polaris-production/scripts
+OPT=$Y/opt
+MRB=$Y/larsoft-wct/v10_14_02
+J=${PBS_JOBID%%.*}
+echo "=== START $(date) on $(hostname) job $J"
+# private cvmfsexec on node-local NVMe (never share dist/ between instances)
+rsync -a --exclude .git --exclude 'dist/var/lib/cvmfs/*' --exclude 'log/*' $Y/cvmfsexec/ /local/scratch/cvmfsexec/
+mkdir -p /local/scratch/cvmfs-cache
+export CVMFSEXEC=/local/scratch/cvmfsexec BINDS="-B /local/scratch"
+
+STAGES=${STAGES:-wct lwc}   # qsub -v STAGES=lwc to rerun only larwirecell
+if [[ " $STAGES " == *" wct "* ]]; then
+echo "=== 1. WCT install (-j48)"
+cd $Y/wire-cell-toolkit && git rev-parse HEAD
+$S/in-polaris-sl7.sh bash -c "
+  set -o pipefail
+  cd $Y/wire-cell-toolkit
+  [ -f build/c4che/_cache.py ] || { echo 'no configure cache: running configure'; $S/configure-wct-polaris.sh 2>&1 | tail -5; }
+  time python3 ./wcb -p --notests install -j48 2>&1 | grep -v '^\[' | tail -40
+  echo WCB_RC=\${PIPESTATUS[0]}
+  echo '--- gates (procedure doc section 1)'
+  echo nlibs=\$(ls $OPT/lib/libWireCell*.so | wc -l) '(want 19 incl. Mcs)'; ls $OPT/lib/libWireCellMcs.so
+  echo single_threaded_syms=\$(nm -D -u $OPT/lib/libWireCellUtil.so $OPT/lib/libWireCellClus.so | grep -c __libc_single_threaded) '(want 0)'
+  echo fmt_needed=\$(readelf -d $OPT/lib/libWireCellUtil.so | grep -c 'NEEDED.*fmt') '(want 0)'; readelf -d $OPT/lib/libWireCellUtil.so | grep -E 'RUNPATH|RPATH' | grep -o 'spdlog/v1_14_1[^:]*' | head -1
+  mkdir -p $OPT/include/WireCellUtil/custard && cp -v util/inc/WireCellUtil/custard/miniz.h $OPT/include/WireCellUtil/custard/
+  echo '--- 1a. strip build-tree RPATH'
+  n=0; for f in $OPT/lib/libWireCell*.so $OPT/lib/libWCP*.so $OPT/bin/wire-cell $OPT/bin/wcsonnet; do
+    [ -e \"\$f\" ] || continue
+    old=\$(patchelf --print-rpath \"\$f\"); echo \"\$old\" | grep -q wire-cell-toolkit/build || continue
+    rest=\$(echo \"\$old\" | tr : '\n' | grep -v wire-cell-toolkit/build | grep -v \"^$OPT/lib\$\" | paste -sd:)
+    patchelf --force-rpath --set-rpath \"$OPT/lib\${rest:+:\$rest}\" \"\$f\" && n=\$((n+1))
+  done; echo rpath_stripped=\$n
+  echo '--- ldd gate with build/ hidden'
+  mv build build.HIDDEN; nf=0; for f in $OPT/lib/libWireCell*.so $OPT/bin/wire-cell; do nf=\$((nf + \$(ldd \"\$f\" | grep -c 'not found'))); done; mv build.HIDDEN build
+  echo ldd_not_found=\$nf '(want 0)'
+  echo WCT_STAGE_DONE
+" 2>&1 | grep -v CernVM-FS
+grep -q "WCB_RC=0" $Y/polaris-build-logs/build-wct-lwc.out || { echo "WCT build failed; stopping."; echo "=== END $(date)"; exit 1; }
+fi
+if [[ " $STAGES " == *" lwc "* ]]; then
+
+echo "=== 2. larwirecell (mrb) against $OPT"
+$S/in-polaris-sl7.sh bash -c "
+  set -o pipefail
+  export WIRECELL_FQ_DIR=$OPT; export CMAKE_PREFIX_PATH=$OPT:\${CMAKE_PREFIX_PATH:-}
+  setup mrb
+  source $MRB/localProducts_larsoft_v10_14_02_02_e26_prof/setup >/dev/null 2>&1
+  # mrbsetenv is an alias from `setup mrb`; aliases do not expand in scripts -> source the file it points at.
+  source \$MRB_DIR/libexec/mrbSetEnv >/dev/null 2>&1 || { echo mrbSetEnv failed; source \$MRB_DIR/libexec/mrbSetEnv 2>&1 | tail -8; }
+  echo MRB_BUILDDIR=\$MRB_BUILDDIR
+  cd \$MRB_BUILDDIR && mrb z >/dev/null 2>&1; source \$MRB_DIR/libexec/mrbSetEnv >/dev/null 2>&1   # zap: the previous configure cached spdlog v1_9_2
+  ups active | grep -E 'spdlog|fmt '
+  time mrb b -j48 2>&1 | grep -v '^\[' | tail -30
+  echo MRB_RC=\${PIPESTATUS[0]}
+  echo '--- configure sanity: larwirecell must see opt WireCell, not cvmfs'
+  grep -h -E 'WireCell_INCLUDE_DIR|spdlog_DIR' \$MRB_BUILDDIR/CMakeCache.txt | head -3
+  echo '--- deploy'
+  D=$OPT/larwirecell/v10_01_28/slf7.x86_64.e26.prof/lib; mkdir -p \$D $OPT/larwirecell/v10_01_28/fcl
+  ls \$MRB_BUILDDIR/larwirecell/slf7.x86_64.e26.prof/lib/*.so | wc -l
+  cp -v \$MRB_BUILDDIR/larwirecell/slf7.x86_64.e26.prof/lib/*.so \$D/ | wc -l
+  find $MRB/srcs/larwirecell -name '*.fcl' -exec cp {} $OPT/larwirecell/v10_01_28/fcl/ \; ; ls $OPT/larwirecell/v10_01_28/fcl | wc -l
+  echo '--- ldd gate: every libWireCell* from opt, no cvmfs wirecell product'
+  for f in \$D/*.so; do ldd \$f | grep -E 'libWireCell' | grep -v \"$OPT/lib\" ; done | sort -u | head -5
+  echo cvmfs_wirecell_refs=\$(for f in \$D/*.so; do ldd \$f; done | grep -c 'products/wirecell/')  '(want 0)'
+  echo LWC_STAGE_DONE
+" 2>&1 | grep -v CernVM-FS
+fi
+echo "=== END $(date)"

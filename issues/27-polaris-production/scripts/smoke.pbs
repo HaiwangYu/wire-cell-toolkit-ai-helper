@@ -1,0 +1,50 @@
+#!/bin/bash
+#PBS -N wct-smoke
+#PBS -A neutrinoGPU::debug
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=home:eagle
+#PBS -j oe
+#PBS -o /lus/eagle/projects/neutrinoGPU/yuhw/polaris-build-logs/smoke.out
+# Phase-1 gates on one compute node (Recipe B):
+#   A. operating-point resync + config gate (procedure doc sections 3-4)
+#   B. one event of the 1-step chain (smoke-1evt.sh), then N events in parallel
+# qsub -v NEVT=8,RECO1=<file> ... ; defaults below.
+set -u
+Y=/lus/eagle/projects/neutrinoGPU/yuhw
+S=$Y/wire-cell-toolkit-ai-helper/issues/27-polaris-production/scripts
+RECO1=${RECO1:-/lus/eagle/projects/neutrinoGPU/abhat/sbnd/sample_generation_port/reference/extracted/02_workflow_test/test/output/prodgenie_bnb_nu_cosmic_sbnd_GenieGen-20260104T000516_G4-20260104T003738_74082e81-457f-4799-9688-74013c58255b_DetSim-20260104T190953_DecoReco_CellTreeAPA0-20260105T001812.root}
+NEVT=${NEVT:-8}
+RUN=$Y/production-prep/smoke-$(date +%Y%m%d-%H%M)
+mkdir -p $RUN
+echo "=== START $(date) on $(hostname) job ${PBS_JOBID%%.*} RUN=$RUN"
+rsync -a --exclude .git --exclude 'dist/var/lib/cvmfs/*' --exclude 'log/*' $Y/cvmfsexec/ /local/scratch/cvmfsexec/
+mkdir -p /local/scratch/cvmfs-cache
+export CVMFSEXEC=/local/scratch/cvmfsexec BINDS="-B /local/scratch"
+
+echo "=== A. operating-point resync + config gate"
+cd $RUN && SL7_SETUP=$S/setup-polaris-ap.sh $S/in-polaris-sl7.sh bash -c "
+  which wcsonnet lar; git -C $Y/wire-cell-toolkit rev-parse --short HEAD
+  $S/resync-operating-point-polaris.sh $RUN/pr-opsync; echo RESYNC_RC=\$?
+  git -C $Y/wcp-porting-validation status --short sbnd/pr-operating-point.jsonnet
+" 2>&1 | grep -v CernVM-FS
+
+echo "=== B1. one event (nskip 0)"
+cd $RUN && SL7_SETUP=$S/setup-polaris-run.sh $S/in-polaris-sl7.sh bash -c "
+  echo PYTHONPATH=\$PYTHONPATH | tr : '\n' | grep -c scn; echo WIRECELL_PATH=\$WIRECELL_PATH
+  $S/smoke-1evt.sh $RUN/evt0 $RECO1 0
+" 2>&1 | grep -v CernVM-FS
+grep -q "^rc=0" $RUN/evt0/../smoke.out 2>/dev/null || true
+
+echo "=== B2. $NEVT events in parallel (nskip 1..$NEVT), one process each, taskset 2 cores"
+cd $RUN && SL7_SETUP=$S/setup-polaris-run.sh $S/in-polaris-sl7.sh bash -c "
+  t0=\$(date +%s)
+  for k in \$(seq 1 $NEVT); do
+    c=\$(( (k-1)*2 )); ( taskset -c \$c,\$((c+1)) $S/smoke-1evt.sh $RUN/evt\$k $RECO1 \$k > $RUN/evt\$k.summary 2>&1 ) &
+  done; wait
+  echo parallel_wall_s=\$(( \$(date +%s) - t0 ))
+  for k in \$(seq 1 $NEVT); do echo \"evt\$k: \$(grep -E '^rc=' $RUN/evt\$k.summary) \$(grep -E 'dl_vertex_failed|audit=' $RUN/evt\$k.summary | tr '\n' ' ') \$(grep -o 'trees: [0-9]*' $RUN/evt\$k.summary)\"; done
+" 2>&1 | grep -v CernVM-FS
+echo "=== cvmfs cache: $(du -sh /local/scratch/cvmfs-cache | cut -f1)"
+echo "=== END $(date)"
