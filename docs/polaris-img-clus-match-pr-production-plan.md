@@ -254,6 +254,36 @@ v10_14_02_02 -q e26:prof`, sbndcode `v10_14_02_03`), `srcs/larwirecell` =
 clone of the local `dev-v10_14_02_02` (`a02a1a4`). `wire-cell-data` cloned to
 `yuhw/wire-cell-data` (706 MB; carries the SCN `dl_weights` file).
 
+### 1.8 Phase-1 result (2026-09-15): the 1-step chain runs on Polaris
+
+Job `7623695` (`smoke.pbs`, 1 `debug` node, Recipe B, WCT `polaris-build-fixes`
+`9195180d` = master `67e2eba7` + 2 warning fixes; larwirecell `a02a1a4`;
+sbndcode `v10_14_02_03`), input = Avinay's BNB nu+cosmic reco1 file
+(`...74082e81..._DecoReco_CellTreeAPA0-20260105T001812.root`):
+
+- **Operating-point gate (procedure §3): PASSED, 0 differences**; the
+  regenerated `pr-operating-point.jsonnet` differed from the committed one only
+  in the header's toolkit hash (no knob drift between `0ad64223` and our build).
+- **Event 0 (cold node):** rc=0, wall 245 s, RSS 2.0 GB, `audit=ok`,
+  `DL vertex failed` 0, `tracking-pr.root` 8 trees with `T_tagger`/`T_kine` at
+  1 entry. art `Full event` 91 s of which `TaggerCheckNeutrino` 73 s (first
+  torch import + SCN, "overall main vertex took 69 s"; warm calls ~23 ms).
+- **8 events in parallel** (`taskset` 2 cores each): all rc=0, `audit=ok`, DL
+  vertex 0 failures; wall **24-53 s/event**, RSS 1.6-2.05 GB; 56 s for the
+  batch. Two events had 4 trees (no neutrino candidate, hence no tagger trees;
+  legitimate, cf. issue 26 "trivial: 0 candidates").
+- Outputs per event: `mabc.zip` 4.1 MB, `trash-all-apa.tar.gz` 1.3 MB,
+  `nugraph.h5` 1.05 MB, `tracking-pr.root` 0.4 MB = **~7 MB/event** (FNAL: 6.83),
+  i.e. ~7 TB for 1M events if all four are kept (Q6).
+- CVMFS cache after the chain: **6.5 GB per node** (fits `/local/scratch`).
+- Benign noise in every log: `Error: Unsupported GDML Tag Used :gdml_simple_extension`
+  (ROOT geometry import; rc=0, same as at FNAL).
+
+Not yet done: the 300-event cross-machine comparison against the FNAL
+reference (phase 2), and the ncpi0 sample (its reco1 files exist only under
+`/pnfs/sbnd/scratch/users/abhat/BNB_Cosmics_NCPi0_GenG4/detsim/` at Fermilab;
+nothing ncpi0 on Eagle beyond gen-level files and `.npz` references).
+
 ## 2. Sizing
 
 Per-event cost of the chain, single-threaded `lar`:
