@@ -278,6 +278,12 @@ sbndcode `v10_14_02_03`), input = Avinay's BNB nu+cosmic reco1 file
 - CVMFS cache after the chain: **6.5 GB per node** (fits `/local/scratch`).
 - Benign noise in every log: `Error: Unsupported GDML Tag Used :gdml_simple_extension`
   (ROOT geometry import; rc=0, same as at FNAL).
+- Resync step 4/4 (`preflip`, informational, not the gate) fails to compile:
+  `function has no parameter iso_endpoint` -- the preflip operating point in
+  `wcls-img-clus-matching-xin.jsonnet` still passes a knob that master's `pr()`
+  dropped. wcsonnet dies on the uncaught exception and dumped a 170 MB core
+  into `sbnd/` (deleted; wrapper now sets `ulimit -c 0`). To fix on the
+  wcp-porting-validation side or drop the preflip step.
 
 Not yet done: the 300-event cross-machine comparison against the FNAL
 reference (phase 2), and the ncpi0 sample (its reco1 files exist only under

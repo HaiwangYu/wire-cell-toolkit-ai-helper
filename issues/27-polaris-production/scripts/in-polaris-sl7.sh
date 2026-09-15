@@ -32,6 +32,7 @@ IMG=${SL7_IMAGE:-/cvmfs/singularity.opensciencegrid.org/fermilab/fnal-dev-sl7:la
 REPOS="sbnd.opensciencegrid.org sbn.opensciencegrid.org larsoft.opensciencegrid.org fermilab.opensciencegrid.org singularity.opensciencegrid.org uboone.opensciencegrid.org"
 
 unset LD_PRELOAD
+ulimit -c 0   # an uncaught WireCell exception in wcsonnet otherwise leaves a 170 MB core in the cwd (seen 2026-09-15)
 export HTTP_PROXY=http://proxy.alcf.anl.gov:3128 HTTPS_PROXY=http://proxy.alcf.anl.gov:3128
 export http_proxy=$HTTP_PROXY https_proxy=$HTTPS_PROXY
 export APPTAINER_CACHEDIR=${APPTAINER_CACHEDIR:-/tmp/apptainer-cache-$USER}
