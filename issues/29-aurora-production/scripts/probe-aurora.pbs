@@ -1,0 +1,39 @@
+#!/bin/bash
+#PBS -N wct-aurora-probe
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:30:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/polaris-build-logs/probe-aurora.out
+# Phase A1 probe for issue 29 (adapted from issues/27-polaris-production/scripts/probe4.pbs).
+# Before submitting: mkdir -p /lus/flare/projects/neutrinoGPU/yuhw/polaris-build-logs and copy the
+# cvmfsexec template (yuhw/cvmfsexec on Eagle) and the nc-sideband file to Flare (Y below).
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+export HTTP_PROXY=http://proxy.alcf.anl.gov:3128 HTTPS_PROXY=http://proxy.alcf.anl.gov:3128 http_proxy=http://proxy.alcf.anl.gov:3128 https_proxy=http://proxy.alcf.anl.gov:3128
+unset LD_PRELOAD
+echo "=== START $(date) on $(hostname) job ${PBS_JOBID%%.*}"
+echo "=== node"; cat /etc/os-release | head -3; nproc; lscpu | grep -E "Model name|^CPU\(s\)|Thread|Core|Socket|NUMA node\(s\)"; free -g | head -2
+echo "=== reserved cores / cpuset"; cat /sys/fs/cgroup/cpuset.cpus.effective 2>/dev/null; taskset -cp $$
+echo "=== filesystems"; df -h /lus/flare /home /lus/eagle /tmp /dev/shm /local/scratch 2>&1; mount | grep -E "lus|eagle|flare" | cut -c1-120
+echo "=== cgroup limits"; C=$(sed 's/^0:://' /proc/self/cgroup); for f in cpu.max memory.max pids.max; do echo "$f: $(cat /sys/fs/cgroup$C/$f 2>/dev/null)"; done
+echo "=== userns / fuse"; unshare -U -r true && echo "unshare -U ok"; ls -l /dev/fuse 2>&1; which fusermount3 fusermount 2>&1 | head -2
+echo "=== network"; timeout 10 curl -sI https://github.com 2>&1 | head -1 || echo "direct github: fail"; timeout 10 curl -sI http://cvmfs-s1fnal.opensciencegrid.org:8000/cvmfs/sbnd.opensciencegrid.org/.cvmfspublished 2>&1 | head -1
+echo "=== apptainer"; module load apptainer 2>&1 | tail -2; which apptainer; apptainer --version
+SIF=/lus/flare/projects/neutrinoGPU/software/containers/slf7.sif; [ -f $SIF ] || SIF=$(ls /lus/flare/projects/neutrinoGPU/*/slf7.sif 2>/dev/null | head -1); echo "SIF=$SIF"
+for m in "--userns" "--fakeroot" ""; do echo "-- mode '$m':"; timeout 120 apptainer exec $m -B /lus/flare $SIF cat /etc/redhat-release 2>&1 | tail -1; done
+echo "=== Recipe A': twester's Flare UPS tree"; ls -d /lus/flare/projects/neutrinoGPU/scisoft/larsoft 2>&1; ls /lus/flare/projects/neutrinoGPU/scisoft/larsoft 2>/dev/null | head -5; ls -d /lus/flare/projects/neutrinoGPU/scisoft/larsoft/spdlog/* /lus/flare/projects/neutrinoGPU/scisoft/larsoft/fmt/* 2>&1 | head
+timeout 300 apptainer exec --fakeroot -B /lus/flare $SIF bash -c 'source /lus/flare/projects/neutrinoGPU/scisoft/larsoft/setup 2>/dev/null || source /lus/flare/projects/neutrinoGPU/scisoft/setup 2>/dev/null; ups list -aK+ sbndcode 2>/dev/null | grep -o "v10_14_02[0-9_]*" | sort -u | tr "\n" " "; echo; setup sbndcode v10_14_02_03 -q e26:prof 2>&1 | tail -1; which lar; lar --version' 2>&1 | tail -5
+echo "=== Recipe B: cvmfsexec through the proxy (private dist on node-local disk)"
+L=/tmp/cvmfsexec-$USER; rsync -a --exclude .git --exclude 'dist/var/lib/cvmfs/*' --exclude 'log/*' $Y/cvmfsexec/ $L/ && sed -i "s|CVMFS_CACHE_BASE=.*|CVMFS_CACHE_BASE=/tmp/cvmfs-cache-$USER|" $L/dist/etc/cvmfs/default.local && mkdir -p /tmp/cvmfs-cache-$USER
+RECO1=$Y/sbnd-gen2-data/nc-sideband-lynn/filtered-reco1/nc-sideband_filtered_frameshift.root
+cd $L && ( time timeout 1200 ./cvmfsexec sbnd.opensciencegrid.org sbn.opensciencegrid.org larsoft.opensciencegrid.org fermilab.opensciencegrid.org singularity.opensciencegrid.org uboone.opensciencegrid.org -- bash -c "
+  ls /cvmfs/sbnd.opensciencegrid.org/products/sbnd/sbndcode/ | tail -2
+  time apptainer exec --userns -B /cvmfs -B /lus/flare -B /tmp /cvmfs/singularity.opensciencegrid.org/fermilab/fnal-dev-sl7:latest bash -c '
+    cat /etc/redhat-release; source /cvmfs/sbnd.opensciencegrid.org/products/sbnd/setup_sbnd.sh >/dev/null 2>&1; setup sbndcode v10_14_02_03 -q e26:prof >/dev/null 2>&1; echo SBNDCODE_DIR=\$SBNDCODE_DIR
+    time lar --version; mkdir -p /tmp/larw && cd /tmp/larw && time lar -c eventdump.fcl -s $RECO1 -n 1 > dump.log 2>&1; echo lar_rc=\$?; grep -cE \"recob::Wire|FrameShift\" dump.log'
+" ) 2>&1 | grep -v -E "^ln: |CernVM-FS: (loading|mounted)" | tail -20
+echo "=== cvmfs cache: $(du -sh /tmp/cvmfs-cache-$USER 2>/dev/null | cut -f1)"
+echo "=== END $(date)"
