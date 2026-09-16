@@ -37,12 +37,15 @@ path-append ()  { path-remove "$1" "$2"; local PATHVARIABLE="${2:-PATH}"
   export $PATHVARIABLE="${!PATHVARIABLE:+${!PATHVARIABLE}:}$1"; }
 
 # Drop the tree's larwirecell/wirecell that sbndcode pulled in so their plugins
-# and cfg cannot shadow ours.
-unsetup larwirecell 2>/dev/null
-unsetup wirecell 2>/dev/null
+# and cfg cannot shadow ours.  -j = this product ONLY: a plain `unsetup wirecell`
+# also unsetups everything wirecell depends on (root, python, boost, eigen, tbb,
+# hdf5, ...) and left the chain at 56 products with no ROOTSYS and the system
+# python 3.6 (build runs 2-4, 2026-09-16).
+unsetup -j larwirecell 2>/dev/null
+unsetup -j wirecell 2>/dev/null
 # The ambient spdlog is v1_9_2 (bundled fmt).  WCT is built against spdlog
 # v1_14_1 + external fmt v11_0_2 (our overlay); larwirecell must see the same pair.
-unsetup spdlog 2>/dev/null
+unsetup -j spdlog 2>/dev/null
 setup spdlog v1_14_1 -q e26:prof
 setup fmt v11_0_2 -q e26:prof 2>/dev/null
 
