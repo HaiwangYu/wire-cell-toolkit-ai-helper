@@ -420,3 +420,91 @@ Login node (`cvmfsexec-login`): Recipe B cold 52 s; `setup sbndcode` 34 s.
 
 Scripts: `/lus/eagle/projects/neutrinoGPU/yuhw/polaris-probe/probe{,2,3,4}.pbs`
 (copied to `issues/27-polaris-production/scripts/` with the two `default.local` files). Tracking issue: https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/27
+
+---
+
+## 6. Procedure on Polaris: build, run, validate (Recipe B)
+
+Everything below runs on Eagle paths under `Y=/lus/eagle/projects/neutrinoGPU/yuhw`
+with the scripts in `S=<ai-helper>/issues/27-polaris-production/scripts`. Gates
+and traps are those of `sbnd-1step-build-run-validate.md`; only the machine
+mechanics differ.
+
+**0. Which tree runs.** `setup-polaris-ap.sh` prepends `$Y/wire-cell-toolkit/cfg`
+to `WIRECELL_PATH`, exactly like `setup-ap.sh` at FNAL. Gate: `git -C $Y/wire-cell-toolkit
+status --short` clean, on `polaris-build-fixes` (or whatever `opt/` was built from;
+`polaris-build-logs/wct-build-commit.txt` records it).
+
+**1. Enter SL7.** `$S/in-polaris-sl7.sh <cmd>` = private cvmfsexec (6 repos incl.
+uboone, through the ALCF proxy) -> `apptainer exec --userns --cleanenv` of
+`fnal-dev-sl7` -> `source $SL7_SETUP` (default `setup-polaris-opt.sh`; use
+`setup-polaris-ap.sh` for config work, `setup-polaris-run.sh` for `lar` runs;
+`none` for a bare container). On the login node it uses `$Y/cvmfsexec-login`
+(8 CPU / 8 GiB cgroup: config compiles, one-event checks, nothing heavier).
+In a job set `CVMFSEXEC=/local/scratch/cvmfsexec BINDS="-B /local/scratch"`
+after `rsync`ing `$Y/cvmfsexec/` there (see any `.pbs` in `scripts/`).
+Never run two instances on one `dist/`.
+
+**2. Build WCT + larwirecell (job).**
+
+    cd $Y/polaris-build-logs && qsub $S/build-wct-lwc.pbs          # both stages, ~8 min on a node
+    qsub -v STAGES=lwc $S/build-wct-lwc.pbs                         # larwirecell only
+
+The job runs `configure-wct-polaris.sh` if `build/c4che` is missing, `python3 ./wcb
+-p --notests install -j48`, then prints every §1 gate (`nlibs=19`,
+`single_threaded_syms=0`, `fmt_needed=0`, RUNPATH `spdlog/v1_14_1`,
+`rpath_stripped=N`, `ldd_not_found=0`), copies `miniz.h`, then `mrb z; mrb b -j48`
+for larwirecell (against `WIRECELL_FQ_DIR=$Y/opt`, spdlog v1_14_1) and copies
+`$MRB_BUILDDIR/larwirecell/slf7.x86_64.e26.prof/lib/*.so` +
+`*.fcl` into `$Y/opt/larwirecell/v10_01_28/slf7.x86_64.e26.prof/`. Gate:
+`WCB_RC=0`, `MRB_RC=0`, `cvmfs_wirecell_refs=0`, `WireCell_INCLUDE_DIR` = opt.
+Read `build-wct-lwc.out` -- the job does not stop on a failed gate.
+
+**3. Operating point + config gate.** `smoke.pbs` runs it (stage A) unless
+`DO_RESYNC=0`; by hand:
+
+    SL7_SETUP=$S/setup-polaris-ap.sh $S/in-polaris-sl7.sh $S/resync-operating-point-polaris.sh <workdir>
+
+Gate: "0 differences" in step 3/4. Step 4/4 (preflip) currently fails on the
+removed `iso_endpoint` knob -- informational only. If step 2 reports
+`CHANGED:` lines beyond the header hash, commit the regenerated
+`sbnd/pr-operating-point.jsonnet` with the toolkit commit.
+
+**4. Run events (job).**
+
+    cd $Y/polaris-build-logs && qsub -v "RECO1=<artroot>,FCL=wcls-img-clus-matching-xin[-data].fcl,NEVT=<n-1>,DO_RESYNC=0,TAG=<tag>" $S/smoke.pbs
+
+One `lar -n 1 --nskip k ... --no-output` per event in its own cwd
+(`smoke-1evt.sh`, mirrors the FNAL harness), `taskset` 2 cores each, output in
+`$Y/production-prep/<tag>-<date>/evtK/` (+ `rse-by-nskip.tsv`). Gate per event:
+`rc=0`, `audit=ok` (`check-pr-run.sh`), `dl_vertex_failed=0`, `tracking-pr.root`
+with 8 trees and `T_tagger`/`T_kine` at 1 entry (4 trees = no candidate, legitimate).
+MC uses `simtpc2d` tags; Gen2 data needs the `-data.fcl` and a `FrameShiftInfo`
+product already in the file.
+
+**5. Validate against FNAL.** Stage the FNAL harness output dir on Eagle, then
+
+    $S/compare-to-fnal.sh $Y/production-prep/<tag>-<date> <fnal-run-dir>
+
+which runs `deep_compare.py` (exact T_kine/T_tagger hashes + every T_rec_charge
+point), the branch census `branch-diff-tracking-pr.py` (every tree, every
+branch, max abs/rel), merges the Polaris Bee zips in the FNAL `bee-order.txt`
+and uploads both sets, writing `cmp-fnal/{deep_compare,branch_diff}.txt` and
+`bee-upload/bee-links.txt`. Gate: exact match N/N, or only the known
+cross-machine residuals (`T_rec_charge:{q,reduced_chi2}` ~1e-12,
+`kine_mcs_ambiguity` ~7e-8). Anything else is a finding: name the first
+divergent branch and event.
+
+## 7. Status (2026-09-16)
+
+| step | state |
+|---|---|
+| environment (Recipe B) | done; wrapper + setup scripts + build/smoke jobs in `scripts/` |
+| WCT `polaris-build-fixes` (master `67e2eba7` + 2 warning fixes) + larwirecell `a02a1a4` | built, all §1/§2 gates pass |
+| operating-point gate | 0 differences |
+| MC smoke (Avinay reco1, 9 events) | 9/9 pass |
+| Gen2 data nc-sideband (19 events) | 19/19 pass |
+| **validation vs FNAL** (`r3-ncpi0-lynn-2026-09-15`, same 19 events, toolkit `0ad64223`) | **identical in T_kine, T_cluster, T_rec_charge (every point), Trun, T_bad_ch, T_proj*; T_tagger differs in exactly 16 nue-BDT score branches (`nue_score`, `br3_*`, `lol_*`, `pio_2`, `sig_*`, `stw_*`, `tro_*`: 0 on Polaris vs FNAL values)** because `uboone/weights/XGB_nue_seed2_0923.xml` (199 MB, not in the GitHub wire-cell-data repo) is missing on Eagle: `UbooneNueBDTScorer: weight file not found ... skipping nue BDT scoring`. Fix = copy the file from FNAL `$WCD/uboone/weights/`, rerun, recompare. No other data file is missing (39 referenced, all resolve). |
+| Bee | FNAL set https://www.phy.bnl.gov/twister/bee/set/a18b25ec-c95d-4206-b3f5-fd10b7d4bdf2/event/list/ ; Polaris set https://www.phy.bnl.gov/twister/bee/set/bb271eeb-602e-488b-a6bd-dc4925cbe2ed/event/list/ (same 19-event order as `bee-order.txt`) |
+| toolkit pin | master-based until the ALCF workflow is validated (user, 2026-09-16) |
+| next | nue weight file -> rerun 19 events -> expect exact 19/19; then phase 3 scaling (1 node x32/x64, then a 10-node `small` job) |
