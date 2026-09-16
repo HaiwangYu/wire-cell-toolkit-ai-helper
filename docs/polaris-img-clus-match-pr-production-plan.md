@@ -504,7 +504,50 @@ divergent branch and event.
 | operating-point gate | 0 differences |
 | MC smoke (Avinay reco1, 9 events) | 9/9 pass |
 | Gen2 data nc-sideband (19 events) | 19/19 pass |
-| **validation vs FNAL** (`r3-ncpi0-lynn-2026-09-15`, same 19 events, toolkit `0ad64223`) | **identical in T_kine, T_cluster, T_rec_charge (every point), Trun, T_bad_ch, T_proj*; T_tagger differs in exactly 16 nue-BDT score branches (`nue_score`, `br3_*`, `lol_*`, `pio_2`, `sig_*`, `stw_*`, `tro_*`: 0 on Polaris vs FNAL values)** because `uboone/weights/XGB_nue_seed2_0923.xml` (199 MB, not in the GitHub wire-cell-data repo) is missing on Eagle: `UbooneNueBDTScorer: weight file not found ... skipping nue BDT scoring`. Fix = copy the file from FNAL `$WCD/uboone/weights/`, rerun, recompare. No other data file is missing (39 referenced, all resolve). |
-| Bee | FNAL set https://www.phy.bnl.gov/twister/bee/set/a18b25ec-c95d-4206-b3f5-fd10b7d4bdf2/event/list/ ; Polaris set https://www.phy.bnl.gov/twister/bee/set/bb271eeb-602e-488b-a6bd-dc4925cbe2ed/event/list/ (same 19-event order as `bee-order.txt`) |
+| **validation vs FNAL** (`r3-ncpi0-lynn-2026-09-15`, same 19 events, toolkit `0ad64223`, sbndgpvm) | **EXACT 19/19** (run `ncsb-data-nuebdt-20260916-0446`): `deep_compare.py` identical T_kine + T_tagger hashes and every T_rec_charge point in all 19 events; the every-branch census over `T_tagger, T_kine, T_cluster, T_rec_charge, Trun, T_bad_ch, T_proj, T_proj_data` reports **0 differing (tree, branch) pairs** -- not even the 1e-12 cross-machine residuals seen between sbndbuild and Xin's machine. First attempt (`ncsb-data-20260916-0345`) differed in exactly 16 nue-BDT `T_tagger` scores because `uboone/weights/XGB_nue_seed2_0923.xml` (199 MB, not in the GitHub wire-cell-data repo) was missing on Eagle (`UbooneNueBDTScorer: weight file not found ... skipping nue BDT scoring`); the user copied it from FNAL and the rerun matched. **Lesson: wire-cell-data from GitHub is incomplete; the FNAL `$WCD` tree is the reference. Check every path in the compiled config resolves (`compare-to-fnal.sh` prints the census; the `python3` snippet in the 2026-09-16 issue comment lists missing files).** |
+| Bee (same 19-event order as `bee-order.txt`) | FNAL/sbndgpvm https://www.phy.bnl.gov/twister/bee/set/a18b25ec-c95d-4206-b3f5-fd10b7d4bdf2/event/list/ ; **Polaris (validated run)** https://www.phy.bnl.gov/twister/bee/set/9e2378ce-e6ce-4ea8-92da-3abda3186cc9/event/list/ ; Polaris first attempt (nue BDT off) https://www.phy.bnl.gov/twister/bee/set/bb271eeb-602e-488b-a6bd-dc4925cbe2ed/event/list/ |
 | toolkit pin | master-based until the ALCF workflow is validated (user, 2026-09-16) |
-| next | nue weight file -> rerun 19 events -> expect exact 19/19; then phase 3 scaling (1 node x32/x64, then a 10-node `small` job) |
+| next | phase 3 scaling: 1 node x32/x64 concurrent `lar` (throughput, RSS, CVMFS under load), then a 10-node `small` job; production task queue |
+
+## 8. Job submission on Polaris: how the runs above were done
+
+- **How jobs are submitted.** `qsub <script>.pbs` from a login node; the script
+  carries the `#PBS` directives, parameters go in with `qsub -v A=1,B=2`.
+  Every job so far (`probe*.pbs`, `build-wct-lwc.pbs`, `smoke.pbs`) used:
+  `-q debug`, `-A neutrinoGPU::debug`, `-l select=1` (one whole node: 32 cores /
+  64 threads, 512 GB, 4 A100 -- nodes are never shared, charging is per
+  node-hour whatever you use), `-l walltime=00:59:00` (debug max 1 h),
+  `-l filesystems=home:eagle` (declares the Lustre filesystems the job needs;
+  add `grand` for `/lus/grand`; a job is held if a declared filesystem is down),
+  `-j oe -o <Eagle path>` (single output file, written live). Production jobs
+  will use `-q prod` with `-l select=10..24` (routes to `small`, 3 h) or
+  `25..99` (`medium`, 6 h), `-A neutrinoGPU::<pot>`, `-r y` for rerunnable.
+- **Allocation used.** `neutrinoGPU::debug` (suballocation 14453, unrestricted):
+  13 jobs, **1.1 node-hours charged**, 219.4 left. The main pot (17256) is
+  untouched by us and stood at 2,095 node-hours on 2026-09-16 (others draw on
+  it; it was 4,483 a week earlier). Check: `sbank-detail-allocations -p neutrinoGPU -r polaris`.
+- **Queue waiting time, measured** (`qstat -xf <jobid>`: `qtime` -> `stime`): all
+  13 debug jobs started within **3-87 s** of submission (median 4 s), while
+  545 of 560 nodes were job-exclusive. `debug` keeps nodes reserved; `prod`
+  will not behave like this (20 jobs queued in `small` at survey time) -- to be
+  measured in phase 3.
+- **Node availability.** `pbsnodes -a | grep 'state =' | sort | uniq -c`
+  (2026-09-16: 545 job-exclusive, 6 free, 9 offline/down), `qstat -Q` (per-queue
+  queued/running counts), `qstat -q` (limits), `pbsnodes -avSj` (per-node table
+  with jobs). The debug queue holds up to 24 nodes total.
+- **Filesystems on the worker nodes.** `/lus/eagle` (project Lustre, 3 PB;
+  everything we build and read lives here), `/home` (Lustre), `/lus/grand`
+  (only if requested), node-local `/local/scratch` (2.9 TB NVMe RAID0, wiped
+  per job), `/tmp` and `/dev/shm` (252 GB tmpfs = RAM). **No `/cvmfs`, no
+  `/pnfs`, no `/exp`, no network** except the HTTP proxy.
+- **Can worker nodes use our WCT/larwirecell build?** Yes: `$Y/opt`,
+  `$Y/wire-cell-toolkit/cfg`, `$Y/wire-cell-data`, `$Y/wcp-porting-validation`
+  are on Eagle, bound into the container (`-B /lus/eagle`) and were what every
+  job above ran (`ldd` gate: every `libWireCell*` from `$Y/opt/lib`,
+  `WireCell_INCLUDE_DIR` = opt). Only sbndcode/art/ROOT come from CVMFS.
+- **Monitoring.** `qstat -u $USER` (state Q/R, elapsed), `qstat -f <id>`
+  (`exec_host`, `resources_used`), `qstat -xf <id>` after completion (`qtime`,
+  `stime`, `resources_used.walltime`, `Exit_status`), `qdel <id>`; the job's
+  `-o` file on Eagle grows while it runs (`smoke.pbs` also writes
+  `evtK.summary` per event); `sbank-detail-allocations` for charges. Interactive
+  node for debugging: `qsub -I -A neutrinoGPU::debug -q debug -l select=1 -l walltime=01:00:00 -l filesystems=home:eagle`.
