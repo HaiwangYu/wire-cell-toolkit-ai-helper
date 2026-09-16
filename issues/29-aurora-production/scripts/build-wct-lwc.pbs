@@ -51,6 +51,8 @@ STAGES=${STAGES:-wct lwc}
 if [[ " $STAGES " == *" wct "* ]]; then
 echo "=== 1. WCT install (-j$NJ)"
 cd $Y/wire-cell-toolkit && git rev-parse HEAD | tee $Y/aurora-build-logs/wct-build-commit.txt && git status --short | head -3
+# wscript bakes `git describe --tags` into the build; a clone of the fork has no tags (run 4, 2026-09-16) -> fetch upstream's.
+git describe --tags >/dev/null 2>&1 || { export https_proxy=http://proxy.alcf.anl.gov:3128; git remote get-url upstream >/dev/null 2>&1 || git remote add upstream https://github.com/WireCell/wire-cell-toolkit.git; git fetch -q upstream --tags; }; echo "version: $(git describe --tags)"
 $S/in-aurora-sl7.sh bash -c "
   set -o pipefail
   cat /etc/redhat-release; which g++ python3 patchelf; g++ --version | head -1; python3 --version
