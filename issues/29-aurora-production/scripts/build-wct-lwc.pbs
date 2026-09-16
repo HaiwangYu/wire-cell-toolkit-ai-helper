@@ -33,6 +33,18 @@ if [ ! -f $Y/images/fnal-dev-sl7.sif ]; then
   [ -f $Y/images/fnal-dev-sl7.sif.$J ] && mv -n $Y/images/fnal-dev-sl7.sif.$J $Y/images/fnal-dev-sl7.sif; rm -f $Y/images/fnal-dev-sl7.sif.$J
 fi
 ls -l $Y/images/ 2>&1
+echo "=== 0b. setup diagnostics inside the container (stderr visible; the wrapper normally silences the setup)"
+SL7_SETUP=none timeout 600 $S/in-aurora-sl7.sh bash -c '
+  echo "--- (i) bare tree: source setup; setup sbndcode"
+  source /lus/flare/projects/neutrinoGPU/scisoft/larsoft/setup; echo "PRODUCTS=$PRODUCTS"
+  setup sbndcode v10_14_02_03 -q e26:prof; echo "setup_rc=$? active=$(ups active | wc -l) python3=$(which python3) lar=$(which lar 2>/dev/null)"
+  echo "--- (ii) same shell, now with the overlay first: unsetup all, re-setup"
+  for p in $(ups active | awk "NR>1 {print \$1}"); do unsetup $p 2>/dev/null; done
+  export PRODUCTS=/lus/flare/projects/neutrinoGPU/yuhw/products:/lus/flare/projects/neutrinoGPU/scisoft/larsoft
+  setup sbndcode v10_14_02_03 -q e26:prof; echo "setup_rc=$? active=$(ups active | wc -l) python3=$(which python3) lar=$(which lar 2>/dev/null)"
+  echo "--- (iii) fresh shell: source setup-aurora-opt.sh with stderr"
+' 2>&1 | grep -v '^INFO'
+SL7_SETUP=none timeout 600 $S/in-aurora-sl7.sh bash -c "source $S/setup-aurora-opt.sh; echo \"active=\$(ups active | wc -l) python3=\$(which python3) lar=\$(which lar 2>/dev/null) ROOTSYS=\$ROOTSYS\"" 2>&1 | grep -v '^INFO' | tail -25
 SL7_SETUP=none timeout 120 $S/in-aurora-sl7.sh bash -c 'cat /etc/redhat-release; ls /usr/include/bzlib.h' || { echo "container does not run (mode '${APPTAINER_MODE:-}'); stopping"; echo "=== END $(date)"; exit 1; }
 
 STAGES=${STAGES:-wct lwc}
@@ -44,7 +56,8 @@ $S/in-aurora-sl7.sh bash -c "
   cat /etc/redhat-release; which g++ python3 patchelf; g++ --version | head -1; python3 --version
   echo '--- setup gate: the UPS setup must have taken (gcc 12.1 e26, python 3.9, spdlog v1_14_1 from the overlay)'
   ups active | grep -E '^(sbndcode|larsoft|spdlog|fmt|cetmodules|cmake|gcc|python) ' ; echo PRODUCTS=\$PRODUCTS
-  g++ --version | head -1 | grep -q ' 12\.' || { echo 'SETUP GATE FAILED: g++ is not gcc 12 -> setup sbndcode did not take (first run 2026-09-16: \$Y/products lacked .upsfiles and ups rejected the whole PRODUCTS path)'; exit 3; }
+  g++ --version | head -1 | grep -q ' 12\.' || { echo 'SETUP GATE FAILED: g++ is not gcc 12 -> setup sbndcode did not take (run 1, 2026-09-16: \$Y/products lacked .upsfiles and ups rejected the whole PRODUCTS path)'; exit 3; }
+  python3 --version 2>&1 | grep -q ' 3\.9' || { echo 'SETUP GATE FAILED: python3 is not the UPS 3.9 -> the sbndcode dependency chain (root, python) did not complete (runs 2-3, 2026-09-16); see the 0b diagnostics above'; exit 3; }
   cd $Y/wire-cell-toolkit
   [ -f build/c4che/_cache.py ] || { echo 'no configure cache: running configure'; time $S/configure-wct-aurora.sh 2>&1 | tail -8; }
   grep -E 'INCLUDES_SPDLOG|LIBPATH_SPDLOG' build/c4che/_cache.py | cut -c1-200
