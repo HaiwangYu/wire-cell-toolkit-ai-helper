@@ -318,3 +318,19 @@ Memory: 100 x 2.2 GB = 220 GB of ~1 TB. Inputs: 28.4 MB/event -> **~28 TB for
 4. Recipe A' as the primary recipe (recommended); Recipe B only if the probe
    shows FUSE works and only for bootstrap.
 5. Who moves the 4 non-git items Eagle/FNAL -> Flare (Globus), and when.
+
+## 7. Status (2026-09-16, end of day 1)
+
+| step | state |
+|---|---|
+| A0 login-node facts, repos on Flare, cvmfsexec dist, `gh` | done |
+| A1 probe (`debug`, 2 runs) | done: userns/FUSE/proxy/cvmfsexec all work on compute; `slf7.sif` runs unflagged; bare tree runs `lar` + eventdump |
+| A2 Recipe A' overlay (`$Y/products`: spdlog v1_14_1, fmt v11_0_2, srproxy v00.44, scn v01_00_00; `$Y/images/fnal-dev-sl7.sif`) | done |
+| A2 WCT `polaris-build-fixes` 9195180d -> `$Y/opt` | **built, all §1 gates pass** (job 8832376, 6.6 min) |
+| A2 larwirecell `dev-v10_14_02_02` a02a1a4 | **built + deployed** (11 libs, 20 fcl; job 8832409) |
+| operating-point gate | **0 differences** |
+| A3 MC smoke (Gen2 reco1, 9 events) | **9/9 pass**, 20-79 s/event, RSS 1.45-1.88 GB, DL vertex on |
+| A3 19-event data validation vs FNAL + Polaris | **blocked**: nc-sideband file, FNAL/Polaris reference runs, `XGB_nue_seed2_0923.xml` not yet on Flare (Globus) |
+| A4 scaling, A5 production | not started |
+
+Traps found on day 1 (all fixed in `issues/29-aurora-production/scripts/`): piped `module load` loses PATH; a UPS db needs `.upsfiles`; `unsetup wirecell` without `-j` drops root/python; fork clone has no tags for `git describe`; `MRB_PROJECT=larsoft` for `mrb newDev`; `clus.jsonnet` hard-codes a `/cvmfs/sbnd...` path -> bind the Flare tree there.
