@@ -59,5 +59,13 @@ export APPTAINERENV_HTTP_PROXY=$HTTP_PROXY APPTAINERENV_HTTPS_PROXY=$HTTPS_PROXY
 export APPTAINERENV_http_proxy=$HTTP_PROXY APPTAINERENV_https_proxy=$HTTPS_PROXY APPTAINERENV_no_proxy=$no_proxy
 for v in ${PASS_ENV:-}; do export "APPTAINERENV_$v=${!v}"; done
 
-exec apptainer exec $APPTAINER_MODE --cleanenv -B /lus/flare -B /tmp $BINDS "$SL7_IMAGE" \
+# The toolkit cfg (clus.jsonnet sce_map_file) hard-codes
+# /cvmfs/sbnd.opensciencegrid.org/products/sbnd/sbnd_data/v01_42_00/SCEoffsets/...;
+# it is the only CVMFS path in the compiled 1-step config (smoke 2026-09-16, art
+# exit 9 "file does not exist").  Bind the Flare UPS tree there so the config
+# stays byte-identical to FNAL/Polaris (underlay is enabled in apptainer.conf).
+UPS_TREE=${UPS_TREE:-/lus/flare/projects/neutrinoGPU/scisoft/larsoft}
+CVMFS_BIND="-B $UPS_TREE:/cvmfs/sbnd.opensciencegrid.org/products/sbnd"
+
+exec apptainer exec $APPTAINER_MODE --cleanenv -B /lus/flare -B /tmp $CVMFS_BIND $BINDS "$SL7_IMAGE" \
     bash -c "cd $(printf '%q' "$PWD") && $INNER"
