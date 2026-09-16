@@ -31,7 +31,9 @@ echo "=== cgroup limits"; C=$(sed -n 's/^0:://p' /proc/self/cgroup); echo "cgrou
 echo "=== userns / fuse"; echo "max_user_namespaces=$(cat /proc/sys/user/max_user_namespaces)"; unshare -U -r true && echo "unshare -U -r ok" || echo "unshare -U -r FAILED"; ls -l /dev/fuse 2>&1; which fusermount3 fusermount 2>&1 | head -2
 echo "=== network (direct, then proxy)"; for u in https://github.com http://cvmfs-s1fnal.opensciencegrid.org:8000/cvmfs/sbnd.opensciencegrid.org/.cvmfspublished https://scisoft.fnal.gov/ https://registry-1.docker.io/v2/; do printf "%-95s " "$u"; env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY timeout 8 curl -sI "$u" 2>&1 | head -1 | tr -d '\r'; echo -n " | proxy: "; timeout 15 curl -sI "$u" 2>&1 | head -1 | tr -d '\r'; echo; done
 
-echo "=== apptainer"; module load apptainer 2>&1 | tail -2; module load fuse-overlayfs 2>&1 | tail -1; which apptainer; apptainer --version; ls -l $(dirname $(readlink -f $(which apptainer)))/../libexec/apptainer/bin/ 2>/dev/null | grep -i starter
+echo "=== apptainer"
+module load apptainer; module load fuse-overlayfs   # NOT piped: a pipe runs the module function in a subshell and the PATH change is lost (probe 1, 2026-09-16)
+which apptainer; apptainer --version; ls -l $(dirname $(readlink -f $(which apptainer)))/../libexec/apptainer/bin/ 2>/dev/null | grep -i starter
 SIF=$P/containers/slf7.sif; echo "SIF=$SIF"; ls -l $SIF
 for m in "" "--fakeroot" "--userns"; do printf -- "-- mode '%s': " "$m"; timeout 120 apptainer exec $m -B /lus/flare $SIF cat /etc/redhat-release 2>&1 | tail -1; done
 
@@ -62,11 +64,18 @@ cd $L && ( time timeout 1200 ./cvmfsexec sbnd.opensciencegrid.org larsoft.opensc
 " ) 2>&1 | grep -v -E "^ln: |CernVM-FS: (loading|mounted)" | tail -25
 echo "=== cvmfs cache: $(du -sh /tmp/cvmfs-cache-$USER 2>/dev/null | cut -f1)"
 
-echo "=== dev image for builds: pull fnal-dev-sl7 through the proxy into \$Y/images (one-time; skipped if present)"
-mkdir -p $Y/images; export APPTAINER_CACHEDIR=/tmp/apptainer-cache-$USER APPTAINER_TMPDIR=/tmp/apptainer-tmp-$USER; mkdir -p $APPTAINER_CACHEDIR $APPTAINER_TMPDIR
-if [ ! -f $Y/images/fnal-dev-sl7.sif ]; then ( time timeout 900 apptainer pull $Y/images/fnal-dev-sl7.sif docker://fermilab/fnal-dev-sl7:latest ) 2>&1 | tail -3; fi; ls -l $Y/images/ 2>&1
-[ -f $Y/images/fnal-dev-sl7.sif ] && timeout 120 apptainer exec -B /lus/flare $Y/images/fnal-dev-sl7.sif bash -c 'cat /etc/redhat-release; ls /usr/include/bzlib.h; g++ --version | head -1' 2>&1 | tail -3
-
+echo "=== scn v01_00_00 (DL vertex venv) from uboone CVMFS -> \$Y/products/scn (one-time; skipped if present)"
+if [ ! -d $Y/products/scn/v01_00_00 ]; then
+  cd $L && ( time timeout 1500 ./cvmfsexec uboone.opensciencegrid.org larsoft.opensciencegrid.org -- bash -c "
+    du -sh /cvmfs/uboone.opensciencegrid.org/products/scn/ 2>/dev/null | tail -1
+    mkdir -p $Y/products/scn && rsync -a /cvmfs/uboone.opensciencegrid.org/products/scn/ $Y/products/scn/ && echo scn_rsync_ok
+    ls /cvmfs/larsoft.opensciencegrid.org/products/patchelf/ 2>&1 | head -3
+  " ) 2>&1 | grep -v -E "^ln: |CernVM-FS: (loading|mounted)" | tail -6
+fi
+ls $Y/products/scn/ 2>&1; du -sh $Y/products/scn 2>/dev/null | cut -f1
+echo "=== Recipe A' with our overlay: setup-aurora-opt.sh inside the dev image (gcc 12.1, python 3.9, spdlog v1_14_1 expected)"
+S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+cd /tmp && SL7_SETUP=$S/setup-aurora-run.sh timeout 600 $S/in-aurora-sl7.sh bash -c 'which g++ python3 lar wcsonnet 2>&1; g++ --version | head -1; python3 --version; ups active | grep -E "^(sbndcode|larsoft|spdlog|fmt|cetmodules|cmake|gcc|python) " ; echo scn_on_pythonpath=$(echo $PYTHONPATH | tr : "\n" | grep -c scn); echo PRODUCTS=$PRODUCTS' 2>&1 | tail -20
 [ -f "$NCSB" ] && { echo "=== nc-sideband file present: $(ls -l $NCSB | awk '{print $5}') bytes"; } || echo "=== nc-sideband file not yet on Flare (Globus, A0)"
 echo "=== /tmp used: $(du -sh /tmp/larw-$USER /tmp/cvmfsexec-$USER /tmp/cvmfs-cache-$USER 2>/dev/null | cut -f1 | tr '\n' ' ')"
 echo "=== END $(date)"
