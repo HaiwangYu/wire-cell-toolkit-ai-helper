@@ -36,6 +36,12 @@ cd $RUN && SL7_SETUP=$S/setup-aurora-ap.sh $S/in-aurora-sl7.sh bash -c "
 "
 fi
 
+echo "=== B0. eventdump product check (the fcl reads simtpc2d:dnnsp wires, wienersummary, badmasks, opflashtpc0/1, ionandscint:priorSCE SEDs, MCTruth/MCParticle)"
+mkdir -p $RUN/dump && cd $RUN/dump && SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh bash -c "
+  lar -c eventdump.fcl -s $RECO1 -n 1 > dump.log 2>&1; echo dump_rc=\$?
+  grep -E 'recob::Wires|recob::OpFlashs|FrameShift|SimEnergyDeposits_*ionandscint|simb::MCTruths|std::vector<simb::MCParticle>' dump.log | grep -vE 'Assns|LArG4Detector' | cut -c1-150 | sort -u | head -20
+"
+
 echo "=== B1. one event (nskip 0) fcl=$FCL"
 cd $RUN && SL7_SETUP=$S/setup-aurora-run.sh $S/in-aurora-sl7.sh bash -c "
   echo scn_on_pythonpath=\$(echo \$PYTHONPATH | tr : '\n' | grep -c scn); echo WIRECELL_PATH=\$WIRECELL_PATH
