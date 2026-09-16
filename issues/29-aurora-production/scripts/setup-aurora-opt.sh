@@ -27,6 +27,9 @@ setup sbndcode v10_14_02_03 -q e26:prof
 setup cetmodules v3_24_00
 setup cmake v3_27_4
 setup gdb v13_1 2>/dev/null
+# setup_sbnd.sh exports this at FNAL; the bare tree setup does not, and `mrb newDev`
+# refuses without it ("MRB_PROJECT is not defined", build run 5, 2026-09-16).
+export MRB_PROJECT=larsoft
 
 path-remove ()  { local IFS=':'; local NEWPATH; local DIR; local PATHVARIABLE=${2:-PATH}
   for DIR in ${!PATHVARIABLE}; do [ "$DIR" != "$1" ] && NEWPATH=${NEWPATH:+$NEWPATH:}$DIR; done
