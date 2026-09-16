@@ -1,0 +1,54 @@
+#!/bin/bash
+#PBS -N wct-smoke
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/smoke.out
+# Aurora port of issues/27-polaris-production/scripts/smoke.pbs (Recipe A'):
+#   A. operating-point resync + config gate (procedure doc sections 3-4)
+#   B. one event of the 1-step chain (smoke-1evt.sh), then N events in parallel
+# qsub -v "RECO1=<file>,FCL=<fcl>,NEVT=<n>,DO_RESYNC=0,TAG=<tag>" smoke.pbs
+# Default input: one Gen2 MC reco1 file (MC fcl).  Data: FCL=wcls-img-clus-matching-xin-data.fcl.
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+S27=$Y/wire-cell-toolkit-ai-helper/issues/27-polaris-production/scripts   # resync/compile-both are env-driven and reused as is
+RECO1=${RECO1:-/lus/flare/projects/neutrinoGPU/twester/sbnd_gen2_prod1/Gen2_2026/reco1/000000/000000/reco1-detsim-g4-gen-Gen2_2026-00d8-4843-8a75-5672.root}
+NEVT=${NEVT:-8}
+FCL=${FCL:-wcls-img-clus-matching-xin.fcl}
+DO_RESYNC=${DO_RESYNC:-1}
+TAG=${TAG:-smoke}
+CORES=${CORES:-2}          # cores per lar process (taskset); cores 0 and 52 are reserved on Aurora
+RUN=$Y/production-prep/$TAG-$(date +%Y%m%d-%H%M)
+mkdir -p $RUN
+export Y SL7_IMAGE=${SL7_IMAGE:-} APPTAINER_MODE=${APPTAINER_MODE:-}; [ -n "$SL7_IMAGE" ] || unset SL7_IMAGE
+echo "=== START $(date) on $(hostname) job ${PBS_JOBID%%.*} RUN=$RUN RECO1=$RECO1 FCL=$FCL"
+
+if [ "$DO_RESYNC" = 1 ]; then
+echo "=== A. operating-point resync + config gate"
+cd $RUN && SL7_SETUP=$S/setup-aurora-ap.sh $S/in-aurora-sl7.sh bash -c "
+  which wcsonnet lar; git -C $Y/wire-cell-toolkit rev-parse --short HEAD
+  $S27/resync-operating-point-polaris.sh $RUN/pr-opsync; echo RESYNC_RC=\$?
+  git -C $Y/wcp-porting-validation status --short sbnd/pr-operating-point.jsonnet
+"
+fi
+
+echo "=== B1. one event (nskip 0) fcl=$FCL"
+cd $RUN && SL7_SETUP=$S/setup-aurora-run.sh $S/in-aurora-sl7.sh bash -c "
+  echo scn_on_pythonpath=\$(echo \$PYTHONPATH | tr : '\n' | grep -c scn); echo WIRECELL_PATH=\$WIRECELL_PATH
+  $S/smoke-1evt.sh $RUN/evt0 $RECO1 0 $FCL
+"
+
+echo "=== B2. $NEVT events in parallel (nskip 1..$NEVT), one process each, taskset $CORES cores (skipping core 0)"
+cd $RUN && SL7_SETUP=$S/setup-aurora-run.sh $S/in-aurora-sl7.sh bash -c "
+  t0=\$(date +%s)
+  for k in \$(seq 1 $NEVT); do
+    c=\$(( 1 + (k-1)*$CORES )); ( taskset -c \$c-\$((c+$CORES-1)) $S/smoke-1evt.sh $RUN/evt\$k $RECO1 \$k $FCL > $RUN/evt\$k.summary 2>&1 ) &
+  done; wait
+  echo parallel_wall_s=\$(( \$(date +%s) - t0 ))
+  for k in \$(seq 1 $NEVT); do echo \"evt\$k: \$(grep -E '^rc=' $RUN/evt\$k.summary) \$(grep -E 'dl_vertex_failed|audit=' $RUN/evt\$k.summary | tr '\n' ' ') \$(grep -o 'trees: [0-9]*' $RUN/evt\$k.summary)\"; done
+"
+echo "=== END $(date)"

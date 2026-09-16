@@ -1,0 +1,108 @@
+#!/bin/bash
+#PBS -N wct-lwc-build
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/build-wct-lwc.out
+# Aurora port of issues/27-polaris-production/scripts/build-wct-lwc.pbs (Recipe A').
+# Build WCT (polaris-build-fixes) into $OPT and larwirecell (dev-v10_14_02_02) in
+# the MRB area, on one compute node inside the fnal-dev-sl7 image, against
+# twester's Flare UPS tree + our $Y/products overlay.  Re-runnable (wcb and make
+# are incremental).  qsub -v STAGES=lwc to rerun only larwirecell.
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+OPT=$Y/opt
+MRB=$Y/larsoft-wct/v10_14_02
+NJ=${NJ:-96}
+J=${PBS_JOBID%%.*}
+echo "=== START $(date) on $(hostname) job $J image=${SL7_IMAGE:-auto} mode='${APPTAINER_MODE:-}'"
+export Y SL7_IMAGE=${SL7_IMAGE:-} APPTAINER_MODE=${APPTAINER_MODE:-}
+[ -n "$SL7_IMAGE" ] || unset SL7_IMAGE
+unset LD_PRELOAD
+module load apptainer >/dev/null 2>&1; module load fuse-overlayfs >/dev/null 2>&1
+echo "=== 0. node + dev image"; hostname; nproc; free -g | sed -n 2p; apptainer --version; echo "max_user_namespaces=$(cat /proc/sys/user/max_user_namespaces)"
+if [ ! -f $Y/images/fnal-dev-sl7.sif ]; then
+  echo "--- pulling docker://fermilab/fnal-dev-sl7 through the proxy (one-time, wcb configure needs the -devel headers slf7.sif lacks)"
+  mkdir -p $Y/images; export HTTP_PROXY=http://proxy.alcf.anl.gov:3128 HTTPS_PROXY=http://proxy.alcf.anl.gov:3128 http_proxy=http://proxy.alcf.anl.gov:3128 https_proxy=http://proxy.alcf.anl.gov:3128
+  export APPTAINER_CACHEDIR=/tmp/apptainer-cache-$USER APPTAINER_TMPDIR=/tmp/apptainer-tmp-$USER; mkdir -p $APPTAINER_CACHEDIR $APPTAINER_TMPDIR
+  ( time timeout 1500 apptainer pull $Y/images/fnal-dev-sl7.sif.$J docker://fermilab/fnal-dev-sl7:latest ) 2>&1 | tail -3
+  [ -f $Y/images/fnal-dev-sl7.sif.$J ] && mv -n $Y/images/fnal-dev-sl7.sif.$J $Y/images/fnal-dev-sl7.sif; rm -f $Y/images/fnal-dev-sl7.sif.$J
+fi
+ls -l $Y/images/ 2>&1
+SL7_SETUP=none timeout 120 $S/in-aurora-sl7.sh bash -c 'cat /etc/redhat-release; ls /usr/include/bzlib.h' || { echo "container does not run (mode '${APPTAINER_MODE:-}'); stopping"; echo "=== END $(date)"; exit 1; }
+
+STAGES=${STAGES:-wct lwc}
+if [[ " $STAGES " == *" wct "* ]]; then
+echo "=== 1. WCT install (-j$NJ)"
+cd $Y/wire-cell-toolkit && git rev-parse HEAD | tee $Y/aurora-build-logs/wct-build-commit.txt && git status --short | head -3
+$S/in-aurora-sl7.sh bash -c "
+  set -o pipefail
+  cat /etc/redhat-release; which g++ python3 patchelf; g++ --version | head -1
+  cd $Y/wire-cell-toolkit
+  [ -f build/c4che/_cache.py ] || { echo 'no configure cache: running configure'; time $S/configure-wct-aurora.sh 2>&1 | tail -8; }
+  grep -E 'INCLUDES_SPDLOG|LIBPATH_SPDLOG' build/c4che/_cache.py | cut -c1-200
+  time python3 ./wcb -p --notests install -j$NJ 2>&1 | grep -v '^\[' | tail -40
+  echo WCB_RC=\${PIPESTATUS[0]}
+  echo '--- gates (procedure doc section 1)'
+  echo nlibs=\$(ls $OPT/lib/libWireCell*.so | wc -l) '(want 19 incl. Mcs)'; ls $OPT/lib/libWireCellMcs.so
+  echo single_threaded_syms=\$(nm -D -u $OPT/lib/libWireCellUtil.so $OPT/lib/libWireCellClus.so | grep -c __libc_single_threaded) '(want 0)'
+  echo fmt_needed=\$(readelf -d $OPT/lib/libWireCellUtil.so | grep -c 'NEEDED.*fmt') '(want 0)'; readelf -d $OPT/lib/libWireCellUtil.so | grep -E 'RUNPATH|RPATH' | grep -o 'spdlog/v1_14_1[^:]*' | head -1
+  mkdir -p $OPT/include/WireCellUtil/custard && cp -v util/inc/WireCellUtil/custard/miniz.h $OPT/include/WireCellUtil/custard/
+  echo '--- 1a. strip build-tree RPATH'
+  n=0; for f in $OPT/lib/libWireCell*.so $OPT/lib/libWCP*.so $OPT/bin/wire-cell $OPT/bin/wcsonnet; do
+    [ -e \"\$f\" ] || continue
+    old=\$(patchelf --print-rpath \"\$f\"); echo \"\$old\" | grep -q wire-cell-toolkit/build || continue
+    rest=\$(echo \"\$old\" | tr : '\n' | grep -v wire-cell-toolkit/build | grep -v \"^$OPT/lib\$\" | paste -sd:)
+    patchelf --force-rpath --set-rpath \"$OPT/lib\${rest:+:\$rest}\" \"\$f\" && n=\$((n+1))
+  done; echo rpath_stripped=\$n
+  echo '--- ldd gate with build/ hidden'
+  mv build build.HIDDEN; nf=0; for f in $OPT/lib/libWireCell*.so $OPT/bin/wire-cell; do nf=\$((nf + \$(ldd \"\$f\" | grep -c 'not found'))); done; mv build.HIDDEN build
+  echo ldd_not_found=\$nf '(want 0)'
+  echo WCT_STAGE_DONE
+"
+grep -q "WCB_RC=0" $Y/aurora-build-logs/build-wct-lwc.out || { echo "WCT build failed; stopping."; echo "=== END $(date)"; exit 1; }
+fi
+if [[ " $STAGES " == *" lwc "* ]]; then
+
+echo "=== 2. larwirecell (mrb) against $OPT"
+if [ ! -d $MRB/srcs/larwirecell ]; then
+  echo "--- creating the MRB area $MRB (mrb newDev -v v10_14_02_02 -q e26:prof; srcs/larwirecell = clone of $Y/larwirecell)"
+  mkdir -p $MRB
+  $S/in-aurora-sl7.sh bash -c "
+    setup mrb
+    cd $MRB && mrb newDev -v v10_14_02_02 -q e26:prof 2>&1 | tail -3
+    source $MRB/localProducts_larsoft_v10_14_02_02_e26_prof/setup >/dev/null 2>&1
+    cd $MRB/srcs && git clone -q -b dev-v10_14_02_02 $Y/larwirecell larwirecell && git -C larwirecell log --oneline -1
+    mrb uc 2>&1 | tail -2
+  "
+fi
+$S/in-aurora-sl7.sh bash -c "
+  set -o pipefail
+  export WIRECELL_FQ_DIR=$OPT; export CMAKE_PREFIX_PATH=$OPT:\${CMAKE_PREFIX_PATH:-}
+  setup mrb
+  source $MRB/localProducts_larsoft_v10_14_02_02_e26_prof/setup >/dev/null 2>&1
+  # mrbsetenv is an alias from \`setup mrb\`; aliases do not expand in scripts -> source the file it points at.
+  source \$MRB_DIR/libexec/mrbSetEnv >/dev/null 2>&1 || { echo mrbSetEnv failed; source \$MRB_DIR/libexec/mrbSetEnv 2>&1 | tail -8; }
+  echo MRB_BUILDDIR=\$MRB_BUILDDIR
+  cd \$MRB_BUILDDIR && mrb z >/dev/null 2>&1; source \$MRB_DIR/libexec/mrbSetEnv >/dev/null 2>&1   # zap: a previous configure may have cached spdlog v1_9_2
+  ups active | grep -E 'spdlog|fmt |sbndcode|larsoft '
+  time mrb b -j$NJ 2>&1 | grep -v '^\[' | tail -30
+  echo MRB_RC=\${PIPESTATUS[0]}
+  echo '--- configure sanity: larwirecell must see opt WireCell, not the tree'
+  grep -h -E 'WireCell_INCLUDE_DIR|spdlog_DIR' \$MRB_BUILDDIR/CMakeCache.txt | head -3
+  echo '--- deploy'
+  D=$OPT/larwirecell/v10_01_28/slf7.x86_64.e26.prof/lib; mkdir -p \$D $OPT/larwirecell/v10_01_28/fcl
+  ls \$MRB_BUILDDIR/larwirecell/slf7.x86_64.e26.prof/lib/*.so | wc -l
+  cp -v \$MRB_BUILDDIR/larwirecell/slf7.x86_64.e26.prof/lib/*.so \$D/ | wc -l
+  find $MRB/srcs/larwirecell -name '*.fcl' -exec cp {} $OPT/larwirecell/v10_01_28/fcl/ \; ; ls $OPT/larwirecell/v10_01_28/fcl | wc -l
+  echo '--- ldd gate: every libWireCell* from opt, no tree wirecell product'
+  for f in \$D/*.so; do ldd \$f | grep -E 'libWireCell' | grep -v \"$OPT/lib\" ; done | sort -u | head -5
+  echo tree_wirecell_refs=\$(for f in \$D/*.so; do ldd \$f; done | grep -c 'products/wirecell/\|scisoft/larsoft/wirecell/')  '(want 0)'
+  echo LWC_STAGE_DONE
+"
+fi
+echo "=== END $(date)"
