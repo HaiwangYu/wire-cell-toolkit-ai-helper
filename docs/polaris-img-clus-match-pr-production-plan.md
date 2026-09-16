@@ -285,10 +285,27 @@ sbndcode `v10_14_02_03`), input = Avinay's BNB nu+cosmic reco1 file
   into `sbnd/` (deleted; wrapper now sets `ulimit -c 0`). To fix on the
   wcp-porting-validation side or drop the preflip step.
 
-Not yet done: the 300-event cross-machine comparison against the FNAL
-reference (phase 2), and the ncpi0 sample (its reco1 files exist only under
-`/pnfs/sbnd/scratch/users/abhat/BNB_Cosmics_NCPi0_GenG4/detsim/` at Fermilab;
-nothing ncpi0 on Eagle beyond gen-level files and `.npz` references).
+**Gen2 data, 2026-09-16 (job `7626743`, `TAG=ncsb-data`):** the user staged
+the NC-sideband sample to
+`yuhw/sbnd-gen2-data/nc-sideband-lynn/filtered-reco1/nc-sideband_filtered_frameshift.root`
+(19 events, run 18255, `Fall25-Run1_BNB_Dev_bnblight` reco1 filtered to the
+19 RSE in `nc-sideband-rse.csv`, `FrameShiftInfo` from process
+`FILTERFRAMESHIFT` already attached, `sptpc2d` wire tags, no MC truth). With
+`wcls-img-clus-matching-xin-data.fcl`: **19/19 rc=0, `audit=ok`, DL vertex 0
+failures, 8 trees each with `T_tagger`/`T_kine` at 1 entry**; event 0 cold
+250 s (62 s first torch import), the other 18 in parallel 33-85 s each
+(2 cores each, 36 of 32 cores oversubscribed), RSS 1.94-1.97 GB; outputs
+~5.5 MB/event; run dir `production-prep/ncsb-data-20260916-0345/` with
+`rse-by-nskip.tsv` for the comparison against the FNAL reference
+`tracking-pr.root` (to be uploaded by the user; phase 2).
+
+Toolkit pin decision (user, 2026-09-16): **stay on master-based WCT**
+(`polaris-build-fixes` = master `67e2eba7` + warning fixes) until the ALCF
+workflow is validated; do not move to Xin's `c203b400`
+(`origin/apply-pointcloud`, 41 commits ahead, the FNAL `prod-2026-09-14` pin).
+
+Still open: the MC ncpi0 reco1 files exist only under
+`/pnfs/sbnd/scratch/users/abhat/BNB_Cosmics_NCPi0_GenG4/detsim/` at Fermilab.
 
 ## 2. Sizing
 
