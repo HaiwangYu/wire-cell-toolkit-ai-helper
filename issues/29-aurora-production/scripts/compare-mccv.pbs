@@ -8,47 +8,64 @@
 #PBS -j oe
 #PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/compare-mccv.out
 # T2 of docs/aurora-1step-validation-plan.md: compare an Aurora per-event run (evtK/ from
-# smoke.pbs) of the MC CV pilot against the FNAL reference run-C-noh5, with the reference's
-# own tools (deep_compare.py, compare_bee_zips.py, reference_checksums.py).  ROOT needs the
-# SL7 container -> a job.
-#   qsub -v "RUN=<aurora run dir>[,REF=<reference dir>]" compare-mccv.pbs
-# Writes $RUN/cmp-mccv/{deep_compare,bee_compare,checksums,checksums.diff}.txt and a
-# harness-style layout $RUN/harness/{tracking-pr,bee}/ named by RSE.
+# smoke.pbs) against a FNAL reference run with the reference's own tools (deep_compare.py,
+# compare_bee_zips.py, reference_checksums.py).  ROOT needs the SL7 container -> a job.
+#
+#   qsub -v "RUN=<aurora run dir>[,REF=<reference dir>][,REFRUN=<dir with tracking-pr/ bee/>][,MANIFEST=<manifest>][,CHECKSUMS=<file>][,SCRIPTS=<dir>]" compare-mccv.pbs
+# Defaults = the 18-event MC CV pilot layout (r3-pilot-mccv-reference); for the 50-event
+# bench (r4-avinay-sep16-test): REFRUN=$REF/fnal/run MANIFEST=$REF/fnal/lists/bench50.manifest
+# CHECKSUMS=$REF/fnal/REFERENCE-CHECKSUMS.txt.
+# Writes $RUN/cmp-mccv/{deep_compare,bee_compare,checksums,checksums.diff,branch_diff}.txt,
+# a harness-style layout $RUN/harness/{tracking-pr,bee}/ named by RSE, and
+# $RUN/bee-upload/{bee-aurora.zip,bee-reference.zip,bee-order.txt} (all events, ascending event
+# number, same order in both) for `upload-to-bee.sh` on a UAN.
 set -u
 Y=/lus/flare/projects/neutrinoGPU/yuhw
 S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
 S27=$Y/wire-cell-toolkit-ai-helper/issues/27-polaris-production/scripts
+AI=$Y/wire-cell-toolkit-ai-helper
 RUN=${RUN:?}; REF=${REF:-$Y/production-prep/r3-pilot-mccv-reference}
+REFRUN=${REFRUN:-$REF/run-C-noh5}; MANIFEST=${MANIFEST:-$REF/pilot.manifest}
+CHECKSUMS=${CHECKSUMS:-$REF/REFERENCE-CHECKSUMS-run-C-noh5.txt}; SCRIPTS=${SCRIPTS:-$REF/scripts}
 export Y
-echo "=== START $(date) on $(hostname) job ${PBS_JOBID%%.*} RUN=$RUN REF=$REF"
+echo "=== START $(date) on $(hostname) job ${PBS_JOBID%%.*} RUN=$RUN REFRUN=$REFRUN MANIFEST=$MANIFEST"
 
 echo "=== 1. RSE per nskip from Trun, harness-style layout (tracking-pr_rR_sS_eE.root, bee_rR_sS_eE.zip)"
-cd $RUN && SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh python3 $S27/rse-by-nskip.py $RUN 2>&1 | tail -20
-H=$RUN/harness; rm -rf $H; mkdir -p $H/tracking-pr $H/bee
-echo "--- manifest check (nskip -> event as predicted by pilot.manifest)"
+cd $RUN && SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh python3 $S27/rse-by-nskip.py $RUN 2>&1 | tail -3
+H=$RUN/harness; rm -rf $H; mkdir -p $H/tracking-pr $H/bee $RUN/bee-upload
+echo "--- manifest check (nskip -> event as predicted by the manifest)"
+P=$RUN/bee-upload/rse-problems.txt; : > $P
 while IFS=$'\t' read -r k run sub evt trees bytes; do
-  [ "$k" = nskip ] && continue; [ "$run" = - ] && { echo "nskip $k: no tracking-pr.root"; continue; }
-  pred=$(awk -v k=$k '$2==k {print $5}' $REF/pilot.manifest)
-  [ "$pred" = "$evt" ] && ok=ok || ok="MISMATCH(manifest says $pred)"
-  echo "nskip $k -> r${run} s${sub} e${evt} trees=$trees rse_check=$ok"
+  [ "$k" = nskip ] && continue; [ "$run" = - ] && { echo "nskip $k: no tracking-pr.root" >> $P; continue; }
+  pred=$(awk -v k=$k '$2==k {print $5}' $MANIFEST)
+  [ "$pred" = "$evt" ] || echo "nskip $k -> r${run} s${sub} e${evt} trees=$trees rse_check=MISMATCH(manifest says $pred)" >> $P
   ln -sf $RUN/evt$k/tracking-pr.root $H/tracking-pr/tracking-pr_r${run}_s${sub}_e${evt}.root
   ln -sf $RUN/evt$k/mabc.zip $H/bee/bee_r${run}_s${sub}_e${evt}.zip
-done < $RUN/rse-by-nskip.tsv
-echo "ours: $(ls $H/tracking-pr | wc -l) tracking-pr, $(ls $H/bee | wc -l) bee; reference: $(ls $REF/run-C-noh5/tracking-pr | wc -l) / $(ls $REF/run-C-noh5/bee | wc -l)"
+  echo "$evt r${run}_s${sub}_e${evt}"
+done < $RUN/rse-by-nskip.tsv | sort -n | awk '{print NR-1, $2}' > $RUN/bee-upload/bee-order.txt
+echo "rse_check: $(wc -l < $RUN/bee-upload/bee-order.txt) events, $(wc -l < $P) problems; ours: $(ls $H/tracking-pr | wc -l) tracking-pr, $(ls $H/bee | wc -l) bee; reference: $(ls $REFRUN/tracking-pr | wc -l) / $(ls $REFRUN/bee | wc -l)"; cat $P
+echo "candidates (8 trees): ours $(awk -F'\t' 'NR>1 && $5==8' $RUN/rse-by-nskip.tsv | wc -l), reference $(grep -c ' T_kine ' $CHECKSUMS)"
 
 echo "=== 2. deep_compare (plan section 5 layout: cmp/evt_E = reference, cmp/ours = Aurora)"
 C=$RUN/cmp-mccv; rm -rf $C; mkdir -p $C/cmp/ours
-for f in $REF/run-C-noh5/tracking-pr/*.root; do e=${f##*_e}; e=${e%.root}; mkdir -p $C/cmp/evt_$e; ln -sf $f $C/cmp/evt_$e/tracking-pr.root; done
+for f in $REFRUN/tracking-pr/*.root; do e=${f##*_e}; e=${e%.root}; mkdir -p $C/cmp/evt_$e; ln -sf $f $C/cmp/evt_$e/tracking-pr.root; done
 for f in $H/tracking-pr/*.root; do e=${f##*_e}; ln -sf $f $C/cmp/ours/tracking-pr_$e; done
+ZO=""; ZR=""; while read -r i rse; do ZO="$ZO $H/bee/bee_$rse.zip"; ZR="$ZR $REFRUN/bee/bee_$rse.zip"; done < $RUN/bee-upload/bee-order.txt
 SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh bash -c "
-  python3 $REF/scripts/deep_compare.py $C/cmp $C/cmp/ours aurora 2>&1 | tee $C/deep_compare.txt
+  python3 $SCRIPTS/deep_compare.py $C/cmp $C/cmp/ours aurora 2>&1 | tee $C/deep_compare.txt | grep -vE 'IDENTICAL'
+  grep -c IDENTICAL $C/deep_compare.txt | sed 's/^/IDENTICAL events: /'
   echo '=== 3. compare_bee_zips (reference vs Aurora)'
-  python3 $REF/scripts/compare_bee_zips.py $REF/run-C-noh5/bee $H/bee 2>&1 | tee $C/bee_compare.txt | tail -25
+  python3 $SCRIPTS/compare_bee_zips.py $REFRUN/bee $H/bee 2>&1 | tee $C/bee_compare.txt | grep -vE ' identical' | tail -25
   echo '=== 4. reference_checksums diff (host-independent hashes)'
-  python3 $REF/scripts/reference_checksums.py $H > $C/checksums.txt 2>$C/checksums.err; echo checksums_rc=\$?
-  diff $C/checksums.txt $REF/REFERENCE-CHECKSUMS-run-C-noh5.txt > $C/checksums.diff; echo \"checksum lines: ours \$(wc -l < $C/checksums.txt), reference \$(wc -l < $REF/REFERENCE-CHECKSUMS-run-C-noh5.txt), differing lines \$(grep -c '^[<>]' $C/checksums.diff)\"
+  python3 $SCRIPTS/reference_checksums.py $H > $C/checksums.txt 2>$C/checksums.err; echo checksums_rc=\$?
+  diff $C/checksums.txt $CHECKSUMS > $C/checksums.diff; echo \"checksum lines: ours \$(wc -l < $C/checksums.txt), reference \$(wc -l < $CHECKSUMS), differing lines \$(grep -c '^[<>]' $C/checksums.diff)\"
   head -6 $C/checksums.diff
   echo '=== 5. every-branch census (issue 27 tool) as a second opinion'
   python3 $S27/branch-diff-tracking-pr.py $C/cmp $C/cmp/ours T_tagger T_kine T_cluster T_rec_charge Trun T_bad_ch T_proj T_proj_data 2>&1 | tee $C/branch_diff.txt | tail -6
+  echo '=== 6. Bee merge for upload (ascending event number; same order for Aurora and reference)'
+  python3 $AI/issues/18-data-1000evt-beamon-beamoff/scripts/merge_bee.py $RUN/bee-upload/bee-aurora.zip $ZO | tail -1
+  python3 $AI/issues/18-data-1000evt-beamon-beamoff/scripts/merge_bee.py $RUN/bee-upload/bee-reference.zip $ZR | tail -1
+  ls -l $RUN/bee-upload/
 " 2>&1 | grep -v '^INFO'
+echo "=== next (UAN): cd $RUN/bee-upload && for z in bee-aurora.zip bee-reference.zip; do bash $Y/wcp-porting-validation/upload-to-bee.sh \$z | tail -1; done"
 echo "=== END $(date)"
