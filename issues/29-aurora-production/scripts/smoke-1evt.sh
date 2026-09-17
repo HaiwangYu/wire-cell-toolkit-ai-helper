@@ -9,7 +9,7 @@ OUT=$1; IN=$2; K=${3:-0}; FCL=${4:-wcls-img-clus-matching-xin.fcl}
 WCP_SBND=${WCP_SBND:-/lus/flare/projects/neutrinoGPU/yuhw/wcp-porting-validation/sbnd}
 mkdir -p "$OUT" && cd "$OUT" || exit 2
 echo "host=$(hostname) start=$(date -u +%FT%TZ) fcl=$FCL nskip=$K in=$IN"
-echo "WCT=$(git -C ${WCT_SRC:-/lus/flare/projects/neutrinoGPU/yuhw/wire-cell-toolkit} rev-parse --short HEAD) LWC=$(git -C /lus/flare/projects/neutrinoGPU/yuhw/larsoft-wct/v10_14_02/srcs/larwirecell rev-parse --short HEAD 2>/dev/null)"
+echo "WCT=$(cd ${WCT_SRC:-/lus/flare/projects/neutrinoGPU/yuhw/wire-cell-toolkit} && git rev-parse --short HEAD) LWC=$(cd /lus/flare/projects/neutrinoGPU/yuhw/larsoft-wct/v10_14_02/srcs/larwirecell 2>/dev/null && git rev-parse --short HEAD)"   # SL7 git 1.8 has no -C
 t0=$(date +%s)
 /usr/bin/time -v -o time.txt timeout -k 60 3600 \
     lar -n 1 --nskip "$K" -c "$FCL" -s "$IN" --no-output > lar.log 2>&1
