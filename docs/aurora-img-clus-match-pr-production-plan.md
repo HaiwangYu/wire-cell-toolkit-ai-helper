@@ -319,7 +319,7 @@ Memory: 100 x 2.2 GB = 220 GB of ~1 TB. Inputs: 28.4 MB/event -> **~28 TB for
    shows FUSE works and only for bootstrap.
 5. Who moves the 4 non-git items Eagle/FNAL -> Flare (Globus), and when.
 
-## 7. Status (2026-09-16, end of day 1)
+## 7. Status (2026-09-17)
 
 | step | state |
 |---|---|
@@ -330,7 +330,7 @@ Memory: 100 x 2.2 GB = 220 GB of ~1 TB. Inputs: 28.4 MB/event -> **~28 TB for
 | A2 larwirecell `dev-v10_14_02_02` a02a1a4 | **built + deployed** (11 libs, 20 fcl; job 8832409) |
 | operating-point gate | **0 differences** |
 | A3 MC smoke (Gen2 reco1, 9 events) | **9/9 pass**, 20-79 s/event, RSS 1.45-1.88 GB, DL vertex on |
-| A3 19-event data validation vs FNAL + Polaris | **blocked**: nc-sideband file, FNAL/Polaris reference runs, `XGB_nue_seed2_0923.xml` not yet on Flare (Globus) |
+| A3 19-event data validation vs FNAL + Polaris | **EXACT 19/19 both ways** (2026-09-17, run `ncsb-data-20260917-1313`, compare job 8834303): identical T_kine/T_tagger hashes, every T_rec_charge point, 0 differing (tree, branch) pairs; Bee https://www.phy.bnl.gov/twister/bee/set/863b9ee0-d159-4b91-b633-e27f3883b207/event/list/ |
 | A4 scaling, A5 production | not started |
 
 Traps found on day 1 (all fixed in `issues/29-aurora-production/scripts/`): piped `module load` loses PATH; a UPS db needs `.upsfiles`; `unsetup wirecell` without `-j` drops root/python; fork clone has no tags for `git describe`; `MRB_PROJECT=larsoft` for `mrb newDev`; `clus.jsonnet` hard-codes a `/cvmfs/sbnd...` path -> bind the Flare tree there.
