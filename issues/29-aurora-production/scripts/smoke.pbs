@@ -36,6 +36,22 @@ cd $RUN && SL7_SETUP=$S/setup-aurora-ap.sh $S/in-aurora-sl7.sh bash -c "
 "
 fi
 
+if [ "${DO_GATES:-0}" = 1 ]; then
+echo "=== G. pre-flight gates G1-G6 of docs/aurora-1step-validation-plan.md (no regeneration of the operating point)"
+cd $RUN && SL7_SETUP=$S/setup-aurora-run.sh $S/in-aurora-sl7.sh bash -c "
+  echo '--- G1 build tree = run tree'; git -C $Y/wire-cell-toolkit rev-parse HEAD; git -C $Y/wire-cell-toolkit status --short | head -3; cat $Y/aurora-build-logs/wct-build-commit.txt
+  git -C $Y/wcp-porting-validation rev-parse HEAD; git -C $Y/wcp-porting-validation status --short | head -3
+  git -C $Y/wire-cell-data rev-parse HEAD; git -C $Y/wire-cell-data status --short | head -3
+  echo WIRECELL_PATH=\$WIRECELL_PATH | tr : '\n'
+  echo '--- G2 no build-tree RPATH'; for f in $Y/opt/lib/libWireCellClus.so $Y/opt/bin/wire-cell $Y/opt/larwirecell/v10_01_28/slf7.x86_64.e26.prof/lib/libWireCellAIML.so; do echo \"\$(basename \$f): build-dirs=\$(readelf -d \$f | grep -E 'RPATH|RUNPATH' | grep -c build)\"; done
+  echo '--- G3 flash_by_gid:' \$(strings $Y/opt/lib/libWireCellClus.so | grep -c flash_by_gid)
+  echo '--- G4 operating-point gate (compile-both PR_OP=sync)'; mkdir -p $RUN/g4 && PR_OP=sync $S27/compile-both-polaris.sh $RUN/g4 > $RUN/g4/compile-both.log 2>&1; echo \"G4_RC=\$? \$(tail -1 $RUN/g4/compile-both.log)\"
+  echo '--- G5 DL vertex import'; python3 -c 'import sparseconvnet, torch; print(\"sparseconvnet ok, torch\", torch.__version__)'; echo G5_RC=\$?
+  echo '--- G6 spdlog/fmt'; wire-cell --version; ldd $Y/opt/lib/libWireCellUtil.so | grep -E 'spdlog|fmt'
+  echo '--- md5 of the weights'; md5sum $Y/wire-cell-data/uboone/weights/XGB_nue_seed2_0923.xml $Y/wire-cell-data/uboone/scn_vtx/t48k-m16-l5-lr5d-res0.5-CP24.pth
+"
+fi
+
 echo "=== B0. eventdump product check (the fcl reads simtpc2d:dnnsp wires, wienersummary, badmasks, opflashtpc0/1, ionandscint:priorSCE SEDs, MCTruth/MCParticle)"
 mkdir -p $RUN/dump && cd $RUN/dump && SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh bash -c "
   lar -c eventdump.fcl -s $RECO1 -n 1 > dump.log 2>&1; echo dump_rc=\$?
