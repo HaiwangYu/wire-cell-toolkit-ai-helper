@@ -106,3 +106,24 @@ for tn in ['T_kine','T_tagger','T_rec_charge']:
                 except TypeError: rel=float('nan')
                 e=d.setdefault(br,[0,0.0]); e[0]+=1; e[1]=max(e[1],rel)
     print(tn, {k:(n,'%.1e'%r) for k,(n,r) in d.items()} or 'identical')
+EOF
+```
+
+## 7. What to report (comment on #26)
+
+1. G1–G6 outputs (commit hashes, md5s, `WIRECELL_PATH`, RPATH check, `compile-both` tail).
+2. T1 table (rc, trees, layers, DL fallbacks, wall/RSS per event).
+3. `deep_compare` summary line + `compare_bee_zips` summary line, and the per-event lines that are not IDENTICAL.
+4. For any difference: the per-branch table above for the first divergent event.
+5. Where your outputs live on Aurora.
+
+## 8. Traps that bit us at FNAL (so you don't re-find them)
+
+- Pin the **branch**, not the build — `WIRECELL_PATH` reads the checkout live.
+- wcb leaves **RPATH into the build tree** → `patchelf --force-rpath --set-rpath`.
+- The **operating point** file is generated; it goes stale on every toolkit move (G4). Never run the generator on a non-bare compile dir.
+- **DL vertex falls back silently**; only `audit` / `DL vertex failed` reveal it.
+- `run-harness.sh` **requires the fcl argument**; a wrong default once failed 13,217 events silently.
+- A `--nskip` mislabel is invisible unless `Trun` is checked (the harness does).
+- Byte-comparing ROOT files is meaningless; compare content.
+- Multi-hour runs at FNAL needed a Kerberos renewer — not applicable on Aurora, but check that the job's filesystem access does not depend on a token that expires mid-run.
