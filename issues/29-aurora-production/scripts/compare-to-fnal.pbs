@@ -1,0 +1,67 @@
+#!/bin/bash
+#PBS -N wct-compare
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug-scaling
+#PBS -l select=1
+#PBS -l walltime=00:20:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/compare.out
+# Aurora port of issues/27-polaris-production/scripts/compare-to-fnal.sh.  The ROOT
+# parts need the SL7 container, which only runs in a job on Aurora; the Bee upload
+# needs the network, which only the login node has -> after this job, on a UAN:
+#   cd $RUN/bee-upload && bash $Y/wcp-porting-validation/upload-to-bee.sh bee-aurora.zip
+#
+#   qsub -v "RUN=<aurora run dir (evtK/)>,FNAL=<fnal harness dir>[,POLARIS=<polaris run dir (evtK/ + rse-by-nskip.tsv)>]" compare-to-fnal.pbs
+# Writes $RUN/cmp-fnal/{deep_compare,branch_diff}.txt, $RUN/cmp-polaris/... and
+# $RUN/bee-upload/bee-aurora.zip (Aurora Bee zips merged in the FNAL bee-order).
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+S27=$Y/wire-cell-toolkit-ai-helper/issues/27-polaris-production/scripts
+AI=$Y/wire-cell-toolkit-ai-helper
+RUN=${RUN:?}; FNAL=${FNAL:?}; POLARIS=${POLARIS:-}
+export Y
+echo "=== START $(date) on $(hostname) job ${PBS_JOBID%%.*} RUN=$RUN FNAL=$FNAL POLARIS=$POLARIS"
+
+echo "=== 1. RSE per nskip from Trun"
+cd $RUN && SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh python3 $S27/rse-by-nskip.py $RUN 2>&1 | tail -21
+
+echo "=== 2. arms: Aurora vs FNAL (and vs Polaris)"
+C=$RUN/cmp-fnal; rm -rf $C; mkdir -p $C/aurora-evt $C/fnal-arm $C/aurora-bee $RUN/bee-upload
+while IFS=$'\t' read -r k run sub evt trees bytes; do
+  [ "$k" = nskip ] && continue; [ "$run" = - ] && continue
+  mkdir -p $C/aurora-evt/evt_$evt
+  ln -sf $RUN/evt$k/tracking-pr.root $C/aurora-evt/evt_$evt/tracking-pr.root
+  ln -sf $FNAL/run/tracking-pr/tracking-pr_r${run}_s${sub}_e${evt}.root $C/fnal-arm/tracking-pr_$evt.root
+  ln -sf $RUN/evt$k/mabc.zip $C/aurora-bee/bee_r${run}_s${sub}_e${evt}.zip
+done < $RUN/rse-by-nskip.tsv
+echo "events: $(ls $C/aurora-evt | wc -l); FNAL files resolving: $(find -L $C/fnal-arm -type f | wc -l)"
+if [ -n "$POLARIS" ]; then
+  CP=$RUN/cmp-polaris; rm -rf $CP; mkdir -p $CP/aurora-evt $CP/polaris-arm
+  while IFS=$'\t' read -r k run sub evt trees bytes; do
+    [ "$k" = nskip ] && continue; [ "$run" = - ] && continue
+    [ -d $C/aurora-evt/evt_$evt ] || continue
+    ln -sfn $C/aurora-evt/evt_$evt $CP/aurora-evt/evt_$evt
+    ln -sf $POLARIS/evt$k/tracking-pr.root $CP/polaris-arm/tracking-pr_$evt.root
+  done < $POLARIS/rse-by-nskip.tsv
+  echo "Polaris arm: $(find -L $CP/polaris-arm -type f | wc -l) files resolving"
+fi
+
+echo "=== 3. deep_compare + every-branch census"
+SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh bash -c "
+  python3 $AI/issues/20-campaign-summary/scripts/deep_compare.py $C/aurora-evt $C/fnal-arm 'Aurora (W) vs FNAL (arm)' | tee $C/deep_compare.txt
+  python3 $S27/branch-diff-tracking-pr.py $C/aurora-evt $C/fnal-arm T_tagger T_kine T_cluster T_rec_charge Trun T_bad_ch T_proj T_proj_data | tee $C/branch_diff.txt
+  if [ -n '$POLARIS' ]; then
+    echo '--- vs Polaris'
+    python3 $AI/issues/20-campaign-summary/scripts/deep_compare.py $RUN/cmp-polaris/aurora-evt $RUN/cmp-polaris/polaris-arm 'Aurora (W) vs Polaris (arm)' | tee $RUN/cmp-polaris/deep_compare.txt
+    python3 $S27/branch-diff-tracking-pr.py $RUN/cmp-polaris/aurora-evt $RUN/cmp-polaris/polaris-arm T_tagger T_kine T_cluster T_rec_charge Trun T_bad_ch T_proj T_proj_data | tee $RUN/cmp-polaris/branch_diff.txt
+  fi
+  echo '--- Bee merge in the FNAL bee-order'
+  Z=''; while read -r i rse; do Z=\"\$Z $C/aurora-bee/bee_\$rse.zip\"; done < $FNAL/bee-upload/bee-order.txt
+  cp $FNAL/bee-upload/bee-order.txt $RUN/bee-upload/
+  python3 $AI/issues/18-data-1000evt-beamon-beamoff/scripts/merge_bee.py $RUN/bee-upload/bee-aurora.zip \$Z | tail -1
+  ls -l $RUN/bee-upload/
+" 2>&1 | grep -v '^INFO'
+echo "=== next (UAN): cd $RUN/bee-upload && bash $Y/wcp-porting-validation/upload-to-bee.sh bee-aurora.zip"
+echo "=== END $(date)"
