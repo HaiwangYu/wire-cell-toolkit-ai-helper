@@ -274,7 +274,44 @@ Budget ~125-250 node-hours on 17257.
 
 ---
 
-## 4. Sizing on Aurora
+## 4. Sizing on Aurora (updated 2026-09-17 with measured Aurora runs)
+
+**Measured per event on Aurora** (Xeon Max 9470C, one `lar` per event, 17-18
+concurrent, `taskset` 2 hardware threads each, DL vertex on; Gen2 MC = the 9-event
+smoke on a prod1 file + the 18-event MC CV pilot, 27 events; data = the 19
+nc-sideband events):
+
+| | Gen2 MC (27 evt) | data (19 evt) |
+|---|---|---|
+| wall, warm process | 18-123 s (median ~45 s) | 37-93 s (median ~55 s) |
+| wall, cold first event on a node | 201-311 s (jsonnet compile + first torch import ~50-60 s) | |
+| peak RSS | 1.45-2.13 GB | 1.92-2.00 GB |
+| events with a neutrino candidate (8 trees, 21 Bee layers) | 10/27 = 37 % (5/18 in the pilot, 5/9 in the smoke) | 19/19 (RSE-filtered sample) |
+
+**Output sizes per event, Aurora Gen2 MC (mean over 27 events)**:
+
+| file | per event | 1M events | note |
+|---|---|---|---|
+| `mabc.zip` (Bee) | 5.41 MB | 5.4 TB | 0.95-10.6 MB; 18 or 21 JSON layers |
+| `trash-all-apa.tar.gz` | 1.75 MB | 1.75 TB | |
+| `nugraph.h5` | 1.23 MB | 1.23 TB | off in the FNAL reference config (`enable_nugraph_h5: "false"`) |
+| **`tracking-pr.root`** | **0.13 MB** | **0.13 TB (130 GB)** | 0.33 MB (0.23-0.59) with a candidate, 12 KB (4 trees: `Trun, T_bad_ch, T_cluster, T_proj`) without |
+| `tf-default.root` | 7 KB | 7 GB | art TFileService stub |
+| all four kept files | **8.5 MB** | **8.5 TB** | v1 assumed 7 MB (FNAL 6.8) |
+
+Data events are smaller in Bee (1.2 MB) and larger in `trash` (2.3 MB): 5.5 MB/event.
+
+**If only `tracking-pr.root` is kept: ~130 GB for 1M events** at the measured 37 %
+candidate fraction, and **330 GB as the upper bound** if every event had a candidate.
+Storage is then irrelevant; the constraint becomes the **file count**: 1M
+`tracking-pr.root` files of 12-590 KB on a project directory that already holds
+223 M files (R7). Merge per input file (`hadd` of the ~13 events, ~75k files of
+~1.7 MB, or one tar per input file); the RSE is in `Trun` so nothing is lost. The
+per-event Bee zips and `trash` tarballs would only be kept for a subsample.
+
+**Throughput model** (per-core speed of SPR vs Milan and the 100-process start-up
+behaviour on Lustre are still to be measured in A4(a); the table brackets the
+measured 18-123 s single-event wall):
 
 | | per event 30 s | 45 s | 60 s |
 |---|---|---|---|
@@ -283,9 +320,10 @@ Budget ~125-250 node-hours on 17257.
 | 1M events on 128 `debug-scaling` nodes | 39 min | 59 min | 78 min (2 jobs) |
 | 1M events on 16 `capacity` nodes | 5.2 h | 7.8 h | 10.4 h |
 
-Memory: 100 x 2.2 GB = 220 GB of ~1 TB. Inputs: 28.4 MB/event -> **~28 TB for
-1M events**, read in place from twester's tree (no copy). Outputs ~7 MB/event ->
-~7 TB, ~75k tar files. Per-core speed of SPR vs Milan is unknown: measure in A4(a).
+Memory: 100 x 2.1 GB = 210 GB of ~1 TB (measured peak 2.13 GB). Per-file granularity
+(`-n -1`, ~13 events) removes the 200-300 s cold start from all but the first event
+of each process. Inputs: 28.4 MB/event -> **~28 TB for 1M events**, read in place
+from twester's tree (no copy).
 
 ## 5. Risks
 
