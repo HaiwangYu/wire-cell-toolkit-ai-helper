@@ -1,0 +1,5 @@
+# run_frameshift.fcl with art fast-cloning disabled: merging reco1 files where a product (e.g.
+# raw::TimingReferenceInfo_xarapucadecoder__DECODE) is absent in some input files otherwise ends in
+# "Tree branches have different numbers of entries" at end-of-job (seen 2026-09-19, 985 vs 1000).
+#include "run_frameshift.fcl"
+outputs.out1.fastCloning: false
