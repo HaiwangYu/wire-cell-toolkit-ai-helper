@@ -1,0 +1,4 @@
+7154a44e7ab483b5b75c30834dc7da12  reco1/data_SBND2026A_InTime-Run1_reco1_frameshift_1000evt.root
+d245ff50fcbd1d70376e58b4fa761d6c  lists/data_SBND2026A_InTime-Run1_reco1_frameshift_1000evt.rse.tsv
+7b4870af83cf6914cedb98760e1a9224  lists/reco1-source-files.lst
+9797aaf2ae55b251edf11e7c4deeaec4  lists/SAMDEF.txt

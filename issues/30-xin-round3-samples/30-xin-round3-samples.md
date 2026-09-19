@@ -28,11 +28,22 @@ MC truth: **inside the reco1 files** (`simb::MCTruths_generator__GenieGen.`) plu
 ## Status
 
 - [x] lists fixed (2026-09-19 14:33; 5 CV + 11 nueCC files skipped as dCache `UNAVAILABLE`, replaced by the next online files)
-- [ ] MC copies /pnfs → FNAL staging (running)
-- [ ] beam-off frameshift merge (running)
-- [ ] truth TSVs, MD5SUMS, READMEs
+- [x] MC copies /pnfs → FNAL staging (2026-09-19 14:35; 154 + 225 files, sizes verified)
+- [x] beam-off frameshift merge (1,000 unique events, 21 runs, FrameShift product verified)
+- [x] truth TSVs, MD5SUMS, READMEs (14:50) — **STAGING COMPLETE**
 - [ ] wcgpu1 agent: rsync (instructions below), verify MD5SUMS, report here
 - [ ] Xin: confirm
+
+## Truth content (from the TSVs)
+
+| | MC CV (2,017 events) | MC nueCC (2,001 events) |
+|---|---|---|
+| true-neutrino rows | 3,647 | 3,786 |
+| events with ≥1 neutrino vertex in the active TPC | **954** (47 %) | 1,949 (97 %) |
+| of which νμCC in TPC | **687** | 107 |
+| of which νeCC in TPC | 9 | **1,946** |
+
+So the CV sample gives ~690 in-TPC νμCC events, not 2,000: rockbox events mostly have their neutrino in dirt/cryostat. Reaching ~2,000 in-TPC νμCC would need ~6,000 CV events (~165 GB) — open question to the owner; the tree can be extended incrementally (the wcgpu1 rsync is resumable).
 
 ## Instructions for the wcgpu1 agent
 
