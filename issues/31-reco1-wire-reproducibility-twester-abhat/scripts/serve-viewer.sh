@@ -16,7 +16,14 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 pat() { echo "bokeh serve --port [${1:0:1}]${1:1}"; }
 if [ "${1:-}" = "stop" ]; then
     PORT=${2:-5031}
-    pkill -f "$(pat "$PORT")" && echo "stopped the viewer on port $PORT" || echo "no viewer on port $PORT"
+    if pkill -f "$(pat "$PORT")"; then
+        # bokeh may be inside a long uproot read and not act on SIGTERM promptly
+        for i in 1 2 3 4 5; do pgrep -f "$(pat "$PORT")" >/dev/null || break; sleep 1; done
+        pgrep -f "$(pat "$PORT")" >/dev/null && pkill -9 -f "$(pat "$PORT")" && sleep 1
+        echo "stopped the viewer on port $PORT"
+    else
+        echo "no viewer on port $PORT"
+    fi
     exit 0
 fi
 PORT=${1:-5031}; shift || true
