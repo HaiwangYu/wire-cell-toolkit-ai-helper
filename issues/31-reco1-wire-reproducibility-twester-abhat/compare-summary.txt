@@ -1,0 +1,110 @@
+4f08-780d-177d-1e84 entry 0 RSE 1/8/1: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [27s]
+4f08-780d-177d-1e84 entry 1 RSE 1/8/2: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [115s]
+4f08-780d-177d-1e84 entry 2 RSE 1/8/4: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [218s]
+4f08-780d-177d-1e84 entry 3 RSE 1/8/9: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [222s]
+4f08-780d-177d-1e84 entry 4 RSE 1/8/13: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [234s]
+4f08-780d-177d-1e84 entry 5 RSE 1/8/14: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [244s]
+4f08-780d-177d-1e84 entry 6 RSE 1/8/15: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [247s]
+f356-90c1-0215-e140 entry 0 RSE 1/10/2: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [257s]
+f356-90c1-0215-e140 entry 1 RSE 1/10/5: dnnsp DIFF max|A-B|=2.772 n=75; gauss same wiener same; passthrough T=1 A=1  [260s]
+f356-90c1-0215-e140 entry 2 RSE 1/10/6: dnnsp DIFF max|A-B|=11.59 n=187; gauss same wiener same; passthrough T=1 A=1  [263s]
+f356-90c1-0215-e140 entry 3 RSE 1/10/9: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [271s]
+f356-90c1-0215-e140 entry 4 RSE 1/10/15: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [290s]
+7459-87c8-75c1-6f29 entry 0 RSE 1/3/9: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [317s]
+7459-87c8-75c1-6f29 entry 1 RSE 1/3/11: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [352s]
+867c-fb44-c652-5d54 entry 0 RSE 1/2/6: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [361s]
+867c-fb44-c652-5d54 entry 1 RSE 1/2/9: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [363s]
+867c-fb44-c652-5d54 entry 2 RSE 1/2/14: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [370s]
+3047-6e4e-6694-57cc entry 0 RSE 1/17/1: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [394s]
+3047-6e4e-6694-57cc entry 1 RSE 1/17/6: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [428s]
+3047-6e4e-6694-57cc entry 2 RSE 1/17/7: dnnsp DIFF max|A-B|=1.696 n=81; gauss DIFF wiener DIFF; passthrough T=1 A=1  [531s]
+3047-6e4e-6694-57cc entry 3 RSE 1/17/12: dnnsp DIFF max|A-B|=1.947 n=26; gauss same wiener same; passthrough T=1 A=1  [562s]
+3047-6e4e-6694-57cc entry 4 RSE 1/17/14: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [612s]
+8b63-0aca-23d7-0ab0 entry 0 RSE 1/13/2: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [629s]
+8b63-0aca-23d7-0ab0 entry 1 RSE 1/13/3: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [637s]
+8b63-0aca-23d7-0ab0 entry 2 RSE 1/13/10: dnnsp DIFF max|A-B|=1.379 n=26; gauss DIFF wiener DIFF; passthrough T=1 A=1  [655s]
+8b63-0aca-23d7-0ab0 entry 3 RSE 1/13/14: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [663s]
+8b63-0aca-23d7-0ab0 entry 4 RSE 1/13/15: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [666s]
+c4c4-468c-d5b6-e032 entry 0 RSE 1/6/1: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [681s]
+c4c4-468c-d5b6-e032 entry 1 RSE 1/6/4: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [689s]
+c4c4-468c-d5b6-e032 entry 2 RSE 1/6/7: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [699s]
+c4c4-468c-d5b6-e032 entry 3 RSE 1/6/12: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [718s]
+a964-b5d5-bad6-e3ac entry 0 RSE 1/12/1: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [725s]
+a964-b5d5-bad6-e3ac entry 1 RSE 1/12/10: dnnsp DIFF max|A-B|=1.491 n=37; gauss same wiener same; passthrough T=1 A=1  [731s]
+a964-b5d5-bad6-e3ac entry 2 RSE 1/12/11: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [735s]
+1846-ed4b-b660-a83f entry 0 RSE 1/14/3: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [741s]
+1846-ed4b-b660-a83f entry 1 RSE 1/14/12: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [752s]
+1846-ed4b-b660-a83f entry 2 RSE 1/14/15: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [760s]
+5bae-dbac-c685-fc52 entry 0 RSE 1/15/2: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [771s]
+5bae-dbac-c685-fc52 entry 1 RSE 1/15/3: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [791s]
+5bae-dbac-c685-fc52 entry 2 RSE 1/15/11: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [801s]
+5bae-dbac-c685-fc52 entry 3 RSE 1/15/15: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [807s]
+0d52-3071-98aa-b25d entry 0 RSE 1/4/1: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [815s]
+0d52-3071-98aa-b25d entry 1 RSE 1/4/9: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [816s]
+0d52-3071-98aa-b25d entry 2 RSE 1/4/11: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [819s]
+04cb-888a-ffaf-5808 entry 0 RSE 1/9/2: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [833s]
+04cb-888a-ffaf-5808 entry 1 RSE 1/9/4: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [837s]
+04cb-888a-ffaf-5808 entry 2 RSE 1/9/5: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [844s]
+04cb-888a-ffaf-5808 entry 3 RSE 1/9/10: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [845s]
+04cb-888a-ffaf-5808 entry 4 RSE 1/9/11: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [854s]
+04cb-888a-ffaf-5808 entry 5 RSE 1/9/12: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [856s]
+04cb-888a-ffaf-5808 entry 6 RSE 1/9/13: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [871s]
+04cb-888a-ffaf-5808 entry 7 RSE 1/9/14: dnnsp DIFF max|A-B|=1.893 n=105; gauss DIFF wiener DIFF; passthrough T=1 A=1  [881s]
+04cb-888a-ffaf-5808 entry 8 RSE 1/9/15: dnnsp DIFF max|A-B|=0.05135 n=26; gauss DIFF wiener DIFF; passthrough T=1 A=1  [896s]
+18ed-55fe-aa14-04ee entry 0 RSE 1/5/6: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [911s]
+18ed-55fe-aa14-04ee entry 1 RSE 1/5/9: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [912s]
+18ed-55fe-aa14-04ee entry 2 RSE 1/5/10: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [913s]
+18ed-55fe-aa14-04ee entry 3 RSE 1/5/13: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [918s]
+18ed-55fe-aa14-04ee entry 4 RSE 1/5/14: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [933s]
+199e-ec8c-cfaf-a30e entry 0 RSE 1/19/3: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [949s]
+199e-ec8c-cfaf-a30e entry 1 RSE 1/19/5: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [950s]
+199e-ec8c-cfaf-a30e entry 2 RSE 1/19/8: dnnsp DIFF max|A-B|=2.838 n=125; gauss DIFF wiener DIFF; passthrough T=1 A=1  [963s]
+199e-ec8c-cfaf-a30e entry 3 RSE 1/19/9: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [969s]
+199e-ec8c-cfaf-a30e entry 4 RSE 1/19/10: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [975s]
+199e-ec8c-cfaf-a30e entry 5 RSE 1/19/15: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [981s]
+4f85-52bc-5313-6d4b entry 0 RSE 1/11/12: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [984s]
+4f85-52bc-5313-6d4b entry 1 RSE 1/11/14: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [998s]
+006f-92f1-9cdf-bb8c entry 0 RSE 1/16/1: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [1016s]
+006f-92f1-9cdf-bb8c entry 1 RSE 1/16/2: dnnsp DIFF max|A-B|=2.276 n=33; gauss same wiener same; passthrough T=1 A=1  [1020s]
+006f-92f1-9cdf-bb8c entry 2 RSE 1/16/6: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1024s]
+006f-92f1-9cdf-bb8c entry 3 RSE 1/16/10: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1025s]
+006f-92f1-9cdf-bb8c entry 4 RSE 1/16/13: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1029s]
+1726-908d-e4eb-b537 entry 0 RSE 1/0/1: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1031s]
+1726-908d-e4eb-b537 entry 1 RSE 1/0/2: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [1044s]
+1726-908d-e4eb-b537 entry 2 RSE 1/0/6: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1050s]
+1726-908d-e4eb-b537 entry 3 RSE 1/0/7: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1055s]
+1726-908d-e4eb-b537 entry 4 RSE 1/0/9: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1058s]
+1726-908d-e4eb-b537 entry 5 RSE 1/0/10: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1062s]
+1726-908d-e4eb-b537 entry 6 RSE 1/0/11: dnnsp DIFF max|A-B|=4.925 n=65; gauss DIFF wiener DIFF; passthrough T=1 A=1  [1076s]
+a580-6d02-29fd-d041 entry 0 RSE 1/18/1: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1080s]
+17b2-7a19-0173-eaa0 entry 0 RSE 1/1/1: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1083s]
+17b2-7a19-0173-eaa0 entry 1 RSE 1/1/2: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1086s]
+17b2-7a19-0173-eaa0 entry 2 RSE 1/1/3: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1087s]
+17b2-7a19-0173-eaa0 entry 3 RSE 1/1/8: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [1101s]
+17b2-7a19-0173-eaa0 entry 4 RSE 1/1/15: dnnsp SAME; gauss DIFF wiener DIFF; passthrough T=1 A=1  [1114s]
+1e25-2b5b-7a6e-7dbb entry 0 RSE 1/7/3: dnnsp DIFF max|A-B|=8.221 n=71; gauss same wiener same; passthrough T=1 A=1  [1122s]
+1e25-2b5b-7a6e-7dbb entry 1 RSE 1/7/8: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1126s]
+1e25-2b5b-7a6e-7dbb entry 2 RSE 1/7/11: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1127s]
+1e25-2b5b-7a6e-7dbb entry 3 RSE 1/7/13: dnnsp SAME; gauss same wiener same; passthrough T=1 A=1  [1131s]
+
+88 events in 20 subruns; RSE agree in all four files for every event
+  dnnsp_reco1_same   76/88
+  dnnsp_detsim_same  76/88
+  gauss_same         51/88
+  wiener_same        51/88
+  passthrough_T      88/88
+  passthrough_A      88/88
+  differing dnnsp events (run/subrun/event: max|A-B|, n samples differing, sumT, sumA):
+    1/10/5: 2.7722 75 6487970 6488052
+    1/10/6: 11.587 187 1.127665e+07 1.127615e+07
+    1/17/7: 1.6963 81 7870654 7870636
+    1/17/12: 1.9471 26 9207455 9207426
+    1/13/10: 1.3788 26 8663352 8663333
+    1/12/10: 1.4911 37 1.136329e+07 1.136328e+07
+    1/9/14: 1.8932 105 4968439 4968434
+    1/9/15: 0.051346 26 8938158 8938157
+    1/19/8: 2.8375 125 7182780 7182709
+    1/16/2: 2.2763 33 1.295964e+07 1.295968e+07
+    1/0/11: 4.9245 65 6664617 6664629
+    1/7/3: 8.2205 71 1.653651e+07 1.653635e+07
+manifest: rse-manifest.tsv
