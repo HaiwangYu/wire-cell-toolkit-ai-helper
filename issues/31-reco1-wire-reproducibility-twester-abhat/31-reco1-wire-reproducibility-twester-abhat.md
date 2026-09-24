@@ -167,7 +167,52 @@ default; two drop-downs choose which runs are A and B (Thomas / Avinay run1
 and `--run-a/--run-b` set the start.  Restart `scripts/serve-viewer.sh` to
 pick the new version up.
 
+## Candidate causes in the WCT git history (2026-09-24)
+
+`git log --grep` over `$Y/wire-cell-toolkit` (branch `polaris-build-fixes`,
+9195180d) for random/determinism/reproducibility, checked against the
+production release: sbndcode v10_14_02_05 runs **wirecell v0_32_1** (source at
+`/lus/flare/projects/neutrinoGPU/scisoft/larsoft/wirecell/v0_32_1/source/wirecell-0.32.1`).
+Two fixes for run-to-run non-determinism in NF/SP landed in **0.35.0** and are
+**not in 0.32.1**; both bugs are verified present in the production source:
+
+1. **47d16673 (2026-04-29) aux/FftwDFT: fix run-to-run non-determinism in FFTW plan cache.**
+   The plan-cache key contained `aligned = ((src&15)|(dst&15))==0`, a function of
+   heap buffer addresses, so between processes a different cached FFTW codelet
+   (SIMD vs scalar) was picked, giving ULP-level differences that "propagated
+   through NF coherent subtraction and SP deconvolution FFTs, producing ... up
+   to ~434 ADC structural differences in SP output".  Fix: `FFTW_UNALIGNED` on
+   all 7 plan creations and the bit dropped from the key.  Production
+   `aux/src/FftwDFT.cxx` line 32-33 still has the `aligned` bit and no
+   `FFTW_UNALIGNED`.  This mechanism matches what is seen here exactly: rare
+   discrete ROI flips (a rounding difference crossing a threshold), different
+   from run to run of the same binary on the same input, independent of the
+   WCT `Random` seeds, and it needs no thread-order argument at all.
+2. **36489a20 (2026-05-06) sigproc/OmnibusSigProc: fix uninitialized FFT-padding rows in decon_2D_looseROI.**
+   Rows `m_nwires..m_fft_nwires-1` of `c_data_afterfilter` were never written;
+   the inverse FFT spread heap garbage into the last `m_pad_nwires` wires of the
+   plane (max|d| 692 ADC on PDVD, 12 runs -> 3 distinct outputs).  Production
+   `OmnibusSigProc.cxx` `decon_2D_looseROI` still fills only
+   `m_channel_range[plane]` rows (line ~1407).  Would show up as differences
+   concentrated in the last ~10 wires of a plane.
+
+Related, also post-0.32.1: dc613760/9b4ebd5f (iterator UB / use-after-free in
+`ROI_refinement::BreakROIs`, 0.35.0), 43948005 + dd97c3b3 (L1SPFilterPD
+determinism doc and PDVD anode-0 NF+SP regression test), e92429a6 (clustering
+`cluster_less` tie-breakers, 0.33.0, clus only).  In 0.32.1 already: ec0877d7
+(gen BinnedDiffusion "random fix: set not needed", 0.32.0).  The shared
+`RandomT` engine without a mutex (Avinay's hypothesis) is unchanged in all
+versions; AddNoise draws are not the cause here since a different noise
+realization would alter every channel.
+
+Test that would settle it: rebuild 0.32.1 + 47d16673 (+ 36489a20) and rerun one
+differing subrun several times; or run the production binary twice on the same
+node with ASLR disabled (`setarch -R`) -- identical output would confirm the
+address-dependent plan key.  Check also whether the channels touched here sit
+in the last ~10 wires of a plane (bug 2) or anywhere (bug 1).
+
 ## log
+- 2026-09-24 (b): WCT git history: two NF/SP non-determinism fixes (FFTW plan-cache alignment key 47d16673, uninitialized looseROI padding rows 36489a20) are in 0.35.0 but not in production 0.32.1; bugs verified in the production source.
 - 2026-09-24: Avinay's rerun A2 added; three-run comparison (section above): non-determinism confirmed, not a config difference; viewer generalized to three runs.
 - 2026-09-23: explored both runs, wrote the decoder/comparison/viewer, ran the
   88-event comparison (results above), issue opened.
