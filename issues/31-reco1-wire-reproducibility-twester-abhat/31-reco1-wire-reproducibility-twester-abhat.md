@@ -99,6 +99,7 @@ no ROOT dictionaries (login nodes cannot run apptainer).
   detsim dnnsp/gauss/wiener), decodes and records max|A-B| / #samples /
   sums, pass-through check; writes `rse-manifest.tsv` (`compare-summary.txt`
   is its stdout).  ~30 min for 88 events (file opens on Lustre dominate).
+- `compare_wires_3way.py` -- three-run version (T / A1 / A2, detsim files, ROI-structure vs values-only split, 3-way class per tag) -> `rse-manifest-3way.tsv`; ~65 min.
 - `compare_wires_rse_viewer.py` + `serve-viewer.sh` -- Bokeh server viewer:
   A / B / A-B 2D panels (channel x tick, max-|v| pooled on zoom), tap for 1D
   waveforms, largest-|A-B| table, APA/plane selection, product selector
@@ -108,6 +109,65 @@ no ROOT dictionaries (login nodes cannot run apptainer).
   `ssh -L 5031:localhost:5031 <user>@<that uan>.alcf.anl.gov` and open
   http://localhost:5031/compare_wires_rse_viewer .
 
+## Three-run comparison (2026-09-24): is the T vs A1 difference a config/library difference or non-determinism?
+
+Avinay repeated his chain unchanged (same TOML except the output path, same
+wrapper, same fcl, same env/tarballs, same 20 g4 files) as **A2 =
+`/lus/flare/projects/neutrinoGPU/abhat/sbnd/thomas-g4-parsl-rerun-20260924`**
+(PBS 8862650, node x4714c4s1b0n0; A1 ran on x4604c5s2b0n0, Thomas on
+x4204c3s6b0n0).  `compare_wires_3way.py` compares T / A1 / A2 event by event
+(`rse-manifest-3way.tsv`, `compare-3way-summary.txt`, tables in
+`threeway-rse-lists.md`):
+
+| tag | T vs A1 identical | T vs A2 identical | A1 vs A2 identical | 3-way: all_same / A1=A2!=T / T=A2!=A1 / T=A1!=A2 / all_differ |
+|---|---|---|---|---|
+| dnnsp | 76/88 | 74/88 | 72/88 | 67 / 5 / 7 / 9 / 0 |
+| gauss | 51/88 | 38/88 | 42/88 | 31 / 11 / 7 / 20 / 19 |
+| wiener | 51/88 | 38/88 | 42/88 | 31 / 11 / 7 / 20 / 19 |
+
+**Verdict: hypothesis 2 (non-determinism), not hypothesis 1.**
+- Avinay's own two runs differ from each other as much as, or more than, either
+  differs from Thomas (A1 vs A2 gauss 46 differing events vs T vs A1 37).  A
+  deterministic library/configuration difference between the two installations
+  would make A1 == A2 in every event and T != A1 in a fixed set; instead every
+  3-way class is populated, including "T = A2 != A1" (Thomas agrees with the
+  rerun but not with run1) and "all three differ".
+- 23/88 events (subrun 2 entirely) are identical in all three runs for all
+  tags.  Identity is the default outcome; a difference is a rare flip.
+- The flips are discrete decisions, not visible rounding noise: over all pairs
+  and tags 1806 differing channels have a **different ROI (offset, length)
+  list** and 118 have identical ROIs with a subset of samples changed by
+  0.06-0.6 (tight-ROI / sub-ROI decisions inside the same ROI).  The
+  magnitude is 1-24 units on 26-4500 samples of 38.6 M per differing event,
+  1-124 channels of 11276.  gauss and wiener always flip together (same
+  OmnibusSigProc path); dnnsp flips are rarer (the DNN ROI finder) and never
+  in an event where gauss/wiener flip too.
+- Consistent with the WCT `TbbFlow` graph run with unlimited TBB threads
+  inside 102 concurrent `lar` processes on a 208-thread node (Parsl
+  `cores_per_worker = 1`): the order of the Retagger output lines in the
+  detsim stderr already differs between runs in 24 of 264 (event, run) cases,
+  proof that the graph's task order is not fixed.  The likely mechanism is
+  reduction/FFT-order dependent rounding in SP that occasionally crosses an
+  ROI threshold; the raw noise itself is not the difference (a different noise
+  realization would change every channel), so the fixed WCT `Random` seeds
+  are not the cause.  Which step is order-dependent is not established here;
+  a controlled test (one subrun, same node, `max_threads: 1` vs default,
+  several repeats, and `WIRECELL_THREADS`/FFTW plan pinned) is the next step.
+
+Everything else between A1 and A2: the executed wrappers and fcl dumps are
+identical except the output paths and JSON names; `art::RNGsnapshots`,
+CRT and PMT products differ by design (`NuRandomService` policy `random`);
+G4 truth branches identical; reco1 dnnsp pass-through 88/88 in A2 as well.
+Avinay's report of the rerun: `<A2>/OUR_RUN1_VS_RUN2_REPRODUCIBILITY_REPORT.md`
+(52/88 differing events in his count, same conclusion).
+
+Viewer: `compare_wires_rse_viewer.py` now takes the 3-way manifest by
+default; two drop-downs choose which runs are A and B (Thomas / Avinay run1
+/ Avinay run2), the RSE list shows the 3-way class of the selected product,
+and `--run-a/--run-b` set the start.  Restart `scripts/serve-viewer.sh` to
+pick the new version up.
+
 ## log
+- 2026-09-24: Avinay's rerun A2 added; three-run comparison (section above): non-determinism confirmed, not a config difference; viewer generalized to three runs.
 - 2026-09-23: explored both runs, wrote the decoder/comparison/viewer, ran the
   88-event comparison (results above), issue opened.

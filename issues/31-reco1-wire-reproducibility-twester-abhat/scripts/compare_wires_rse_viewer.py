@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Bokeh server: compare recob::Wire waveforms of the same RSE (run, subrun,
-event) between Thomas's run (A) and Avinay's run (B).
+event) between two of the runs Thomas / Avinay run1 / Avinay run2 (A and B are
+chosen with two drop-downs; default A = Thomas, B = Avinay1).
 
 Derived from wcp-porting-validation/sbnd/standalone-sample/w-gap/
 compare_wires_viewer.py, but reads the art files with uproot + wirebytes.py
@@ -8,7 +9,9 @@ compare_wires_viewer.py, but reads the art files with uproot + wirebytes.py
 
   * "< prev" / "next >" buttons step through the paired event list;
   * an RSE text box ("1/16/6", "1 16 6" or "1:16:6") jumps to that event;
-  * a drop-down lists every RSE (with the byte-identical verdict).
+  * a drop-down lists every RSE with the 3-way class of the current product
+    (all_same, A1=A2!=T, T=A2!=A1, T=A1!=A2, all_differ);
+  * "A run" / "B run" drop-downs pick which two runs the panels compare.
   * product: dnnsp from reco1 (what reco2 consumes), or dnnsp/gauss/wiener
     from detsim (where WCT sim+SP actually runs).
 
@@ -17,12 +20,14 @@ pan/zoom re-renders with sign-preserving max-|v| pooling); tap a channel for
 the 1D waveforms A, B and A-B; table of the largest |A-B| in the selected
 APA/plane (click a row to inspect that channel).
 
-The event list comes from rse-manifest.tsv written by compare_wires_hash.py
-(default: ../rse-manifest.tsv next to this scripts/ folder); with
---thomas/--abhat the pairing is rebuilt from the run directories instead.
+The event list comes from rse-manifest-3way.tsv (compare_wires_3way.py;
+runs Thomas, Avinay1, Avinay2) or, if that is missing, rse-manifest.tsv
+(compare_wires_hash.py; runs T, A), both looked up next to this scripts/
+folder; with --thomas/--abhat the two-run pairing is rebuilt from the run
+directories instead.
 
 Launched by serve-viewer.sh.  Standalone data-layer smoke test:
-    python compare_wires_rse_viewer.py [--manifest F] [--rse 1/16/6] [--product dnnsp_reco1]
+    python compare_wires_rse_viewer.py [--manifest F] [--rse 1/16/6] [--product dnnsp_reco1] [--run-a Thomas --run-b Avinay2]
 """
 import argparse
 import csv
@@ -36,15 +41,25 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from wirebytes import decode_rse, dense_wires  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_MANIFEST = os.path.join(os.path.dirname(HERE), "rse-manifest.tsv")
+_M3 = os.path.join(os.path.dirname(HERE), "rse-manifest-3way.tsv")
+_M2 = os.path.join(os.path.dirname(HERE), "rse-manifest.tsv")
+DEFAULT_MANIFEST = _M3 if os.path.exists(_M3) else _M2
 
 PRODUCTS = {
-    # key: (label, file column A, file column B, branch)
-    "dnnsp_reco1": ("dnnsp (reco1)", "T_reco1", "A_reco1", "recob::Wires_simtpc2d_dnnsp_DetSim.obj"),
-    "dnnsp_detsim": ("dnnsp (detsim)", "T_detsim", "A_detsim", "recob::Wires_simtpc2d_dnnsp_DetSim.obj"),
-    "gauss_detsim": ("gauss (detsim)", "T_detsim", "A_detsim", "recob::Wires_simtpc2d_gauss_DetSim.obj"),
-    "wiener_detsim": ("wiener (detsim)", "T_detsim", "A_detsim", "recob::Wires_simtpc2d_wiener_DetSim.obj"),
+    # key: (label, stage, tag, branch); the file column is f"{run}_{stage}"
+    "dnnsp_reco1": ("dnnsp (reco1)", "reco1", "dnnsp", "recob::Wires_simtpc2d_dnnsp_DetSim.obj"),
+    "dnnsp_detsim": ("dnnsp (detsim)", "detsim", "dnnsp", "recob::Wires_simtpc2d_dnnsp_DetSim.obj"),
+    "gauss_detsim": ("gauss (detsim)", "detsim", "gauss", "recob::Wires_simtpc2d_gauss_DetSim.obj"),
+    "wiener_detsim": ("wiener (detsim)", "detsim", "wiener", "recob::Wires_simtpc2d_wiener_DetSim.obj"),
 }
+# display names of the run prefixes used in the manifests
+RUN_LABEL = {"Thomas": "Thomas", "Avinay1": "Avinay run1", "Avinay2": "Avinay run2",
+             "T": "Thomas", "A": "Avinay run1"}
+
+
+def run_names(rows):
+    """Run prefixes present in the manifest (columns '<run>_reco1'), manifest order."""
+    return [k[:-len("_reco1")] for k in rows[0].keys() if k.endswith("_reco1")]
 MAX_IMG_W = 800
 MAX_IMG_H = 600
 NTOP = 5
@@ -88,7 +103,7 @@ def load_manifest(path):
 
 
 def build_from_dirs(tdir, adir):
-    """Rebuild the event list from the two run directories (no verdicts)."""
+    """Rebuild the event list from two run directories (no verdicts); runs T and A."""
     from compare_wires_hash import pairs
     rows = []
     for uuid, t_det, a_det, t_rec, a_rec in pairs(tdir, adir):
@@ -96,7 +111,7 @@ def build_from_dirs(tdir, adir):
         for i in range(t.num_entries):
             run, subrun, event = decode_rse(t["EventAuxiliary"].basket(i).data)
             rows.append(dict(uuid=uuid, entry=i, run=run, subrun=subrun, event=event,
-                             T_reco1=t_rec, A_reco1=a_rec, T_detsim=t_det, A_detsim=a_det))
+                             T_reco1=t_rec, T_detsim=t_det, A_reco1=a_rec, A_detsim=a_det))
     rows.sort(key=lambda r: (r["run"], r["subrun"], r["event"]))
     return rows
 
@@ -105,13 +120,29 @@ def rse_label(r):
     return f"{r['run']}/{r['subrun']}/{r['event']}"
 
 
-def verdict(r, product):
-    col = {"dnnsp_reco1": "dnnsp_reco1_same", "dnnsp_detsim": "dnnsp_detsim_same",
-           "gauss_detsim": "gauss_same", "wiener_detsim": "wiener_same"}[product]
-    v = r.get(col)
-    if v is None or v == "":
-        return "?"
-    return "identical" if int(v) else "DIFFERENT"
+def verdict(r, product, run_a, run_b):
+    """'identical' / 'DIFFERENT' for the (run_a, run_b) pair from the manifest, '?' if absent."""
+    tag = PRODUCTS[product][2]
+    if run_a == run_b:
+        return "identical"
+    cands = [f"{run_a}-{run_b}_{tag}_same", f"{run_b}-{run_a}_{tag}_same"]      # 3-way manifest
+    if {run_a, run_b} == {"T", "A"}:                                           # 2-run manifest
+        cands += [{"dnnsp_reco1": "dnnsp_reco1_same", "dnnsp_detsim": "dnnsp_detsim_same",
+                   "gauss_detsim": "gauss_same", "wiener_detsim": "wiener_same"}[product]]
+    for c in cands:
+        v = r.get(c)
+        if v not in (None, ""):
+            return "identical" if int(v) else "DIFFERENT"
+    return "?"
+
+
+def three_way(r, product):
+    """3-way class of the product's tag (3-way manifest), else the 2-run verdict."""
+    tag = PRODUCTS[product][2]
+    v = r.get(f"{tag}_class")
+    if v not in (None, ""):
+        return v
+    return verdict(r, product, "T", "A")
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +229,19 @@ def parse_args(argv):
     ap.add_argument("--abhat")
     ap.add_argument("--rse", default=None, help="start at this RSE, e.g. 1/16/6")
     ap.add_argument("--product", default="dnnsp_reco1", choices=list(PRODUCTS))
+    ap.add_argument("--run-a", default=None, help="run prefix for A (default: first run in the manifest)")
+    ap.add_argument("--run-b", default=None, help="run prefix for B (default: second run)")
     return ap.parse_args(argv)
+
+
+def pick_runs(args, rows):
+    names = run_names(rows)
+    a = args.run_a or names[0]
+    b = args.run_b or (names[1] if len(names) > 1 else names[0])
+    for x in (a, b):
+        if x not in names:
+            sys.exit(f"run {x!r} not in manifest; have {names}")
+    return names, a, b
 
 
 def event_rows(args):
@@ -223,8 +266,10 @@ def run_app():
 
     args = parse_args(sys.argv[1:])
     rows = event_rows(args)
+    names, run_a0, run_b0 = pick_runs(args, rows)
     trees = Trees()
-    state = {"idx": 0, "product": args.product, "a": None, "b": None, "diff": None, "ch": -1}
+    state = {"idx": 0, "product": args.product, "a": None, "b": None, "diff": None, "ch": -1,
+             "run_a": run_a0, "run_b": run_b0}
     if args.rse:
         want = parse_rse(args.rse)
         for k, r in enumerate(rows):
@@ -233,11 +278,14 @@ def run_app():
 
     # -- widgets ------------------------------------------------------------
     def opt_label(r):
-        return f"{rse_label(r)}  [{verdict(r, state['product'])}]  {r['uuid'][:4]} e{r['entry']}"
+        return f"{rse_label(r)}  [{three_way(r, state['product'])}]  {r['uuid'][:4]} e{r['entry']}"
 
-    sel_rse = Select(title="RSE (run/subrun/event) [dnnsp verdict]",
+    sel_rse = Select(title="RSE (run/subrun/event) [3-way class of product]",
                      value=str(state["idx"]),
-                     options=[(str(k), opt_label(r)) for k, r in enumerate(rows)], width=360)
+                     options=[(str(k), opt_label(r)) for k, r in enumerate(rows)], width=380)
+    run_opts = [(n, RUN_LABEL.get(n, n)) for n in names]
+    sel_run_a = Select(title="A run", value=state["run_a"], options=run_opts, width=130)
+    sel_run_b = Select(title="B run", value=state["run_b"], options=run_opts, width=130)
     in_rse = TextInput(title="go to RSE (run/subrun/event)", value=rse_label(rows[state["idx"]]), width=180)
     bt_go = Button(label="Go", button_type="primary", width=60)
     bt_prev = Button(label="< prev", width=80)
@@ -283,8 +331,8 @@ def run_app():
         figs[key], img_srcs[key], mappers[key] = fig, src, mapper
         return fig
 
-    fig_a = make_panel("a", "A: Thomas")
-    fig_b = make_panel("b", "B: Avinay", shared=fig_a)
+    fig_a = make_panel("a", "A")
+    fig_b = make_panel("b", "B", shared=fig_a)
     fig_d = make_panel("d", "A - B", shared=fig_a)
 
     # -- 1D panels ----------------------------------------------------------
@@ -293,8 +341,8 @@ def run_app():
                    tools="pan,box_zoom,wheel_zoom,reset,save")
     src_a = ColumnDataSource(data=dict(x=[], y=[]))
     src_b = ColumnDataSource(data=dict(x=[], y=[]))
-    fig1d.line("x", "y", source=src_a, color="#2ca02c", legend_label="A (Thomas)", line_width=1.2)
-    fig1d.scatter("x", "y", source=src_b, color="#d62728", legend_label="B (Avinay)", size=3, marker="circle")
+    fig1d.line("x", "y", source=src_a, color="#2ca02c", legend_label="A", line_width=1.2)
+    fig1d.scatter("x", "y", source=src_b, color="#d62728", legend_label="B", size=3, marker="circle")
     fig1d.legend.click_policy = "hide"
     figdf = figure(title="A - B", width=700, height=260, x_axis_label="time tick", y_axis_label="A - B",
                    x_range=fig1d.x_range, tools="pan,box_zoom,wheel_zoom,reset,save")
@@ -431,7 +479,7 @@ def run_app():
         top_src.selected.indices = []
         top_src.data = dict(v=[v for v, c, t in tops], c=[c for v, c, t in tops], t=[t for v, c, t in tops])
         r = rows[state["idx"]]
-        print(f"[RSE {rse_label(r)} {state['product']} {region}] {ndiff} samples differ; largest |A-B|: "
+        print(f"[RSE {rse_label(r)} {state['product']} A={state['run_a']} B={state['run_b']} {region}] {ndiff} samples differ; largest |A-B|: "
               + ", ".join(f"{v:.5g}@(ch {c}, tick {t})" for v, c, t in tops), flush=True)
         return tops
 
@@ -467,7 +515,9 @@ def run_app():
     # -- event loading ------------------------------------------------------
     def load_event():
         r = rows[state["idx"]]
-        label, col_a, col_b, branch = PRODUCTS[state["product"]]
+        label, stage, tag, branch = PRODUCTS[state["product"]]
+        col_a, col_b = f"{state['run_a']}_{stage}", f"{state['run_b']}_{stage}"
+        la, lb = RUN_LABEL.get(state["run_a"], state["run_a"]), RUN_LABEL.get(state["run_b"], state["run_b"])
         try:
             a = trees.dense(r[col_a], r["entry"], branch)
             b = trees.dense(r[col_b], r["entry"], branch)
@@ -482,16 +532,18 @@ def run_app():
         render_view()
         tops = update_top_table()
         same = "byte-identical" if not np.any(state["diff"]) else "DIFFERENT"
-        v = verdict(r, state["product"])
+        v = verdict(r, state["product"], state["run_a"], state["run_b"])
         nch, nt = a.shape
         info.text = (f"<b>RSE {rse_label(r)}</b> (event {state['idx'] + 1}/{len(rows)}; g4 {r['uuid']}, "
                      f"entry {r['entry']}; A reads {rse_a[0]}/{rse_a[1]}/{rse_a[2]}, "
-                     f"B reads {rse_b[0]}/{rse_b[1]}/{rse_b[2]}) &nbsp; product <b>{label}</b>: "
-                     f"<b>{same}</b> now, manifest says {v}; "
+                     f"B reads {rse_b[0]}/{rse_b[1]}/{rse_b[2]}) &nbsp; product <b>{label}</b>, "
+                     f"A = <b>{la}</b>, B = <b>{lb}</b>: <b>{same}</b> now, manifest says {v}; "
+                     f"3-way class {three_way(r, state['product'])}; "
                      f"sum A={a.sum():.6g} B={b.sum():.6g}; shape {nch} ch x {nt} ticks<br>"
                      f"A: {r[col_a]}<br>B: {r[col_b]}")
-        fig_a.title.text = f"A: Thomas {label}"
-        fig_b.title.text = f"B: Avinay {label}"
+        fig_a.title.text = f"A: {la} {label}"
+        fig_b.title.text = f"B: {lb} {label}"
+        fig_d.title.text = "A - B"
         in_rse.value = rse_label(r)
         sel_rse.value = str(state["idx"])
         if tops:
@@ -524,20 +576,26 @@ def run_app():
         sel_rse.options = [(str(k), opt_label(r)) for k, r in enumerate(rows)]
         load_event()
 
+    def on_run(attr, old, new):
+        state["run_a"], state["run_b"] = sel_run_a.value, sel_run_b.value
+        load_event()
+
     bt_go.on_click(go)
     bt_prev.on_click(lambda: step(-1))
     bt_next.on_click(lambda: step(+1))
     sel_rse.on_change("value", on_sel_rse)
     sel_prod.on_change("value", on_product)
+    sel_run_a.on_change("value", on_run)
+    sel_run_b.on_change("value", on_run)
 
     controls = column(
-        row(bt_prev, bt_next, in_rse, bt_go, sel_rse, sel_prod, sel_apa, sel_plane),
+        row(bt_prev, bt_next, in_rse, bt_go, sel_rse, sel_run_a, sel_run_b, sel_prod, sel_apa, sel_plane),
         row(in_cmin_ab, in_cmax_ab, in_cmin_d, in_cmax_d, sel_dmode, in_deps),
         info)
     layout = column(controls, row(fig_a, fig_b, fig_d),
                     row(column(cap1d, fig1d, figdf), column(topdiv, top_table)))
     curdoc().add_root(layout)
-    curdoc().title = "recob::Wire Thomas vs Avinay by RSE"
+    curdoc().title = "recob::Wire Thomas / Avinay1 / Avinay2 by RSE"
     load_event()
 
 
@@ -552,11 +610,14 @@ def main_cli():
         want = parse_rse(args.rse)
         idx = [k for k, r in enumerate(rows) if (r["run"], r["subrun"], r["event"]) == want][0]
     r = rows[idx]
-    label, col_a, col_b, branch = PRODUCTS[args.product]
+    names, run_a, run_b = pick_runs(args, rows)
+    label, stage, tag, branch = PRODUCTS[args.product]
+    col_a, col_b = f"{run_a}_{stage}", f"{run_b}_{stage}"
     trees = Trees()
     a, b = aligned(trees.dense(r[col_a], r["entry"], branch), trees.dense(r[col_b], r["entry"], branch))
-    print(f"RSE {rse_label(r)} {label}: shape {a.shape}; A sum {a.sum():.6g} B sum {b.sum():.6g}; "
-          f"{int((a != b).sum())} samples differ; manifest verdict {verdict(r, args.product)}")
+    print(f"RSE {rse_label(r)} {label} A={run_a} B={run_b}: shape {a.shape}; A sum {a.sum():.6g} B sum {b.sum():.6g}; "
+          f"{int((a != b).sum())} samples differ; manifest verdict {verdict(r, args.product, run_a, run_b)}; "
+          f"3-way {three_way(r, args.product)}")
     for v, c, t in top_diffs(a - b):
         print(f"  |A-B| {v:.5g} @ channel {c} tick {t}")
 
