@@ -59,6 +59,7 @@ Note: Avinay's `WCT_SIM_SIGPROC_SEED_AUDIT.md` reports 76/88 identical for *all 
 Subruns with every event and every product identical: 2, 4, 18 (3/20).
 Differing dnnsp events (run/subrun/event: largest abs(A-B), samples differing): 1/10/5 (2.77, 75), 1/10/6 (11.6, 187), 1/17/7 (1.7, 81), 1/17/12 (1.95, 26), 1/13/10 (1.38, 26), 1/12/10 (1.49, 37), 1/9/14 (1.89, 105), 1/9/15 (0.0513, 26), 1/19/8 (2.84, 125), 1/16/2 (2.28, 33), 1/0/11 (4.92, 65), 1/7/3 (8.22, 71).
 Pass-through reco1 dnnsp == detsim dnnsp: 88/88 in both runs. RSE decoded from all four files agrees for all 88 events (run 1, subruns 0-19).
+RSE lists (identical / non-identical dnnsp, with gauss/wiener verdicts): `dnnsp-rse-lists.md`.
 Full per-event table: `rse-manifest.tsv` (this folder); stdout of the run: `compare-summary.txt`.
 
 Independent cross-check from the WCT `FrameSaver` lines in the detsim stderr
