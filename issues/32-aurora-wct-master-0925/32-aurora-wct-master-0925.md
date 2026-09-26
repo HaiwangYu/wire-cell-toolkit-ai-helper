@@ -216,3 +216,60 @@ Implementation (doc sbnd_xin/123 sec 16, items 1-4):
    are not on Flare, so flash-for-flash identity is tested through the final outputs.
 - Build: `qsub -q debug -v STAGES=lwc,DO_CFG_GATE=1 build-wct-lwc.pbs` -> job 8871445
   (`build-lwc-ophit.out`).
+
+### 2026-09-26 (f) hit-flash 1-step vs Xin: 60/67 exact, all flashes and all Bee content identical, residual = the cross-machine FP class
+
+- Build job 8871445: larwirecell `f8177c7` rebuilt and deployed (`MRB_RC=0`); **gate G-A PASS** (reco1
+  job byte-identical to the pre-split `origin/master` file, sim `8ab6b7ae3e7d` and data
+  `274954ca7612`), **G-B PASS** (hits job = reco1 job + `wclsOpHitSource:tpc0/1` +
+  `SBNDOpFlashFinder:tpc0/1` - `wclsOpFlashSource:tpc0/1`, `QLMatching` +`xtpc_sc1_light_gate=true`,
+  `xtpc_sc1_overpred_max=2.9`, plugins +`WireCellFlash`; nothing else moves).
+- Runs with `wcls-img-clus-matching-xin-data-hits.fcl`: NCpi0-19 `production-prep/ncsb-hits-20260926-0535`
+  (job 8871473, 19/19 rc=0, audit ok, 92 s parallel wall), nueCC-48 `production-prep/nuecc48-hits-20260926-0535`
+  (job 8871474, 48/48 rc=0, 293 s). The log shows the path: `<OpHitSource:tpc0> run 18255 subrun 1
+  event 56982: emit 11992 of 22212 hits from ophitpmt (hit_time rise, frame_apply_at_caf 2608 ns)`.
+  MC smoke `wcls-img-clus-matching-xin-hits.fcl` on Avinay's 50-event file
+  (`production-prep/mc50-hits-20260926-0608`, job 8871528): 9/9 rc=0, audit ok, 23-60 s/event.
+- **Comparison vs Xin's m0925pr arms** (jobs 8871498 / 8871499, `cmp-xin/` in the run dirs):
+
+| | NCpi0-19 | nueCC-48 |
+|---|---|---|
+| deep_compare exact (T_kine, T_tagger, every T_rec_charge point) | **18/19** | **41/48** |
+| census: flash branches differing (`Trun.nu_n_flashes`, `T_cluster/T_tagger.flash_*`) | **0** | **0** |
+| census: `Trun`, `T_cluster` branches differing | 0 | 0 |
+| Bee, Xin's 7 layers, content (`compare-bee-content.py`) | **19/19** | **46/48** |
+
+  The remaining 7 (`evt-branch-diff.py`, `cmp-xin/evt-diff.txt`):
+  - NCpi0 314838, nueCC 122660, 196649, 74544: `T_rec_charge` point hash only; the census puts
+    every `T_rec_charge` branch at <= 1.4e-9 relative (q, reduced_chi2; x/y/z at 1e-15) -- the
+    doc-24 cross-machine residual (FNAL vs wcgpu1 was ~1e-12; SL7-gcc12.1 vs Debian-gcc12.2 here).
+  - nueCC 239794: `hol_2_ncount` / `shw_sp_hol_2_ncount` 1 vs 2 (two T_tagger counts); 90055:
+    `ssm_offvtx_energy` 1013.19 vs 1013.53 (one scalar). No T_kine, no score change.
+  - nueCC 131357 and 433451: a discrete PR-tail branch -- the T_rec_charge point count differs
+    (384 vs 377, 1162 vs 1144), the track-fit dQ/dx vectors and the shower energies move
+    (131357: `kine_reco_Enu` 768.87 -> 768.96 MeV, `nue_score` 11.74 -> 11.61; 433451:
+    `kine_reco_Enu` 2405 -> 2487 MeV, `gap_energy` 1829 -> 1913, `numu_score` -1.19 -> -0.35,
+    `nue_score` 11.18 -> 9.19), the Bee track_fit / shower_track / vertices / mc layers with them.
+    Flashes, matching, clustering and the pre-fit T_cluster scalars are identical in both, so the
+    branch is inside the PR fit -- the "FP-seeded discrete shower-sampling change" class of doc 24
+    sec 7 (there 1/241 cross-machine; here 2/48 on this machine pair), reported, not tuned.
+- Structural Bee differences excluded by `compare-bee-content.py` (all measured, none physics):
+  Xin's `clustering-global` layer is the PR-stage grouping that the 1-step writes as
+  `clustering-pr-global` (the label string `type` differs); the 1-step adds an `opflash_time` key
+  per point; the `mc` node's text line carries the BDT scores in the 1-step and `numu 0.000
+  nue 0.000` in Xin's PR job.
+- Bee sets (same ascending event order in each pair):
+
+| sample | Aurora hit-flash 1-step | Xin m0925pr |
+|---|---|---|
+| NCpi0-19 | https://www.phy.bnl.gov/twister/bee/set/60dc27dd-f834-4150-8785-d5d43ed4f9df/event/list/ | https://www.phy.bnl.gov/twister/bee/set/ad2e51ab-c463-472c-8cf6-8c39a0e79d2f/event/list/ |
+| nueCC-48 | https://www.phy.bnl.gov/twister/bee/set/d0431af6-f345-457f-a713-8956185e7d11/event/list/ | https://www.phy.bnl.gov/twister/bee/set/158e6093-e9d1-4e47-b6ff-0405d315cdd0/event/list/ |
+
+- vs the reco1-flash 1-step of (c) (same toolkit, `ncsb-m0925-20260926-0223` / `nuecc48-m0925-20260926-0223`):
+  0/19 and 0/48 identical, as intended -- this is the light flip itself.
+- Commits: larwirecell `f8177c7` (pushed, HaiwangYu), toolkit `c7e7775e` on `polaris-build-fixes`
+  (pushed to the fork; a PR to WireCell master is the next step), wcp-porting-validation `d76afb08`
+  (fcls + re-export), ai-helper scripts `gate-1step-cfg.sh`, `compare-bee-content.py`,
+  `evt-branch-diff.py`, `evt-diff.pbs`, `compare-xin.pbs` step 4b.
+- Both chains stay available: `wcls-img-clus-matching-xin[-data].fcl` = reco1 `recob::OpFlash`
+  light (unchanged, byte-identical config), `-hits` = the standalone production light.

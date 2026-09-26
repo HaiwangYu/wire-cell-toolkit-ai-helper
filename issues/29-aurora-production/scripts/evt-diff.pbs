@@ -1,0 +1,17 @@
+#!/bin/bash
+#PBS -N wct-evt-diff
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:10:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/evt-diff.out
+# Per-event drill-down of tracking-pr.root differences (evt-branch-diff.py, needs ROOT -> SL7 job):
+#   qsub -v "RUN=<aurora run dir with cmp-xin/>,EVENTS=<E1 E2 ...>" evt-diff.pbs
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw; S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts; export Y
+RUN=${RUN:?}; EVENTS=${EVENTS:?}
+echo "=== START $(date) RUN=$RUN EVENTS=$EVENTS"
+SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh python3 $S/evt-branch-diff.py $RUN/cmp-xin/cmp $RUN/cmp-xin/cmp/ours $EVENTS 2>&1 | grep -v '^INFO' | tee $RUN/cmp-xin/evt-diff.txt
+echo "=== END $(date)"
