@@ -8,10 +8,15 @@
 #PBS -j oe
 #PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/evt-diff.out
 # Per-event drill-down of tracking-pr.root differences (evt-branch-diff.py, needs ROOT -> SL7 job):
-#   qsub -v "RUN=<aurora run dir with cmp-xin/>,EVENTS=<E1 E2 ...>" evt-diff.pbs
+#   qsub -v "RUN=<aurora run dir with cmp-xin/>[,EVENTS=<E1 E2 ...>][,RUN2=<second run dir>]" evt-diff.pbs
+# EVENTS empty = every event of the run (from bee-upload/bee-order.txt); writes cmp-xin/evt-diff.{txt,json}.
 set -u
 Y=/lus/flare/projects/neutrinoGPU/yuhw; S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts; export Y
-RUN=${RUN:?}; EVENTS=${EVENTS:?}
-echo "=== START $(date) RUN=$RUN EVENTS=$EVENTS"
-SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh python3 $S/evt-branch-diff.py $RUN/cmp-xin/cmp $RUN/cmp-xin/cmp/ours $EVENTS 2>&1 | grep -v '^INFO' | tee $RUN/cmp-xin/evt-diff.txt
+RUN=${RUN:?}; EVENTS=${EVENTS:-}; RUN2=${RUN2:-}
+for R in $RUN $RUN2; do
+  EV=${EVENTS:-$(awk '{sub(/.*_e/, "", $2); print $2}' $R/bee-upload/bee-order.txt | tr '\n' ' ')}
+  echo "=== START $(date) RUN=$R EVENTS=$EV"
+  SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh python3 $S/evt-branch-diff.py --json $R/cmp-xin/evt-diff.json --max 0 $R/cmp-xin/cmp $R/cmp-xin/cmp/ours $EV 2>&1 | grep -v '^INFO' > $R/cmp-xin/evt-diff.txt
+  echo "events: $(grep -c '^=== event' $R/cmp-xin/evt-diff.txt); wrote $R/cmp-xin/evt-diff.{txt,json}"
+done
 echo "=== END $(date)"

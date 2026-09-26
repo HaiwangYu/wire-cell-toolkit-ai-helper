@@ -273,3 +273,102 @@ Implementation (doc sbnd_xin/123 sec 16, items 1-4):
   `evt-branch-diff.py`, `evt-diff.pbs`, `compare-xin.pbs` step 4b.
 - Both chains stay available: `wcls-img-clus-matching-xin[-data].fcl` = reco1 `recob::OpFlash`
   light (unchanged, byte-identical config), `-hits` = the standalone production light.
+
+### 2026-09-26 (g) event-by-event: exactly what differs, hit-flash 1-step vs Xin's m0925pr (all 67 events)
+
+Method: `evt-branch-diff.py --max 0 --json` (job 8872289) compares EVERY branch of all 8 trees of
+`tracking-pr.root` at exact float, per event (`cmp-xin/evt-diff.{txt,json}` in the run dirs);
+`compare-bee-content.py` compares Xin's 7 Bee layers at exact JSON value (`cmp-xin/bee_content.txt`);
+`evt-diff-table.py` writes the tables. Classes:
+- **fp**: only `T_rec_charge` differs, same number of points, every branch within the quoted relative
+  precision (q, reduced_chi2 first, then the coordinates at 1e-15..1e-11) -- the float-precision
+  residual between the two builds (SL7 gcc 12.1 vs Debian 12 gcc 12.2). `Trun`, `T_cluster`,
+  `T_kine`, `T_tagger`, `T_bad_ch`, `T_proj`, `T_proj_data` are bit-identical.
+- **discrete**: a `T_kine`/`T_tagger` branch or the `T_rec_charge` point count differs; the branches
+  and values are listed.
+- No event is bit-identical (the fp residual is in every event); at the deep_compare tolerance
+  (1e-6 on T_kine/T_tagger, 1e-5 per T_rec_charge point) 18/19 + 41/48 are exact, as in (f).
+
+Bee (same ascending event order in each pair; the table's `#` is the Bee event index + 1):
+
+| sample | Aurora hit-flash 1-step (all layers) | Xin m0925pr (7 PR layers) |
+|---|---|---|
+| NCpi0-19 | https://www.phy.bnl.gov/twister/bee/set/60dc27dd-f834-4150-8785-d5d43ed4f9df/event/list/ | https://www.phy.bnl.gov/twister/bee/set/ad2e51ab-c463-472c-8cf6-8c39a0e79d2f/event/list/ |
+| nueCC-48 | https://www.phy.bnl.gov/twister/bee/set/d0431af6-f345-457f-a713-8956185e7d11/event/list/ | https://www.phy.bnl.gov/twister/bee/set/158e6093-e9d1-4e47-b6ff-0405d315cdd0/event/list/ |
+
+**NCpi0-19, hit-flash 1-step vs Xin m0925pr** -- 19 events: exact 0, float-precision residual only 19, discrete difference 0
+
+| # (Bee) | run subrun event | class | tracking-pr.root: what exactly differs (Xin -> Aurora) | Bee content (Xin's 7 layers) |
+|---|---|---|---|---|
+| 1 | r18259 s1 e18625 | fp | T_rec_charge only, same 822 points: q, reduced_chi2, nq, pt, y, rr, x, pw, z, pu at <= 4.0e-13 relative (float-precision residual) | identical (7 layers) |
+| 2 | r18345 s1 e21073 | fp | T_rec_charge only, same 783 points: q, reduced_chi2, nq, rr, x, y, pt at <= 1.4e-12 relative (float-precision residual) | identical (7 layers) |
+| 3 | r18259 s1 e37112 | fp | T_rec_charge only, same 427 points: q, reduced_chi2 at <= 6.4e-13 relative (float-precision residual) | identical (7 layers) |
+| 4 | r18255 s1 e56982 | fp | T_rec_charge only, same 658 points: q, reduced_chi2, nq, rr, x, pt, y, pv, z, pu at <= 4.0e-10 relative (float-precision residual) | identical (7 layers) |
+| 5 | r18255 s1 e71372 | fp | T_rec_charge only, same 1458 points: reduced_chi2, q, nq, rr, pt, y, z, x, pu, pv, pw at <= 2.8e-12 relative (float-precision residual) | identical (7 layers) |
+| 6 | r18364 s1 e84229 | fp | T_rec_charge only, same 806 points: q, reduced_chi2, rr, nq, y, z, x, pt, pu, pw, pv at <= 5.2e-12 relative (float-precision residual) | identical (7 layers) |
+| 7 | r18259 s1 e105946 | fp | T_rec_charge only, same 491 points: q, reduced_chi2, rr, nq, z at <= 3.1e-13 relative (float-precision residual) | identical (7 layers) |
+| 8 | r18255 s1 e114446 | fp | T_rec_charge only, same 519 points: reduced_chi2, q, nq, rr, pt, x, y, z at <= 2.8e-13 relative (float-precision residual) | identical (7 layers) |
+| 9 | r18255 s1 e142421 | fp | T_rec_charge only, same 1238 points: q, reduced_chi2, nq, rr, x, pt, z at <= 2.4e-13 relative (float-precision residual) | identical (7 layers) |
+| 10 | r18255 s1 e180801 | fp | T_rec_charge only, same 628 points: q, reduced_chi2, pu at <= 3.2e-13 relative (float-precision residual) | identical (7 layers) |
+| 11 | r18345 s1 e259542 | fp | T_rec_charge only, same 861 points: q, reduced_chi2, nq, rr, y, pt, x, z at <= 5.2e-13 relative (float-precision residual) | identical (7 layers) |
+| 12 | r18261 s1 e285567 | fp | T_rec_charge only, same 824 points: q, reduced_chi2, nq, rr, x, y, z, pt, pu, pw, pv at <= 3.5e-12 relative (float-precision residual) | identical (7 layers) |
+| 13 | r18255 s1 e314838 | fp | T_rec_charge only, same 644 points: q, reduced_chi2, nq, rr, x, y, z, pt, pw, pv, pu at <= 1.4e-09 relative (float-precision residual) | identical (7 layers) |
+| 14 | r18255 s1 e359980 | fp | T_rec_charge only, same 463 points: q, reduced_chi2, nq, rr, x, y, pt, pu, z, pw, pv at <= 4.1e-13 relative (float-precision residual) | identical (7 layers) |
+| 15 | r18255 s1 e399860 | fp | T_rec_charge only, same 574 points: q, reduced_chi2, nq, rr, x, y, pu at <= 5.0e-13 relative (float-precision residual) | identical (7 layers) |
+| 16 | r18255 s1 e463565 | fp | T_rec_charge only, same 719 points: q, nq, reduced_chi2, rr, x, y, pt, z, pw, pu, pv at <= 3.1e-12 relative (float-precision residual) | identical (7 layers) |
+| 17 | r18255 s1 e506114 | fp | T_rec_charge only, same 915 points: q, reduced_chi2, nq, rr, y, pt, x, z, pw, pu, pv at <= 1.6e-10 relative (float-precision residual) | identical (7 layers) |
+| 18 | r18255 s1 e506746 | fp | T_rec_charge only, same 790 points: q, reduced_chi2, nq, rr, pt, pu, y, z, x, pw, pv at <= 5.1e-12 relative (float-precision residual) | identical (7 layers) |
+| 19 | r18255 s1 e521075 | fp | T_rec_charge only, same 261 points: q, reduced_chi2 at <= 3.0e-13 relative (float-precision residual) | identical (7 layers) |
+
+**nueCC-48, hit-flash 1-step vs Xin m0925pr** -- 48 events: exact 0, float-precision residual only 44, discrete difference 4
+
+| # (Bee) | run subrun event | class | tracking-pr.root: what exactly differs (Xin -> Aurora) | Bee content (Xin's 7 layers) |
+|---|---|---|---|---|
+| 1 | r18255 s1 e388 | fp | T_rec_charge only, same 1014 points: q, nq, reduced_chi2, rr, y, pt, x, pu, z, pv, pw at <= 1.6e-10 relative (float-precision residual) | identical (7 layers) |
+| 2 | r18255 s1 e10550 | fp | T_rec_charge only, same 443 points: q, reduced_chi2 at <= 8.5e-14 relative (float-precision residual) | identical (7 layers) |
+| 3 | r18342 s1 e30504 | fp | T_rec_charge only, same 569 points: q, reduced_chi2, rr, nq, y, x, z, pw, pu, pt, pv at <= 6.6e-13 relative (float-precision residual) | identical (7 layers) |
+| 4 | r18304 s1 e38856 | fp | T_rec_charge only, same 607 points: q, reduced_chi2, nq, y, rr, x, pt, pu, z, pw, pv at <= 3.1e-13 relative (float-precision residual) | identical (7 layers) |
+| 5 | r18259 s1 e42280 | fp | T_rec_charge only, same 925 points: q, nq, reduced_chi2, rr, y, x, z, pt, pu, pv at <= 7.2e-13 relative (float-precision residual) | identical (7 layers) |
+| 6 | r18255 s1 e46363 | fp | T_rec_charge only, same 932 points: q, reduced_chi2, rr, nq, y, x, z, pu, pt, pw, pv at <= 4.2e-10 relative (float-precision residual) | identical (7 layers) |
+| 7 | r18259 s1 e52672 | fp | T_rec_charge only, same 612 points: q, reduced_chi2, nq, rr, y, pt, x, pu at <= 6.3e-13 relative (float-precision residual) | identical (7 layers) |
+| 8 | r18259 s1 e54095 | fp | T_rec_charge only, same 1256 points: q, reduced_chi2, nq, rr, pt, y, x, z, pu, pv at <= 6.6e-11 relative (float-precision residual) | identical (7 layers) |
+| 9 | r18255 s1 e69314 | fp | T_rec_charge only, same 807 points: q, reduced_chi2, nq, y, rr, pt, x, z, pu, pw, pv at <= 8.9e-13 relative (float-precision residual) | identical (7 layers) |
+| 10 | r18259 s1 e74544 | fp | T_rec_charge only, same 762 points: q, reduced_chi2, nq, rr, y, pt, z, x, pw, pu, pv at <= 1.8e-11 relative (float-precision residual) | identical (7 layers) |
+| 11 | r18313 s1 e81597 | fp | T_rec_charge only, same 675 points: q, reduced_chi2, nq, rr, y, pt, x, pu, z at <= 5.7e-13 relative (float-precision residual) | identical (7 layers) |
+| 12 | r18255 s1 e90055 | discrete | T_rec_charge nq, pt, pu, pv, pw, q, reduced_chi2, rr, x, y, z at <= 9.4e-12 rel / T_tagger (1): `ssm_offvtx_energy` 1013.19 -> 1013.53 | identical (7 layers) |
+| 13 | r18259 s1 e111412 | fp | T_rec_charge only, same 427 points: q, reduced_chi2, nq, rr, pt, y, x at <= 1.3e-11 relative (float-precision residual) | identical (7 layers) |
+| 14 | r18259 s1 e116962 | fp | T_rec_charge only, same 466 points: q, reduced_chi2 at <= 1.7e-13 relative (float-precision residual) | identical (7 layers) |
+| 15 | r18255 s1 e122660 | fp | T_rec_charge only, same 821 points: q, reduced_chi2, nq, rr, y, pu, z, x, pt at <= 1.2e-09 relative (float-precision residual) | identical (7 layers) |
+| 16 | r18259 s1 e131357 | discrete | T_rec_charge 384 vs 377 points / T_kine (2): `kine_reco_Enu` 768.868 -> 768.958; `kine_energy_particle` [154.727, 601.541, 4.0002] -> [154.817, 601.541, 4.0002] / T_tagger (482 branches): `mip_n_lowest` 9 -> 8; `mip_length_main` 111.501 -> 109.472; `ssm_offvtx_length` 114.549 -> 113.09; `ssm_offvtx_energy` 279.714 -> 279.844; `ssm_offvtx_track1_dist_mainvtx` 53.4715 -> 53.4939; `ssm_offvtx_shw1_score_mu_fwd` 0.15868 -> 0.138056; `ssm_offvtx_shw1_score_p_fwd` 0.878462 -> 0.826892; `ssm_offvtx_shw1_score_e_fwd` 0.25061 -> 0.249711; `ssm_offvtx_shw1_score_mu_bck` 0.506031 -> 0.422702; `ssm_offvtx_shw1_score_p_bck` 1.48469 -> 1.33042; ... / HEADLINE `kine_reco_Enu` 768.868 -> 768.958; `nue_score` 11.744 -> 11.6088 | mc, shower_track-global, track_fit-global, vertices-global |
+| 17 | r18264 s1 e137238 | fp | T_rec_charge only, same 638 points: q, nq, reduced_chi2, rr, y, pt, x, pu, z at <= 7.9e-12 relative (float-precision residual) | identical (7 layers) |
+| 18 | r18255 s1 e138009 | fp | T_rec_charge only, same 579 points: q, reduced_chi2, nq, rr, pu, z, x, pt, y at <= 1.3e-12 relative (float-precision residual) | identical (7 layers) |
+| 19 | r18255 s1 e163543 | fp | T_rec_charge only, same 643 points: reduced_chi2, q at <= 4.6e-13 relative (float-precision residual) | identical (7 layers) |
+| 20 | r18255 s1 e168596 | fp | T_rec_charge only, same 921 points: q, reduced_chi2, nq, rr, y, pt, z, x, pu, pw, pv at <= 1.6e-11 relative (float-precision residual) | identical (7 layers) |
+| 21 | r18253 s1 e172230 | fp | T_rec_charge only, same 745 points: q, reduced_chi2, rr, nq, x, z, y, pt, pu at <= 4.5e-11 relative (float-precision residual) | identical (7 layers) |
+| 22 | r18255 s1 e174637 | fp | T_rec_charge only, same 478 points: q, nq, reduced_chi2, rr, pt, y, x, pw, pv, z, pu at <= 2.7e-12 relative (float-precision residual) | identical (7 layers) |
+| 23 | r18255 s1 e196649 | fp | T_rec_charge only, same 824 points: q, reduced_chi2, nq, rr, y, z, pu, pw, pv at <= 1.5e-10 relative (float-precision residual) | identical (7 layers) |
+| 24 | r18409 s1 e214469 | fp | T_rec_charge only, same 1176 points: q, reduced_chi2, rr, nq, y, x, pt, z, pu, pv, pw at <= 1.6e-11 relative (float-precision residual) | identical (7 layers) |
+| 25 | r18255 s1 e219295 | fp | T_rec_charge only, same 767 points: q, reduced_chi2, nq, rr, y, pt, pu, pw, z, x, pv at <= 6.5e-13 relative (float-precision residual) | identical (7 layers) |
+| 26 | r18255 s1 e234638 | fp | T_rec_charge only, same 790 points: q, reduced_chi2, nq, rr, y, pv at <= 2.9e-13 relative (float-precision residual) | identical (7 layers) |
+| 27 | r18255 s1 e235435 | fp | T_rec_charge only, same 263 points: q, reduced_chi2, nq, rr, y, pu, pt, x at <= 4.6e-11 relative (float-precision residual) | identical (7 layers) |
+| 28 | r18255 s1 e239794 | discrete | T_rec_charge nq, pt, pu, pv, pw, q, reduced_chi2, rr, x, y, z at <= 1.5e-12 rel / T_tagger (2): `shw_sp_hol_2_ncount` 1 -> 2; `hol_2_ncount` 1 -> 2 | identical (7 layers) |
+| 29 | r18255 s1 e246579 | fp | T_rec_charge only, same 929 points: q, reduced_chi2, rr, nq, x, z, y, pv, pt, pu at <= 1.6e-11 relative (float-precision residual) | identical (7 layers) |
+| 30 | r18306 s1 e256587 | fp | T_rec_charge only, same 1874 points: q, reduced_chi2, nq, rr, y, pt, x, z, pu, pw, pv at <= 9.0e-11 relative (float-precision residual) | identical (7 layers) |
+| 31 | r18279 s1 e267597 | fp | T_rec_charge only, same 840 points: q, reduced_chi2, nq, rr, x, y, pt at <= 5.8e-13 relative (float-precision residual) | identical (7 layers) |
+| 32 | r18255 s1 e268067 | fp | T_rec_charge only, same 526 points: q, reduced_chi2, nq, y, rr, pt, pu, x at <= 1.5e-12 relative (float-precision residual) | identical (7 layers) |
+| 33 | r18255 s1 e268784 | fp | T_rec_charge only, same 854 points: q, reduced_chi2, rr, nq, y, x, pt, z, pu, pv, pw at <= 1.0e-11 relative (float-precision residual) | identical (7 layers) |
+| 34 | r18255 s1 e269774 | fp | T_rec_charge only, same 1179 points: q, reduced_chi2, nq, rr, y, z, x, pt, pw, pv at <= 7.1e-12 relative (float-precision residual) | identical (7 layers) |
+| 35 | r18255 s1 e271851 | fp | T_rec_charge only, same 884 points: q, reduced_chi2, nq, rr, y, pt, x, z, pu, pw, pv at <= 2.9e-11 relative (float-precision residual) | identical (7 layers) |
+| 36 | r18269 s1 e342199 | fp | T_rec_charge only, same 613 points: q, reduced_chi2, y, nq at <= 1.8e-11 relative (float-precision residual) | identical (7 layers) |
+| 37 | r18255 s1 e350186 | fp | T_rec_charge only, same 316 points: q, reduced_chi2, nq, rr, y, pu at <= 1.9e-13 relative (float-precision residual) | identical (7 layers) |
+| 38 | r18255 s1 e360535 | fp | T_rec_charge only, same 834 points: q, nq, reduced_chi2, rr, pt, z, pv, pu, x at <= 5.7e-12 relative (float-precision residual) | identical (7 layers) |
+| 39 | r18255 s1 e389538 | fp | T_rec_charge only, same 946 points: reduced_chi2, q, nq, rr, y, pt, x, pu, z, pw, pv at <= 6.8e-13 relative (float-precision residual) | identical (7 layers) |
+| 40 | r18355 s1 e400474 | fp | T_rec_charge only, same 810 points: q, reduced_chi2, nq, rr, x, y, pt, z, pw, pu, pv at <= 8.6e-13 relative (float-precision residual) | identical (7 layers) |
+| 41 | r18255 s1 e422851 | fp | T_rec_charge only, same 649 points: q, nq, rr, reduced_chi2, y, pt, z, x, pw, pv, pu at <= 2.9e-13 relative (float-precision residual) | identical (7 layers) |
+| 42 | r18255 s1 e423981 | fp | T_rec_charge only, same 760 points: q, reduced_chi2, nq, rr, x, y, z, pt, pw, pv, pu at <= 7.3e-13 relative (float-precision residual) | identical (7 layers) |
+| 43 | r18255 s1 e433451 | discrete | T_rec_charge 1162 vs 1144 points / T_kine (16 branches): `kine_nu_x_corr` -150.143 -> -150.228; `kine_nu_y_corr` 43.4994 -> 43.5209; `kine_nu_z_corr` 211.292 -> 211.535; `kine_reco_Enu` 2405.45 -> 2487.34; `kine_energy_particle` [72.2572, 1829.12, 54.4962, 113.633, ..] -> [71.513, 1912.52, 54.8281, 112.541, ..]; `kine_pio_mass` 39.0119 -> 39.1652; `kine_pio_energy_1` 1829.12 -> 1912.52; `kine_pio_theta_1` 18.8442 -> 20.0868; `kine_pio_phi_1` -23.7074 -> -22.9896; `kine_pio_theta_2` 18.7583 -> 18.8178; ... / T_tagger (597 branches): `nu_x` -150.143 -> -150.228; `nu_y` 43.4994 -> 43.5209; `nu_z` 211.292 -> 211.535; `gap_energy` 1829.12 -> 1912.52; `mip_energy` 1829.12 -> 1912.52; `mip_n_lowest` 5 -> 6; `mip_length_main` 244.837 -> 244.236; `ssm_offvtx_length` 196.124 -> 186.715; `ssm_offvtx_energy` 926.407 -> 936.803; `ssm_offvtx_track1_score_mu_fwd` 0.192559 -> 1.30266; ... / HEADLINE `kine_reco_Enu` 2405.45 -> 2487.34; `kine_pio_mass` 39.0119 -> 39.1652; `numu_score` -1.18608 -> -0.350157; `nue_score` 11.1784 -> 9.19255 | mc, shower_track-global, track_fit-global, vertices-global |
+| 44 | r18255 s1 e437699 | fp | T_rec_charge only, same 692 points: q, reduced_chi2, nq, rr, z, x, y, pt, pu, pw, pv at <= 3.4e-13 relative (float-precision residual) | identical (7 layers) |
+| 45 | r18253 s1 e444187 | fp | T_rec_charge only, same 451 points: q, rr, nq, reduced_chi2, x, y, z, pt, pw, pu, pv at <= 6.1e-13 relative (float-precision residual) | identical (7 layers) |
+| 46 | r18255 s1 e447477 | fp | T_rec_charge only, same 537 points: q, nq, reduced_chi2, rr, y, pt, x, z, pu at <= 2.8e-13 relative (float-precision residual) | identical (7 layers) |
+| 47 | r18255 s1 e469665 | fp | T_rec_charge only, same 379 points: q, nq, rr, reduced_chi2, y, x, pt, z, pu, pv at <= 3.0e-13 relative (float-precision residual) | identical (7 layers) |
+| 48 | r18255 s1 e489330 | fp | T_rec_charge only, same 879 points: q, reduced_chi2, nq, rr, x, z, pt, y, pw, pv, pu at <= 4.4e-12 relative (float-precision residual) | identical (7 layers) |
