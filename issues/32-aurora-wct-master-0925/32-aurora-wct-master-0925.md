@@ -174,3 +174,45 @@ Aurora = all 1-step layers, Xin = his 7 PR layers):
 | nueCC-48 | https://www.phy.bnl.gov/twister/bee/set/8cedc770-bc0d-4f2b-922c-3e7b79cdfafd/event/list/ | https://www.phy.bnl.gov/twister/bee/set/bab92eaf-0822-4942-a5d6-63d194a10a24/event/list/ |
 
 Previous Aurora NCpi0 run (toolkit 9195180d) for the before/after look: Bee 863b9ee0-d159-4b91-b633-e27f3883b207 (#29).
+
+### 2026-09-26 (e) path 2 chosen: the hit-flash light in the 1-step chain, keeping the OpFlash chain
+
+Haiwang: "implement equivalent path using OpHitSource and keep the option to run current
+OpFlash based chain", reference `wire-cell-sbnd-reco1/src/SBNDReco1OpHitSource.cxx`; that package
+(bare-ROOT mirror dictionaries of `recob::*`) must not be loaded in the LArSoft chain.
+
+Implementation (doc sbnd_xin/123 sec 16, items 1-4):
+
+1. **larwirecell `wclsOpHitSource`** (`larwirecell/Components/OpHitSource.{h,cxx}`, commit `f8177c7`
+   on `dev-v10_14_02_02`): `IArtEventVisitor` + `ITensorSetSource` like `wclsOpFlashSource`; reads
+   `recob::OpHit` (`art_tag`, default `ophitpmt`), keeps the `channels` list, emits the tensor
+   `"ophits"` f8 `[nhit, 9]` = {OpChannel, time, width, area, amplitude, PE, start, -1, fast/total}
+   with the same row layout, `units::microsecond` scaling and `hit_time` convention (`rise` =
+   StartTime + RiseTime) as `SBNDReco1OpHitSource`, and set metadata run/subrun/event +
+   `frame_apply_at_caf` (FrameShiftInfo `FrameApplyAtCaf()`, 0 when absent -- the
+   `wclsOpFlashSource` rule). `SBNDOpFlashFinder` passes the set metadata through, so
+   `FlashTensorToOpticalPCs` applies the same offset as before.
+2. **Toolkit jsonnet** (`cfg/pgrapher/experiment/sbnd/`): the monolithic job became the function
+   `wcls-img-clus-matching-xin-lib.jsonnet(flash_source='reco1', hit_time='rise', ff={},
+   xtpc_sc1_light_gate=null, xtpc_sc1_overpred_max=null)`; `wcls-img-clus-matching-xin.jsonnet` =
+   `(import lib)()` (must compile byte-identical); new `wcls-img-clus-matching-xin-hits.jsonnet` =
+   `(import lib)(flash_source='hits', xtpc_sc1_light_gate=true, xtpc_sc1_overpred_max=2.9)`, i.e.
+   `wclsOpHitSource:tpc<N>` (channels from `sbnd-pmt-channels.json`) -> `SBNDOpFlashFinder:tpc<N>`
+   (nchan 312, `sbnd-opdet-geom.json`, production defaults) into `flash_attach` port 1, plus the
+   light gate on `QLMatching:matching_joint` -- the two 2026-09-25 flips of the standalone chain
+   (`wct-reco1-dump.jsonnet` `flash_source='hits'`, `wct-clus-matching-perevt.jsonnet` gate TLAs).
+   No new required extVar on the reco1 path (Xin's `compile_consumers.sh` / tripwire unaffected);
+   the hits path reads `ophit<N>_input_label` lazily.
+3. **fcls** (`wcp-porting-validation/sbnd/`): `wcls-img-clus-matching-xin-hits.fcl` (MC) and
+   `-data-hits.fcl` include the OpFlash fcls and override `configs`, `plugins` (+`WireCellFlash`),
+   `inputers` (`wclsOpHitSource:tpc0/1` instead of `wclsOpFlashSource:tpc0/1`) and add
+   `ophit0/1_input_label: "ophitpmt"` (process Reco1 in both data and MC reco1, checked in the
+   event dumps of all four samples). Bare-name re-export `sbnd/wcls-img-clus-matching-xin-hits.jsonnet`.
+4. **Gates**: `gate-1step-cfg.sh` (run by `build-wct-lwc.pbs` step 3): G-A the reco1 job compiles
+   byte-identical to the pre-split file taken from `origin/master`, sim and data extVar sets; G-B
+   the hits job compiles and differs from the reco1 job only in the light nodes, the two
+   `xtpc_sc1_*` keys and the plugin list. Then the full-chain gate: the hits 1-step on nueCC-48 +
+   NCpi0-19 vs Xin's `m0925pr` arms with `compare-xin.pbs` -- the standalone chain's hit flashes
+   are not on Flare, so flash-for-flash identity is tested through the final outputs.
+- Build: `qsub -q debug -v STAGES=lwc,DO_CFG_GATE=1 build-wct-lwc.pbs` -> job 8871445
+  (`build-lwc-ophit.out`).

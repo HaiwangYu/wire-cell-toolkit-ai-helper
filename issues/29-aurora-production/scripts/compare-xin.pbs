@@ -41,7 +41,7 @@ SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh bash -c "
   true" 2>&1 | grep -v '^INFO'
 awk -F'\t' 'NR>1 && $2!="-" {print $4"\t"$2"\t"$3"\t"$1}' $RUN/rse-by-nskip.tsv | sort -n > $C/ours.evt    # event run subrun nskip
 awk 'NR>1 {print $3"\t"$1"\t"$2}' $XIN/nusel-events.tsv | sort -n > $C/xin.evt                         # event run subrun
-echo "ours: $(wc -l < $C/ours.evt) events with tracking-pr.root ($(awk -F'\t' 'NR>1 && $5==8' $RUN/rse-by-nskip.tsv | wc -l) with 8 trees); xin: $(wc -l < $C/xin.evt) events, $(ls -d $XIN/pr_evt* | wc -l) pr_evt dirs"
+echo "ours: $(wc -l < $C/ours.evt) events with tracking-pr.root ($(awk -F'\t' 'NR>1 && $5>=8' $RUN/rse-by-nskip.tsv | wc -l) with >=8 trees); xin: $(wc -l < $C/xin.evt) events, $(ls -d $XIN/pr_evt* | wc -l) pr_evt dirs"
 join -t$'\t' -v1 <(cut -f1 $C/ours.evt) <(cut -f1 $C/xin.evt) | sed 's/^/only ours: /'; join -t$'\t' -v2 <(cut -f1 $C/ours.evt) <(cut -f1 $C/xin.evt) | sed 's/^/only xin: /'
 join -t$'\t' <(cut -f1-3 $C/ours.evt) $C/xin.evt | awk -F'\t' '$2!=$4 || $3!=$5 {print "RSE MISMATCH", $0}'
 echo "event_set: common $(join -t$'\t' <(cut -f1 $C/ours.evt) <(cut -f1 $C/xin.evt) | wc -l)"

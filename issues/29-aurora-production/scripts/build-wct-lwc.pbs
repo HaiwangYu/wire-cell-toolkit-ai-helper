@@ -103,6 +103,8 @@ if [ ! -d $MRB/srcs/larwirecell ]; then
     mrb uc 2>&1 | tail -2
   "
 fi
+# srcs/larwirecell is a clone of $Y/larwirecell: bring it to that repo's current branch head (host git, outside the container).
+(cd $MRB/srcs/larwirecell && git pull -q --ff-only origin dev-v10_14_02_02; echo "larwirecell src: $(git rev-parse --short HEAD) $(git log -1 --format=%s | cut -c1-80)")
 $S/in-aurora-sl7.sh bash -c "
   set -o pipefail
   export WIRECELL_FQ_DIR=$OPT; export CMAKE_PREFIX_PATH=$OPT:\${CMAKE_PREFIX_PATH:-}
@@ -127,5 +129,9 @@ $S/in-aurora-sl7.sh bash -c "
   echo tree_wirecell_refs=\$(for f in \$D/*.so; do ldd \$f; done | grep -c 'products/wirecell/\|scisoft/larsoft/wirecell/')  '(want 0)'
   echo LWC_STAGE_DONE
 "
+fi
+if [ "${DO_CFG_GATE:-1}" = 1 ]; then
+echo "=== 3. 1-step config gate (issue 32: reco1 job byte-identical to the pre-split file; hits job differs only in the light nodes)"
+mkdir -p $Y/aurora-build-logs/cfg-gate-$J; SL7_SETUP=$S/setup-aurora-ap.sh $S/in-aurora-sl7.sh $S/gate-1step-cfg.sh $Y/aurora-build-logs/cfg-gate-$J ${CFG_GATE_REF:-origin/master} 2>&1 | grep -v '^INFO'
 fi
 echo "=== END $(date)"
