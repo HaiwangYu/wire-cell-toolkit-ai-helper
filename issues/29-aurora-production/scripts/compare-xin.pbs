@@ -1,0 +1,108 @@
+#!/bin/bash
+#PBS -N wct-compare-xin
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:30:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/compare-xin.out
+# Compare an Aurora per-event 1-step run (evtK/ from smoke.pbs) against
+#   (1) XIN: Xin's standalone 2-step PR output copied from wcgpu1
+#       (work-<sample>-m0925pr/pr_evt<E>/{tracking-pr.root,mabc-pr.zip,nusel-evt<E>.tsv}), and
+#   (2) OLD (optional): an earlier Aurora run of the same events (evtK/ layout), i.e. the
+#       previous toolkit -- expected to DIFFER where the toolkit moved.
+# with the reference's own tools (deep_compare.py, compare_bee_zips.py) plus the
+# every-branch census (issue 27).  ROOT needs the SL7 container -> a job.
+#
+#   qsub -v "RUN=<aurora run dir>,XIN=<work-*-m0925pr dir>[,OLD=<older aurora run dir>][,TOOLS=<dir with deep_compare.py>]" compare-xin.pbs
+#
+# Bee: Xin's PR job writes 7 layers (clustering/shower_track/track_fit/vertices -global,
+# channel-deadarea x2, mc); the 1-step's mabc.zip carries those plus its imaging /
+# clustering / tagger / op layers.  vs XIN the 1-step zips are PRUNED to Xin's layer set
+# (member names untouched) so compare_bee_zips.py can run unchanged; vs OLD all layers.
+# Writes $RUN/cmp-xin/{deep_compare,bee_compare,branch_diff}[-old].txt, harness layouts
+# under $RUN/cmp-xin/, and $RUN/bee-upload/{bee-aurora.zip,bee-xin.zip,bee-order.txt}
+# (all events, ascending event number, same order in both) for upload-to-bee.sh on a UAN.
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+S27=$Y/wire-cell-toolkit-ai-helper/issues/27-polaris-production/scripts
+AI=$Y/wire-cell-toolkit-ai-helper
+RUN=${RUN:?}; XIN=${XIN:?}; OLD=${OLD:-}; TOOLS=${TOOLS:-$Y/production-prep/r3-pilot-mccv-reference/scripts}
+export Y
+echo "=== START $(date) on $(hostname) job ${PBS_JOBID%%.*} RUN=$RUN XIN=$XIN OLD=${OLD:-none}"
+C=$RUN/cmp-xin; rm -rf $C; mkdir -p $C $RUN/bee-upload
+
+echo "=== 1. RSE per nskip from Trun; event sets vs Xin's nusel-events.tsv"
+SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh bash -c "
+  python3 $S27/rse-by-nskip.py $RUN | tail -2
+  [ -n '$OLD' ] && [ ! -f $OLD/rse-by-nskip.tsv ] && python3 $S27/rse-by-nskip.py $OLD | tail -1
+  true" 2>&1 | grep -v '^INFO'
+awk -F'\t' 'NR>1 && $2!="-" {print $4"\t"$2"\t"$3"\t"$1}' $RUN/rse-by-nskip.tsv | sort -n > $C/ours.evt    # event run subrun nskip
+awk 'NR>1 {print $3"\t"$1"\t"$2}' $XIN/nusel-events.tsv | sort -n > $C/xin.evt                         # event run subrun
+echo "ours: $(wc -l < $C/ours.evt) events with tracking-pr.root ($(awk -F'\t' 'NR>1 && $5==8' $RUN/rse-by-nskip.tsv | wc -l) with 8 trees); xin: $(wc -l < $C/xin.evt) events, $(ls -d $XIN/pr_evt* | wc -l) pr_evt dirs"
+join -t$'\t' -v1 <(cut -f1 $C/ours.evt) <(cut -f1 $C/xin.evt) | sed 's/^/only ours: /'; join -t$'\t' -v2 <(cut -f1 $C/ours.evt) <(cut -f1 $C/xin.evt) | sed 's/^/only xin: /'
+join -t$'\t' <(cut -f1-3 $C/ours.evt) $C/xin.evt | awk -F'\t' '$2!=$4 || $3!=$5 {print "RSE MISMATCH", $0}'
+echo "event_set: common $(join -t$'\t' <(cut -f1 $C/ours.evt) <(cut -f1 $C/xin.evt) | wc -l)"
+
+echo "=== 2. layouts: cmp/evt_E = Xin (reference), cmp/ours/tracking-pr_E.root = Aurora; bee-xin/, bee-ours-pruned/, bee-ours/"
+mkdir -p $C/cmp/ours $C/bee-xin $C/bee-ours-pruned $C/bee-ours
+while IFS=$'\t' read -r e r s k; do
+  [ -f $XIN/pr_evt$e/tracking-pr.root ] || continue
+  mkdir -p $C/cmp/evt_$e; ln -sf $XIN/pr_evt$e/tracking-pr.root $C/cmp/evt_$e/tracking-pr.root
+  ln -sf $RUN/evt$k/tracking-pr.root $C/cmp/ours/tracking-pr_$e.root
+  ln -sf $XIN/pr_evt$e/mabc-pr.zip $C/bee-xin/bee_$e.zip; ln -sf $RUN/evt$k/mabc.zip $C/bee-ours/bee_$e.zip
+  echo "$e r${r}_s${s}_e${e} $k"
+done < $C/ours.evt | awk '{print NR-1, $2, $3}' > $RUN/bee-upload/bee-order.txt
+echo "paired: $(ls $C/cmp/ours | wc -l)"
+ZO=""; ZX=""; while read -r i rse k; do e=${rse##*_e}; ZO="$ZO $C/bee-ours/bee_$e.zip"; ZX="$ZX $C/bee-xin/bee_$e.zip"; done < $RUN/bee-upload/bee-order.txt
+
+SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh bash -c "
+  python3 - $C/bee-xin $C/bee-ours $C/bee-ours-pruned <<'PY'
+import zipfile, re, sys, os, glob
+X, O, P = sys.argv[1:4]; pat = re.compile(r'^([^/]+)/(\d+)/(\d+)-(.*)$')
+def key(n): m = pat.match(n); return m.group(4) if m else n
+for zx in sorted(glob.glob(X + '/*.zip')):
+    b = os.path.basename(zx); zo = os.path.join(O, b)
+    keep = {key(n) for n in zipfile.ZipFile(zx).namelist()}
+    zi = zipfile.ZipFile(zo); zp = zipfile.ZipFile(os.path.join(P, b), 'w', zipfile.ZIP_DEFLATED)
+    kept = 0
+    for n in zi.namelist():
+        if key(n) in keep: zp.writestr(n, zi.read(n)); kept += 1
+    zp.close()
+    if kept != len(keep): print('WARN', b, 'ours has', kept, 'of the reference', len(keep), 'layers')
+print('pruned', len(glob.glob(P + '/*.zip')), 'zips to the reference layer set:', sorted(keep))
+PY
+  echo '=== 3. deep_compare vs XIN (T_kine 21 + T_tagger 1216 branches at 1e-6, every T_rec_charge point at 1e-5)'
+  python3 $TOOLS/deep_compare.py $C/cmp $C/cmp/ours aurora 2>&1 | tee $C/deep_compare.txt | grep -vE 'IDENTICAL'
+  echo IDENTICAL_vs_xin=\$(grep -c IDENTICAL $C/deep_compare.txt)
+  echo '=== 4. compare_bee_zips vs XIN (Xin layer set; md5 per layer, numeric fallback rtol 1e-9)'
+  python3 $TOOLS/compare_bee_zips.py $C/bee-xin $C/bee-ours-pruned 2>&1 | tee $C/bee_compare.txt | grep -vE ' identical' | tail -25
+  echo '=== 5. every-branch census vs XIN (all 8 trees, exact float)'
+  python3 $S27/branch-diff-tracking-pr.py $C/cmp $C/cmp/ours T_tagger T_kine T_cluster T_rec_charge Trun T_bad_ch T_proj T_proj_data 2>&1 | tee $C/branch_diff.txt | tail -8
+  echo '=== 6. Bee merge for upload (ascending event number; same order for Aurora (all layers) and Xin)'
+  python3 $AI/issues/18-data-1000evt-beamon-beamoff/scripts/merge_bee.py $RUN/bee-upload/bee-aurora.zip $ZO | tail -1
+  python3 $AI/issues/18-data-1000evt-beamon-beamoff/scripts/merge_bee.py $RUN/bee-upload/bee-xin.zip $ZX | tail -1
+  ls -l $RUN/bee-upload/
+" 2>&1 | grep -v '^INFO'
+
+if [ -n "$OLD" ]; then
+echo "=== 7. vs OLD Aurora run $OLD (previous toolkit; differences here are the toolkit update)"
+mkdir -p $C/old/ours $C/bee-old
+awk -F'\t' 'NR>1 && $2!="-" {print $4"\t"$1}' $OLD/rse-by-nskip.tsv | sort -n > $C/old.evt
+while IFS=$'\t' read -r e k; do
+  kn=$(awk -F'\t' -v e=$e '$1==e {print $4}' $C/ours.evt); [ -n "$kn" ] && [ -f $RUN/evt$kn/tracking-pr.root ] || continue
+  mkdir -p $C/old/evt_$e; ln -sf $OLD/evt$k/tracking-pr.root $C/old/evt_$e/tracking-pr.root; ln -sf $RUN/evt$kn/tracking-pr.root $C/old/ours/tracking-pr_$e.root
+  ln -sf $OLD/evt$k/mabc.zip $C/bee-old/bee_$e.zip
+done < $C/old.evt
+echo "paired with OLD: $(ls $C/old/ours | wc -l)"
+SL7_SETUP=$S/setup-aurora-opt.sh $S/in-aurora-sl7.sh bash -c "
+  python3 $TOOLS/deep_compare.py $C/old $C/old/ours aurora-new 2>&1 | tee $C/deep_compare-old.txt | grep -vE 'IDENTICAL' | head -30
+  echo IDENTICAL_vs_old=\$(grep -c IDENTICAL $C/deep_compare-old.txt)
+  python3 $TOOLS/compare_bee_zips.py $C/bee-old $C/bee-ours 2>&1 | tee $C/bee_compare-old.txt | tail -3
+  python3 $S27/branch-diff-tracking-pr.py $C/old $C/old/ours T_tagger T_kine T_cluster T_rec_charge Trun T_bad_ch T_proj T_proj_data 2>&1 | tee $C/branch_diff-old.txt | tail -12
+" 2>&1 | grep -v '^INFO'
+fi
+echo "=== next (UAN): cd $RUN/bee-upload && for z in bee-aurora.zip bee-xin.zip; do bash $Y/wcp-porting-validation/upload-to-bee.sh \$z | tail -1; done"
+echo "=== END $(date)"

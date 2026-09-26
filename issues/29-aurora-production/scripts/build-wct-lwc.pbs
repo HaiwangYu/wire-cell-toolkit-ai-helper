@@ -11,7 +11,8 @@
 # Build WCT (polaris-build-fixes) into $OPT and larwirecell (dev-v10_14_02_02) in
 # the MRB area, on one compute node inside the fnal-dev-sl7 image, against
 # twester's Flare UPS tree + our $Y/products overlay.  Re-runnable (wcb and make
-# are incremental).  qsub -v STAGES=lwc to rerun only larwirecell.
+# are incremental).  qsub -v STAGES=lwc to rerun only larwirecell; qsub -v CLEAN=1 for a
+# from-scratch WCT build + install (after a toolkit merge).
 set -u
 Y=/lus/flare/projects/neutrinoGPU/yuhw
 S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
@@ -52,7 +53,11 @@ if [[ " $STAGES " == *" wct "* ]]; then
 echo "=== 1. WCT install (-j$NJ)"
 cd $Y/wire-cell-toolkit && git rev-parse HEAD | tee $Y/aurora-build-logs/wct-build-commit.txt && git status --short | head -3
 # wscript bakes `git describe --tags` into the build; a clone of the fork has no tags (run 4, 2026-09-16) -> fetch upstream's.
-git describe --tags >/dev/null 2>&1 || { export https_proxy=http://proxy.alcf.anl.gov:3128; git remote get-url upstream >/dev/null 2>&1 || git remote add upstream https://github.com/WireCell/wire-cell-toolkit.git; git fetch -q upstream --tags; }; echo "version: $(git describe --tags)"
+# (remotes since 2026-09-26: origin = WireCell/wire-cell-toolkit, fork = HaiwangYu/wire-cell-toolkit)
+git describe --tags >/dev/null 2>&1 || { export https_proxy=http://proxy.alcf.anl.gov:3128; git fetch -q origin --tags; }; echo "version: $(git describe --tags)"
+# CLEAN=1: drop the waf build tree, the configure cache and the previous WCT install (not $OPT/larwirecell,
+# which stage 2 re-deploys) so a toolkit update cannot leave stale objects or libraries behind.
+if [ "${CLEAN:-0}" = 1 ]; then echo "--- CLEAN=1: rm -rf build $OPT/{lib,lib64,include,bin,share}"; rm -rf build $OPT/lib $OPT/lib64 $OPT/include $OPT/bin $OPT/share; fi
 $S/in-aurora-sl7.sh bash -c "
   set -o pipefail
   cat /etc/redhat-release; which g++ python3 patchelf; g++ --version | head -1; python3 --version

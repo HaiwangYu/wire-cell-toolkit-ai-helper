@@ -19,7 +19,7 @@ S27=$Y/wire-cell-toolkit-ai-helper/issues/27-polaris-production/scripts   # resy
 RECO1=${RECO1:-/lus/flare/projects/neutrinoGPU/twester/sbnd_gen2_prod1/Gen2_2026/reco1/000000/000000/reco1-detsim-g4-gen-Gen2_2026-00d8-4843-8a75-5672.root}
 NEVT=${NEVT:-8}
 FCL=${FCL:-wcls-img-clus-matching-xin.fcl}
-DO_RESYNC=${DO_RESYNC:-1}
+DO_RESYNC=${DO_RESYNC:-0}   # 0 since toolkit 7a85e5c5 / wcp-porting-validation f04d8937 (2026-09-21): pr-operating-point.jsonnet is gone; the two-chain gate (G4b) replaces the resync
 TAG=${TAG:-smoke}
 CORES=${CORES:-2}          # cores per lar process (taskset); cores 0 and 52 are reserved on Aurora
 RUN=$Y/production-prep/$TAG-$(date +%Y%m%d-%H%M)
@@ -46,6 +46,7 @@ cd $RUN && SL7_SETUP=$S/setup-aurora-run.sh $S/in-aurora-sl7.sh bash -c "
   echo '--- G2 no build-tree RPATH'; for f in $Y/opt/lib/libWireCellClus.so $Y/opt/bin/wire-cell $Y/opt/larwirecell/v10_01_28/slf7.x86_64.e26.prof/lib/libWireCellAIML.so; do echo \"\$(basename \$f): build-dirs=\$(readelf -d \$f | grep -E 'RPATH|RUNPATH' | grep -c build)\"; done
   echo '--- G3 flash_by_gid:' \$(strings $Y/opt/lib/libWireCellClus.so | grep -c flash_by_gid)
   echo '--- G4 operating-point gate (compile-both PR_OP=sync)'; mkdir -p $RUN/g4 && PR_OP=sync $S27/compile-both-polaris.sh $RUN/g4 > $RUN/g4/compile-both.log 2>&1; echo \"G4_RC=\$? \$(tail -1 $RUN/g4/compile-both.log)\"
+  echo '--- G4b two-chain gate (doc sbnd_xin/120: 1-step vs local PR job, same cfg tree)'; $S/two-chain-gate-aurora.sh $RUN/g4b 2>&1 | tail -8
   echo '--- G5 DL vertex import'; python3 -c 'import sparseconvnet, torch; print(\"sparseconvnet ok, torch\", torch.__version__)'; echo G5_RC=\$?
   echo '--- G6 spdlog/fmt'; wire-cell --version; ldd $Y/opt/lib/libWireCellUtil.so | grep -E 'spdlog|fmt'
   echo '--- md5 of the weights'; md5sum $Y/wire-cell-data/uboone/weights/XGB_nue_seed2_0923.xml $Y/wire-cell-data/uboone/scn_vtx/t48k-m16-l5-lr5d-res0.5-CP24.pth
