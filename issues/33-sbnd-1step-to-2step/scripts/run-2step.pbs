@@ -1,0 +1,99 @@
+#!/bin/bash
+#PBS -N wct-2step
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug-scaling
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/run-2step.out
+# The SBND 2-step chain (issue 33) on one reco1 file, and its event-by-event comparison with a
+# 1-step reference run of the same events (issue 32 layout: <REF>/evt<k>/{tracking-pr.root,mabc.zip}).
+#
+#   qsub -v "RECO1=<file>,FCL=wcls-img-clus-matching[-data].fcl,REALITY=sim|data,NEVT=<n>,REF=<1-step run>,TAG=<tag>[,CHUNK=10][,DO_GATE=1]" run-2step.pbs
+#
+#   G. config gates (gate-2step-cfg.sh) -- DO_GATE=1 (default)
+#   1. step 1: ceil(NEVT/CHUNK) lar jobs in parallel, each `lar -n CHUNK --nskip c*CHUNK`
+#      -> ql/c<c>/{qlpctree.tar.gz, mabc.zip, nugraph.h5, lar.log}
+#   2. step 2: one standalone wire-cell per step-1 tar, in parallel
+#      -> pr/c<c>/{pr_evt<E>/tracking-pr.root, mabc-pr.zip, wct.log}
+#   3. compare with REF (SL7): deep_compare, every-branch per event (evt-branch-diff --json),
+#      the census; Bee split per event + exact per-layer diff (all layers)
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+S29=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+S27=$Y/wire-cell-toolkit-ai-helper/issues/27-polaris-production/scripts
+S33=$Y/wire-cell-toolkit-ai-helper/issues/33-sbnd-1step-to-2step/scripts
+TOOLS=$Y/production-prep/r3-pilot-mccv-reference/scripts
+RECO1=${RECO1:?}; FCL=${FCL:?}; REALITY=${REALITY:?}; NEVT=${NEVT:?}; REF=${REF:?}; TAG=${TAG:-2step}
+CHUNK=${CHUNK:-10}; CORES=${CORES:-2}; DO_GATE=${DO_GATE:-1}
+RUN=$Y/production-prep/$TAG-$(date +%Y%m%d-%H%M); mkdir -p $RUN
+export Y SL7_IMAGE=${SL7_IMAGE:-} APPTAINER_MODE=${APPTAINER_MODE:-}; [ -n "$SL7_IMAGE" ] || unset SL7_IMAGE
+NCH=$(( (NEVT + CHUNK - 1) / CHUNK ))
+echo "=== START $(date) on $(hostname) job ${PBS_JOBID%%.*} RUN=$RUN RECO1=$RECO1 FCL=$FCL REALITY=$REALITY NEVT=$NEVT CHUNK=$CHUNK ($NCH lar jobs) REF=$REF"
+echo "WCT=$(git -C $Y/wire-cell-toolkit rev-parse --short HEAD) (+$(git -C $Y/wire-cell-toolkit status --short cfg | wc -l) cfg changes) WCP=$(git -C $Y/wcp-porting-validation rev-parse --short HEAD) (+$(git -C $Y/wcp-porting-validation status --short sbnd | wc -l))"
+
+if [ "$DO_GATE" = 1 ]; then
+echo "=== G. config gates"
+SL7_SETUP=$S29/setup-aurora-ap.sh $S29/in-aurora-sl7.sh $S33/gate-2step-cfg.sh $RUN/gate 2>&1 | grep -v '^INFO'
+fi
+
+echo "=== 1. step 1 (lar, $NCH jobs x <= $CHUNK events)"
+SL7_SETUP=$S29/setup-aurora-run.sh $S29/in-aurora-sl7.sh bash -c "
+  t0=\$(date +%s)
+  for c in \$(seq 0 $((NCH-1))); do
+    d=$RUN/ql/c\$c; mkdir -p \$d; k=\$((c*$CHUNK)); n=\$(( $NEVT - k < $CHUNK ? $NEVT - k : $CHUNK ))
+    cpu=\$(( 1 + c*$CORES ))
+    ( cd \$d && /usr/bin/time -v -o time.txt taskset -c \$cpu-\$((cpu+$CORES-1)) lar -n \$n --nskip \$k -c $FCL -s $RECO1 --no-output > lar.log 2>&1; echo \"c\$c nskip=\$k n=\$n rc=\$? wall_s=\$(awk -F': ' '/Elapsed/ {print \$2}' time.txt) rss_kb=\$(awk '/Maximum resident/ {print \$NF}' time.txt)\" ) &
+  done; wait
+  echo step1_wall_s=\$(( \$(date +%s) - t0 ))
+  ls -la $RUN/ql/c*/qlpctree.tar.gz
+" 2>&1 | grep -v '^INFO'
+
+echo "=== 2. step 2 (standalone wire-cell, one per step-1 tar)"
+SL7_SETUP=$S29/setup-aurora-run.sh $S29/in-aurora-sl7.sh bash -c "
+  t0=\$(date +%s)
+  for c in \$(seq 0 $((NCH-1))); do
+    in=$RUN/ql/c\$c/qlpctree.tar.gz; d=$RUN/pr/c\$c; mkdir -p \$d; [ -f \$in ] || { echo \"c\$c: no step-1 tar\"; continue; }
+    ids=\$(python3 -c \"import tarfile,re,sys; print(' '.join(sorted({m.group(1) for n in tarfile.open(sys.argv[1]).getnames() for m in [re.match(r'clustering_tensorset_(\\d+)_metadata.json', n)] if m}, key=int)))\" \$in)
+    for e in \$ids; do mkdir -p \$d/pr_evt\$e; done
+    cpu=\$(( 1 + c*$CORES ))
+    ( cd \$d && /usr/bin/time -v -o time.txt taskset -c \$cpu-\$((cpu+$CORES-1)) wire-cell -l stdout -L debug -c pgrapher/experiment/sbnd/wct-pr.jsonnet --tla-str input=\$in --tla-str reality=$REALITY > wct.log 2>&1; echo \"c\$c events=[\$ids] rc=\$? wall_s=\$(awk -F': ' '/Elapsed/ {print \$2}' time.txt) rss_kb=\$(awk '/Maximum resident/ {print \$NF}' time.txt)\" ) &
+  done; wait
+  echo step2_wall_s=\$(( \$(date +%s) - t0 ))
+  ls $RUN/pr/c*/pr_evt*/tracking-pr.root | wc -l
+" 2>&1 | grep -v '^INFO'
+
+echo "=== 3. compare with the 1-step reference $REF"
+C=$RUN/cmp; mkdir -p $C/ref $C/arm $C/bee-ref $C/bee-arm
+SL7_SETUP=$S29/setup-aurora-opt.sh $S29/in-aurora-sl7.sh bash -c "
+  [ -f $REF/rse-by-nskip.tsv ] || python3 $S27/rse-by-nskip.py $REF > /dev/null
+  n=0; evs=''
+  while IFS=\$'\t' read -r k r s e t b; do
+    [ \"\$k\" = nskip ] && continue; [ \"\$e\" = - ] && continue; [ \$k -lt $NEVT ] || continue
+    a=\$(ls -d $RUN/pr/c*/pr_evt\$e 2>/dev/null | head -1)
+    mkdir -p $C/ref/evt_\$e $C/bee-ref/evt_\$e; ln -sf $REF/evt\$k/tracking-pr.root $C/ref/evt_\$e/tracking-pr.root; ln -sf $REF/evt\$k/mabc.zip $C/bee-ref/evt_\$e/mabc.zip
+    if [ -n \"\$a\" ] && [ -f \$a/tracking-pr.root ]; then ln -sf \$a/tracking-pr.root $C/arm/tracking-pr_\$e.root; n=\$((n+1)); evs=\"\$evs \$e\"; else echo \"event \$e (nskip \$k): NO 2-step tracking-pr.root\"; fi
+  done < $REF/rse-by-nskip.tsv
+  echo paired=\$n
+  echo '--- deep_compare (T_kine + T_tagger at 1e-6, every T_rec_charge point at 1e-5)'
+  python3 $TOOLS/deep_compare.py $C/ref $C/arm 2step 2>&1 | tee $C/deep_compare.txt | grep -v IDENTICAL | tail -20
+  echo IDENTICAL=\$(grep -c IDENTICAL $C/deep_compare.txt)
+  echo '--- every branch, per event, exact (evt-branch-diff)'
+  python3 $S29/evt-branch-diff.py --json $C/evt-diff.json --max 20 $C/ref $C/arm \$evs > $C/evt-diff.txt 2>&1
+  python3 - $C/evt-diff.json <<'PY'
+import json, sys
+J = json.load(open(sys.argv[1])); nid = 0
+for e, S in sorted(J.items(), key=lambda kv: int(kv[0])):
+    d = {tn: (T.get('entries'), sorted(T.get('branches', {}))) for tn, T in S['trees'].items() if T.get('branches') or ('entries' in T and T['entries'][0] != T['entries'][1]) or 'only_in' in T}
+    if not d: nid += 1; continue
+    print(e, '; '.join('%s%s: %s' % (tn, '' if not v[0] or v[0][0] == v[0][1] else ' entries %s' % v[0], ','.join(v[1][:8]) + (' ...(%d)' % len(v[1]) if len(v[1]) > 8 else '')) for tn, v in d.items()))
+print('=> %d events: every branch of every tree identical in %d' % (len(J), nid))
+PY
+  echo '--- census (all trees, exact float)'
+  python3 $S27/branch-diff-tracking-pr.py $C/ref $C/arm T_tagger T_kine T_cluster T_rec_charge Trun T_bad_ch T_proj T_proj_data 2>&1 | tee $C/branch_diff.txt | tail -6
+  echo '--- Bee: split the multi-event zips per event, exact per-layer diff (all layers)'
+  python3 $S33/bee-split.py $C/bee-arm $RUN/ql/c*/mabc.zip $RUN/pr/c*/mabc-pr.zip
+  python3 $S33/bee-diff.py $C/bee-ref $C/bee-arm 2>&1 | tee $C/bee_diff.txt | tail -25
+" 2>&1 | grep -v '^INFO'
+echo "=== END $(date)"

@@ -151,3 +151,52 @@ TensorFileSource(qlpctree.tar.gz, prefix clustering_) -> MABC clus_pr (clus_make
 ## Log
 
 - 2026-09-29: scope agreed (the Decisions table above); survey of the existing pieces (section "What already exists").
+
+### (a) 2026-09-29: M1 findings, M2 implemented, M3/M4 written (not yet built)
+
+**M1: the tar round trip (from existing tars, no job needed).**
+- **(a) What PR needs is serialized.** The 1-step's `trash-all-apa.tar.gz` (NCpi0 evt0) has these under `pointtrees/<ident>/live`:
+  - CTPC: `ctpc_a{0,1}f0p{U,V,W}`, with `charge`, `charge_err`, `cident`, `slice_index`, `wind`, `x`, `y`;
+  - dead wires: `dead_winds_a*` and `dead_gap_a*W`;
+  - light: `flash`, `light`, `flashlight`, `opflash` (with `gid`);
+  - provenance: `perblob` (`real_cluster_id/main/was_main`, `assoc_cluster_id/main`);
+  - the flags and `matched_flash_gid` in `cluster_scalar`, and the blob `trackid`;
+  - the `dead` grouping.
+- **(a) The round trip is not new.** Between `clus_all_apa` and PR, the 1-step already passes a serialized ITensorSet (`labeler_truth` re-serializes the tree). Writing that set to disk and reading it back is expected to be lossless (`.npy` binary), which is what M5 tests.
+- **(b) The set metadata carries** `runNo/subRunNo/eventNo` and the labeler's `nu_*` arrays, plus `bee_pf_truth` (the truth particle tree the PR MABC merges into Bee `mc`) on MC.
+- **(c) An extra tensor does no harm.** On MC the labeler already appends a `truthtracks/<ident>` tensor, and the 1-step PR MABC ignores it.
+- **(d) The set ident is the art event number.** It is unique within one filtered file. A multi-subrun file could repeat it, but the RSE in the metadata still distinguishes the events; still open.
+
+**M2: toolkit cfg (working tree on `polaris-build-fixes`, not yet committed).**
+- `sbnd-pr-stage.jsonnet`: the PR stage (beam gate, 15-visitor pipeline, the `pr()` call) as ONE definition, imported by both the 1-step lib and step 2.
+- `wcls-img-clus-matching-xin-lib.jsonnet(stage='1step'|'ql')`. With `'ql'`, the graph ends `labeler_truth -> TensorFileSink:ql_pctree` (`qlpctree.tar.gz`, prefix `clustering_`, real tensors, all events of the `lar` job).
+- `wcls-img-clus-matching.jsonnet` (step 1) = lib(hits, light gate, `stage='ql'`).
+- `wct-pr.jsonnet` (step 2, standalone): `TensorFileSource -> sbnd-pr-stage node -> sink`, with its own `BeeSink:mabc_pr`.
+  - Per-event outputs go to `pr_evt%1%/` (the ident).
+  - `rse_from_metadata`, with `event_from_ident` as `evt_subdir`'s required partner.
+- wcp-porting-validation: `sbnd/wcls-img-clus-matching{,-data}.fcl` (step 1, MC/data), with the re-export `sbnd/wcls-img-clus-matching.jsonnet`.
+- **Gates** (`scripts/gate-2step-cfg.sh` + `gate-2step-compare.py`), checked with go-jsonnet on the UAN for data and sim. The `wcsonnet` run is part of `run-2step.pbs`.
+  - **G-A:** both 1-step jobs (reco1, hits) compile byte-identical to HEAD `58b958f1`.
+  - **G-B:** step 1 is the hits 1-step minus the 34 PR-tail components, plus `TensorFileSink:ql_pctree`. All 195 shared components are identical.
+  - **G-C:** step 2's PR closure (38 components) equals the 1-step's. The only differences are output names (`output_filename`, `bee_zip`), the Bee sink, `event_from_ident`, and `reset_shower_ids_per_event`.
+  - `reset_shower_ids_per_event` restarts the static shower-id counter per event in a multi-event process. Identity with the one-event-per-process 1-step reference requires it.
+- **go-jsonnet:** a go-jsonnet v0.20 binary is at `$Y/tools/go-jsonnet/jsonnet`, for config work on the UAN. Remember that the right-most `-J` wins.
+
+**M3 (written, pending build):**
+- larwirecell `Components/TruthInformationAttacher.{h,cxx}`, factory `wclsTruthInformationAttacher`.
+  - **Always:** stamps the RSE.
+  - **`truth: true` on MC:** appends
+    - `truth/<ident>/nu` (`datatype` `truth_nu`), one row per neutrino MCTruth: `nu_idx, pdg, ccnc, mode, int_type, flavor, E, vtx_x/y/z, t, edep`;
+    - `truth/<ident>/pf` (`truth_pf`), one row per particle of the labeler's Bee `mc` particle-flow selection (beam-nu-derived, KE > 10 MeV): `nu_row, trackid, parent_trackid, mother_trackid, pdg, process, E, KE, start_x/y/z/t, end_x/y/z/t, start_px/py/pz`.
+- The G4 process-code table moved to the header-only `aiml/G4ProcessCode.h`, shared with the labeler (no behaviour change there).
+- **jsonnet (staged):** `rse_apa0/1`, `rse_all_apa` become `wclsTruthInformationAttacher{truth:false}`, and a `truth` instance goes after `labeler_truth` in both stages. The fcls' inputers are updated.
+- **G-A fallback:** `gate-1step-attacher.py` accepts exactly this attacher swap.
+- **Check:** `check-truth.py` compares the tables with the labeler's own `nu_*` metadata and Bee tree.
+
+**M4 (written, pending build):**
+- `Facade::Ensemble::{set_,}aux_tensor(datatype)`.
+- MABC `aux_datatypes` (default `truth_nu`, `truth_pf`): publishes those input tensors on the Ensemble and forwards them to its output. Nothing changes without them.
+- `SbndPrMagnifyTrackingVisitor` writes `T_truth_nu` / `T_truth_pf`: one entry per row, plus `runNo/subRunNo/eventNo`, identifier columns as `Int_t`.
+- `clus/src/TaggerBeeVisitor.cxx`: the toolkit port of `labeler_tagger`'s tagger Bee sets. It is `pr()`'s `tagger_bee` entry, appended in step 2 only.
+
+**Runs (M2 config) queued at 2026-09-29 05:10:** `run-2step.pbs` NCpi0-19 (job 8877054, with the gates) and MC-9 (8877055), against the #32 hit-flash 1-step runs. At 06:00 no job was running on any Aurora queue, a machine-wide stall, so both are still queued.
