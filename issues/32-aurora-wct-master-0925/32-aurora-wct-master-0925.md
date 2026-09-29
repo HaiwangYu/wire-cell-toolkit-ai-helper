@@ -382,3 +382,49 @@ Bee (same ascending event order in each pair; the table's `#` is the Bee event i
 **What I did.** `extract-scores.py` reads `T_tagger.numu_score`, `nue_score` and `T_kine.kine_reco_Enu` from Xin's own `tracking-pr.root` per event; `add-scores-to-bee.py` rewrites only the summary node's text of his `mabc-pr.zip` in the toolkit's own format (`"reco nu  %.1f MeV   numu %.3f   nue %.3f"`), nothing else in the zips changes. Cross-check: the patched text equals the 1-step's text in **65/67** events; the two exceptions are the two discrete events (131357: nue 11.744 vs 11.609; 433451: 2405.5 vs 2487.3 MeV, numu -1.186 vs -0.350, nue 11.178 vs 9.193), i.e. exactly the T_kine/T_tagger differences in the table above.
 
 The links in the table above are replaced by the scored sets: NCpi0 [b2a709d5](https://www.phy.bnl.gov/twister/bee/set/b2a709d5-a914-4ff3-8996-3e31fd7f4ad0/event/list/), nueCC [6b0235bc](https://www.phy.bnl.gov/twister/bee/set/6b0235bc-0db8-4501-80ed-74a9d4ecd67a/event/list/) (same events, same order; the unscored originals ad2e51ab / 158e6093 stay up). Tools in `issues/29-aurora-production/scripts/`: `extract-scores.py`, `add-scores-to-bee.py`, `run-sl7.pbs`.
+
+### 2026-09-29 (i) NCpi0: the r3 (#30, FNAL, 0ad64223, reco1 flash) arm vs Xin m0925pr, next to the hit-flash re-run
+
+**r3** = `production-prep/r3-ncpi0-lynn-2026-09-15`: the FNAL 1-step of campaign #30, toolkit `0ad64223` (master-2026-09-08+yuhw), reco1 `recob::OpFlash` light, `wcls-img-clus-matching-xin-data.fcl`. **hits** = the current Aurora hit-flash 1-step (toolkit `2982785a` = master 129362fe + the hits job). **Xin** = `work-ncpi0-m0925pr` (wcgpu1, toolkit 129362fe, hit flashes + light gate), scores added from his `tracking-pr.root`.
+
+**Bee, all 19 events, same ascending event order in all three sets:** r3 [051ee22b](https://www.phy.bnl.gov/twister/bee/set/051ee22b-049e-4465-a008-0203bc948b01/event/list/) · hits [60dc27dd](https://www.phy.bnl.gov/twister/bee/set/60dc27dd-f834-4150-8785-d5d43ed4f9df/event/list/) · Xin (scored) [b2a709d5](https://www.phy.bnl.gov/twister/bee/set/b2a709d5-a914-4ff3-8996-3e31fd7f4ad0/event/list/)
+
+**Size of the difference (from the Bee content; the `tracking-pr.root` census follows):**
+
+| | r3 vs Xin | hits vs Xin |
+|---|---|---|
+| Bee content identical (Xin's 7 layers) | **0/19** | **19/19** |
+| reco Enu, \|Δ\|/Enu | median **15.9 %**, mean 20.1 %, max 83.3 % (e114446: 753 → 126 MeV) | 0 in all 19 |
+| numu score, \|Δ\| | median 0.28, max 2.21 | 0 |
+| nue score, \|Δ\| | median 0.00, max 13.31 | 0 |
+| particle-flow list (PID × count) identical | **0/19** | 19/19 |
+| PR clustering points, (y, z, q) common with Xin | 93.7-100 % | 100 % |
+| clusters at a different x (= matched to another flash / t0) | 2-22 per event | 0 |
+
+So the r3 arm differs from Xin in every event at the level of the physics output: a different light source matches 2-22 clusters per event to a different flash, and 2.5 weeks of PR changes (09-08 → 09-25: charge_stepped retile, Steiner prefer3, nu_bundle_flash_group, the 25-key operating-point fix, ...) change the particle flow of every candidate. The current hit-flash re-run removes all of it: its only differences to Xin are the float-precision residual in `T_rec_charge` of every event and nothing else in NCpi0 (table above).
+
+Per event (Enu MeV / numu / nue; "clusters at another x" counts r3's PR clusters with > 50 % of their points shifted in x vs Xin; particle deltas are Xin → r3):
+
+| # | event | Xin: Enu / numu / nue | r3 (FNAL, 0ad64223, reco1 flash) | hits (Aurora, 2982785a) | r3 PR points: yzq-common with Xin, clusters at another x | PF particles Xin -> r3 |
+|---|---|---|---|---|---|---|
+| 1 | r18259 s1 e18625 | 1502.5 / 0.59 / -15.00 | 1448.6 / 2.80 / -15.00 | 1502.5 / 0.59 / -15.00 | 26983/27062 (99.7%), 10/124 clusters | mu- 0->1, neutron 0->2, pi+ 1->0, proton 4->5 |
+| 2 | r18345 s1 e21073 | 1400.5 / 0.56 / -7.36 | 1623.7 / -0.70 / -2.50 | 1400.5 / 0.56 / -7.36 | 15225/15225 (100.0%), 7/67 clusters | 0 1->0, mu- 3->2, neutron 3->0, pi+ 1->0, proton 2->1 |
+| 3 | r18259 s1 e37112 | 1119.5 / 0.64 / -2.75 | 1147.8 / -0.61 / -2.62 | 1119.5 / 0.64 / -2.75 | 23063/23063 (100.0%), 22/84 clusters | e- 2->4, gamma 1->3, neutron 2->1, proton 3->1 |
+| 4 | r18255 s1 e56982 | 1109.6 / 0.23 / 2.83 | 1268.5 / 0.07 / -4.82 | 1109.6 / 0.23 / 2.83 | 37822/37822 (100.0%), 5/85 clusters | e- 8->6, mu- 1->2, neutron 1->5, pi+ 0->1, proton 0->3 |
+| 5 | r18255 s1 e71372 | 2290.5 / 1.80 / -15.00 | 2422.8 / 1.71 / -15.00 | 2290.5 / 1.80 / -15.00 | 37059/37059 (100.0%), 4/132 clusters | e- 6->5, mu- 2->1, neutron 2->0, pi+ 0->1, proton 1->0 |
+| 6 | r18364 s1 e84229 | 1305.2 / 0.50 / -15.00 | 1492.2 / 0.62 / -15.00 | 1305.2 / 0.50 / -15.00 | 18587/18587 (100.0%), 6/69 clusters | gamma 2->3, mu- 4->1, neutron 3->1 |
+| 7 | r18259 s1 e105946 | 1098.6 / -0.23 / -15.00 | 923.2 / -0.15 / -15.00 | 1098.6 / -0.23 / -15.00 | 7995/8071 (99.1%), 8/56 clusters | neutron 1->0, pi0 1->0, proton 3->1 |
+| 8 | r18255 s1 e114446 | 753.0 / -0.64 / -15.00 | 125.8 / -2.74 / -15.00 | 753.0 / -0.64 / -15.00 | 34750/35052 (99.1%), 10/57 clusters | e- 1->0, gamma 1->0, mu- 3->0, neutron 2->0, proton 0->1 |
+| 9 | r18255 s1 e142421 | 2110.7 / 2.69 / -15.00 | 2678.3 / 3.05 / -15.00 | 2110.7 / 2.69 / -15.00 | 29484/29488 (100.0%), 8/106 clusters | e- 6->3, gamma 5->3, mu- 5->2, neutron 5->2, pi+ 1->2, proton 8->4 |
+| 10 | r18255 s1 e180801 | 1241.8 / -0.10 / -15.00 | 1302.5 / 1.36 / -3.59 | 1241.8 / -0.10 / -15.00 | 44265/47251 (93.7%), 9/109 clusters | gamma 8->7, neutron 1->2, pi+ 0->2 |
+| 11 | r18345 s1 e259542 | 1378.8 / 0.38 / -15.00 | 1437.9 / -0.42 / -15.00 | 1378.8 / 0.38 / -15.00 | 45089/45089 (100.0%), 6/128 clusters | e- 7->11, gamma 5->11, mu- 4->1, neutron 2->4, pi+ 1->0, pi0 1->2, proton 0->3 |
+| 12 | r18261 s1 e285567 | 1631.5 / 0.79 / -7.23 | 2169.1 / 0.83 / -3.94 | 1631.5 / 0.79 / -7.23 | 75614/75614 (100.0%), 8/119 clusters | e- 5->8, gamma 5->7, mu- 3->2, pi+ 3->1, pi0 1->2, proton 6->4 |
+| 13 | r18255 s1 e314838 | 1092.6 / -0.06 / -15.00 | 1090.0 / -0.22 / -15.00 | 1092.6 / -0.06 / -15.00 | 56185/56185 (100.0%), 2/116 clusters | e- 4->3, gamma 4->3, mu- 0->1, pi0 1->0, proton 2->1 |
+| 14 | r18255 s1 e359980 | 693.2 / -1.11 / -15.00 | 868.1 / -0.63 / -15.00 | 693.2 / -1.11 / -15.00 | 34221/34227 (100.0%), 6/74 clusters | e- 7->2, gamma 7->2, pi+ 1->0, proton 0->1 |
+| 15 | r18255 s1 e399860 | 1164.6 / -0.89 / 9.00 | 978.2 / -0.47 / 1.09 | 1164.6 / -0.89 / 9.00 | 24203/24203 (100.0%), 19/72 clusters | proton 2->0 |
+| 16 | r18255 s1 e463565 | 1266.1 / -0.03 / -1.69 | 1481.0 / -0.04 / -15.00 | 1266.1 / -0.03 / -1.69 | 25581/25581 (100.0%), 13/110 clusters | gamma 2->5, pi+ 1->2, pi0 0->1, proton 3->5 |
+| 17 | r18255 s1 e506114 | 2247.2 / -0.92 / -15.00 | 2158.7 / -1.01 / -15.00 | 2247.2 / -0.92 / -15.00 | 40172/40172 (100.0%), 6/92 clusters | e- 6->5, gamma 6->5 |
+| 18 | r18255 s1 e506746 | 1728.4 / 0.58 / -15.00 | 2140.9 / 0.38 / -15.00 | 1728.4 / 0.58 / -15.00 | 28521/28521 (100.0%), 10/73 clusters | e- 5->8, gamma 4->7, mu- 2->1, pi+ 2->1, proton 2->3 |
+| 19 | r18255 s1 e521075 | 491.4 / -0.42 / -15.00 | 840.1 / -0.14 / -15.00 | 491.4 / -0.42 / -15.00 | 30994/31000 (100.0%), 5/87 clusters | e- 0->1, gamma 0->1, mu- 1->0, neutron 1->0 |
+
+The every-branch `tracking-pr.root` table for r3 vs Xin (same method as above) is pending: Aurora's `debug` queue has no online nodes today (job 8876739 moved to `debug-scaling`, queued); it will be added here.
