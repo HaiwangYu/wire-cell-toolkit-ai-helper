@@ -29,7 +29,11 @@ summary = {}
 for e in args[2:]:
     fa = ROOT.TFile.Open('%s/evt_%s/tracking-pr.root' % (REF, e)); fb = ROOT.TFile.Open('%s/tracking-pr_%s.root' % (ARM, e))
     print('=== event', e); S = summary[e] = {'trees': {}, 'headline': {}}
-    for tn in TREES:
+    # every TTree present in either file: the 8 historical trees first, then any others
+    # (T_bundle, T_flash, T_truth_nu, T_truth_pf, ...) in file order
+    keys = lambda f: [k.GetName() for k in f.GetListOfKeys() if k.GetClassName() == 'TTree'] if f else []
+    extra = [t for t in dict.fromkeys(keys(fa) + keys(fb)) if t not in TREES]
+    for tn in TREES + extra:
         ta, tb = fa.Get(tn), fb.Get(tn)
         if not ta or not tb:
             if ta or tb: print('  %s: present only in %s' % (tn, 'ref' if ta else 'arm')); S['trees'][tn] = {'only_in': 'ref' if ta else 'arm'}

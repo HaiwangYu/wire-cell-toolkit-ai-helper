@@ -246,3 +246,139 @@ wire-cell -c pgrapher/experiment/sbnd/wct-pr.jsonnet --tla-str input=qlpctree.ta
 **Open:**
 - the set ident is the art event number (unique per filtered file; a multi-subrun file could repeat it);
 - upstreaming.
+
+### (c) 2026-09-29: Bee sets for both arms and the event-by-event comparison table
+
+
+Each sample compares our #32 hit-flash 1-step run with the 2-step run of the same events, on the final build.
+
+**Bee** (both sets in ascending event number, so index N is the same event in both):
+
+| sample | 1-step (#32 run) | 2-step |
+|---|---|---|
+| MC-9 (gen2 CV) | [40781144](https://www.phy.bnl.gov/twister/bee/set/40781144-aff8-4c21-9e0a-20f3911acda4/event/list/) | [4c7d6210](https://www.phy.bnl.gov/twister/bee/set/4c7d6210-69c7-4fe6-9cac-a6e187341f9f/event/list/) |
+| NCpi0-19 (data) | [627fda88](https://www.phy.bnl.gov/twister/bee/set/627fda88-474f-4890-b283-13496f91391c/event/list/) | [af5cf7b9](https://www.phy.bnl.gov/twister/bee/set/af5cf7b9-9b89-4f8e-8102-a942544ba267/event/list/) |
+| nueCC-48 (data) | [d4b1726b](https://www.phy.bnl.gov/twister/bee/set/d4b1726b-1f73-46a4-956c-42eb81c5a3ce/event/list/) | [9cc3ff24](https://www.phy.bnl.gov/twister/bee/set/9cc3ff24-7238-4cf0-97cf-82c627dd9739/event/list/) |
+
+**What each set carries.** Every layer of the chain:
+- `img-global`;
+- `clustering-apa{0,1}-face0`, `clustering-global`, `clustering-pr-global`;
+- `track_fit-global`, `shower_track-global`, `vertices-global`;
+- `mc`: the reco particle flow, with Enu, numu and nue in its text, merged with the truth tree on MC;
+- `op`, and `channel-deadarea` for both APAs;
+- `tagger_{stm,tgm,fc,lm}`;
+- on MC, the truth-deposit sets `sed-*`.
+
+The 2-step set combines step 1's `mabc.zip` and step 2's `mabc-pr.zip`, split per event and re-merged. Before upload, the two uploaded zips were compared member by member: every layer of every event is byte-identical (168, 304 and 768 members). Only the member order inside the zip differs.
+
+**How `tracking-pr.root` is compared.** `evt-branch-diff.py` compares every TTree in either file, exactly, entry by entry and branch by branch.
+- The trees are `Trun`, `T_kine`, `T_tagger`, `T_cluster`, `T_rec_charge`, `T_bad_ch`, `T_proj`, `T_proj_data`, `T_bundle`, `T_flash`, plus `T_truth_nu` and `T_truth_pf` on MC. NaN is treated as equal to NaN.
+- The script now finds the trees itself. Before this, it looked only at the first 8, so `T_bundle` and `T_flash` were not covered in log (b); they are now, and they are identical too.
+- The census, `branch-diff-tracking-pr.py` over the same 10 trees, finds 0 differing (tree, branch) pairs in all three samples.
+- MC is also compared with the rebuilt 1-step `mc50-1step-m34-20260929-0607`, the one 1-step run that has the truth trees as well. All 12 trees, `T_truth_nu` and `T_truth_pf` included, are identical in 9/9 events.
+
+**Physics per event.** Enu is `T_kine.kine_reco_Enu`; the scores are `T_tagger.numu_score` and `T_tagger.nue_score`. On MC, the truth neutrino and the particle count come from the 2-step's `T_truth_nu` and `T_truth_pf`.
+
+**MC-9 (gen2 CV)**: 9 events; `tracking-pr.root` identical 9/9, Bee identical 9/9
+
+| # (Bee) | run subrun event | `tracking-pr.root` (2-step vs 1-step) | Bee (every layer) | reco Enu [MeV] 1-step / 2-step | numu score | nue score | truth (2-step `T_truth_nu` / `T_truth_pf`) |
+|---|---|---|---|---|---|---|---|
+| 1 | 1 1 1 | identical, every branch of 10 trees (T_cluster 63, T_rec_charge 220 entries); T_truth_nu only in 2-step; T_truth_pf only in 2-step | identical (21 layers) | 417.8 / = | -0.274 / = | -2.763 / = | numu CC, E 1658 MeV, Edep 802 MeV, vtx (-93, -205, 329) cm (+1 more: numu NC Edep 0 MeV); 24 pf particles |
+| 2 | 1 1 2 | identical, every branch of 8 trees (T_cluster 57, T_rec_charge 0 entries); T_truth_nu only in 2-step; T_truth_pf only in 2-step | identical (18 layers) | – / – | – / – | – / – | numu NC, E 1058 MeV, Edep 70 MeV, vtx (-260, -117, 156) cm (+1 more: numu CC Edep 0 MeV); 9 pf particles |
+| 3 | 1 1 3 | identical, every branch of 8 trees (T_cluster 60, T_rec_charge 0 entries); T_truth_nu only in 2-step; T_truth_pf only in 2-step | identical (18 layers) | – / – | – / – | – / – | numu CC, E 894 MeV, Edep 385 MeV, vtx (-204, 55, 398) cm; 20 pf particles |
+| 4 | 1 1 4 | identical, every branch of 8 trees (T_cluster 28, T_rec_charge 0 entries); T_truth_nu only in 2-step; T_truth_pf only in 2-step | identical (18 layers) | – / – | – / – | – / – | numu CC, E 492 MeV, Edep 377 MeV, vtx (192, 117, 229) cm (+1 more: numu CC Edep 0 MeV); 8 pf particles |
+| 5 | 1 1 5 | identical, every branch of 8 trees (T_cluster 82, T_rec_charge 0 entries); T_truth_nu only in 2-step; T_truth_pf only in 2-step | identical (18 layers) | – / – | – / – | – / – | numu CC, E 4401 MeV, Edep 58 MeV, vtx (68, 18, -333) cm; 22 pf particles |
+| 6 | 1 1 6 | identical, every branch of 10 trees (T_cluster 72, T_rec_charge 0 entries); T_truth_nu only in 2-step; T_truth_pf only in 2-step | identical (18 layers) | 0.0 / = | -1.942 / = | -15.000 / = | numu CC, E 1170 MeV, Edep 411 MeV, vtx (-251, 365, 117) cm (+1 more: numu CC Edep 0 MeV); 86 pf particles |
+| 7 | 1 1 16 | identical, every branch of 10 trees (T_cluster 40, T_rec_charge 188 entries); T_truth_nu only in 2-step; T_truth_pf only in 2-step | identical (21 layers) | 661.5 / = | 3.383 / = | -15.000 / = | numu CC, E 1434 MeV, Edep 301 MeV, vtx (14, 191, 390) cm (+1 more: numu CC Edep 0 MeV); 25 pf particles |
+| 8 | 1 1 18 | identical, every branch of 8 trees (T_cluster 47, T_rec_charge 0 entries); T_truth_nu only in 2-step; T_truth_pf only in 2-step | identical (18 layers) | – / – | – / – | – / – | numu CC, E 1527 MeV, Edep 169 MeV, vtx (-16, 226, -19) cm; 3 pf particles |
+| 9 | 1 1 22 | identical, every branch of 8 trees (T_cluster 37, T_rec_charge 0 entries); T_truth_nu only in 2-step; T_truth_pf only in 2-step | identical (18 layers) | – / – | – / – | – / – | numu CC, E 1282 MeV, Edep 66 MeV, vtx (-189, 16, -30) cm; 9 pf particles |
+
+"=" means the 2-step value equals the 1-step value exactly; a difference would be shown in bold as "1-step / 2-step". "–": no neutrino candidate, so no T_tagger / T_kine (8 instead of 10 trees) in either arm.
+Truth: the interaction depositing in the detector (max Edep); the gen2 CV sample also carries dirt interactions (Edep 0), listed after it.
+
+**NCpi0-19 (data)**: 19 events; `tracking-pr.root` identical 19/19, Bee identical 19/19
+
+| # (Bee) | run subrun event | `tracking-pr.root` (2-step vs 1-step) | Bee (every layer) | reco Enu [MeV] 1-step / 2-step | numu score | nue score |
+|---|---|---|---|---|---|---|
+| 1 | 18259 1 18625 | identical, every branch of 10 trees (T_cluster 136, T_rec_charge 822 entries) | identical (16 layers) | 1502.5 / = | 0.586 / = | -15.000 / = |
+| 2 | 18345 1 21073 | identical, every branch of 10 trees (T_cluster 69, T_rec_charge 783 entries) | identical (16 layers) | 1400.5 / = | 0.562 / = | -7.358 / = |
+| 3 | 18259 1 37112 | identical, every branch of 10 trees (T_cluster 85, T_rec_charge 427 entries) | identical (16 layers) | 1119.5 / = | 0.640 / = | -2.745 / = |
+| 4 | 18255 1 56982 | identical, every branch of 10 trees (T_cluster 92, T_rec_charge 658 entries) | identical (16 layers) | 1109.6 / = | 0.230 / = | 2.825 / = |
+| 5 | 18255 1 71372 | identical, every branch of 10 trees (T_cluster 140, T_rec_charge 1458 entries) | identical (16 layers) | 2290.5 / = | 1.804 / = | -15.000 / = |
+| 6 | 18364 1 84229 | identical, every branch of 10 trees (T_cluster 71, T_rec_charge 806 entries) | identical (16 layers) | 1305.2 / = | 0.500 / = | -15.000 / = |
+| 7 | 18259 1 105946 | identical, every branch of 10 trees (T_cluster 70, T_rec_charge 491 entries) | identical (16 layers) | 1098.6 / = | -0.229 / = | -15.000 / = |
+| 8 | 18255 1 114446 | identical, every branch of 10 trees (T_cluster 108, T_rec_charge 519 entries) | identical (16 layers) | 753.0 / = | -0.636 / = | -15.000 / = |
+| 9 | 18255 1 142421 | identical, every branch of 10 trees (T_cluster 111, T_rec_charge 1238 entries) | identical (16 layers) | 2110.7 / = | 2.694 / = | -15.000 / = |
+| 10 | 18255 1 180801 | identical, every branch of 10 trees (T_cluster 126, T_rec_charge 628 entries) | identical (16 layers) | 1241.8 / = | -0.105 / = | -15.000 / = |
+| 11 | 18345 1 259542 | identical, every branch of 10 trees (T_cluster 135, T_rec_charge 861 entries) | identical (16 layers) | 1378.8 / = | 0.376 / = | -15.000 / = |
+| 12 | 18261 1 285567 | identical, every branch of 10 trees (T_cluster 125, T_rec_charge 824 entries) | identical (16 layers) | 1631.5 / = | 0.791 / = | -7.234 / = |
+| 13 | 18255 1 314838 | identical, every branch of 10 trees (T_cluster 121, T_rec_charge 644 entries) | identical (16 layers) | 1092.6 / = | -0.064 / = | -15.000 / = |
+| 14 | 18255 1 359980 | identical, every branch of 10 trees (T_cluster 81, T_rec_charge 463 entries) | identical (16 layers) | 693.2 / = | -1.109 / = | -15.000 / = |
+| 15 | 18255 1 399860 | identical, every branch of 10 trees (T_cluster 79, T_rec_charge 574 entries) | identical (16 layers) | 1164.6 / = | -0.891 / = | 8.996 / = |
+| 16 | 18255 1 463565 | identical, every branch of 10 trees (T_cluster 123, T_rec_charge 719 entries) | identical (16 layers) | 1266.1 / = | -0.032 / = | -1.691 / = |
+| 17 | 18255 1 506114 | identical, every branch of 10 trees (T_cluster 99, T_rec_charge 915 entries) | identical (16 layers) | 2247.2 / = | -0.919 / = | -15.000 / = |
+| 18 | 18255 1 506746 | identical, every branch of 10 trees (T_cluster 80, T_rec_charge 790 entries) | identical (16 layers) | 1728.4 / = | 0.580 / = | -15.000 / = |
+| 19 | 18255 1 521075 | identical, every branch of 10 trees (T_cluster 95, T_rec_charge 261 entries) | identical (16 layers) | 491.4 / = | -0.422 / = | -15.000 / = |
+
+"=" means the 2-step value equals the 1-step value exactly; a difference would be shown in bold as "1-step / 2-step". "–": no neutrino candidate, so no T_tagger / T_kine (8 instead of 10 trees) in either arm.
+
+**nueCC-48 (data)**: 48 events; `tracking-pr.root` identical 48/48, Bee identical 48/48
+
+| # (Bee) | run subrun event | `tracking-pr.root` (2-step vs 1-step) | Bee (every layer) | reco Enu [MeV] 1-step / 2-step | numu score | nue score |
+|---|---|---|---|---|---|---|
+| 1 | 18255 1 388 | identical, every branch of 10 trees (T_cluster 99, T_rec_charge 1014 entries) | identical (16 layers) | 2419.0 / = | -1.771 / = | 13.018 / = |
+| 2 | 18255 1 10550 | identical, every branch of 10 trees (T_cluster 66, T_rec_charge 443 entries) | identical (16 layers) | 882.9 / = | -0.375 / = | 13.232 / = |
+| 3 | 18342 1 30504 | identical, every branch of 10 trees (T_cluster 71, T_rec_charge 569 entries) | identical (16 layers) | 1071.7 / = | -0.445 / = | 9.215 / = |
+| 4 | 18304 1 38856 | identical, every branch of 10 trees (T_cluster 73, T_rec_charge 607 entries) | identical (16 layers) | 1302.7 / = | -0.896 / = | 13.685 / = |
+| 5 | 18259 1 42280 | identical, every branch of 10 trees (T_cluster 106, T_rec_charge 925 entries) | identical (16 layers) | 1899.5 / = | -1.725 / = | 12.718 / = |
+| 6 | 18255 1 46363 | identical, every branch of 10 trees (T_cluster 89, T_rec_charge 932 entries) | identical (16 layers) | 1713.9 / = | -0.810 / = | 9.546 / = |
+| 7 | 18259 1 52672 | identical, every branch of 10 trees (T_cluster 86, T_rec_charge 612 entries) | identical (16 layers) | 901.7 / = | -0.096 / = | 13.279 / = |
+| 8 | 18259 1 54095 | identical, every branch of 10 trees (T_cluster 98, T_rec_charge 1256 entries) | identical (16 layers) | 2829.1 / = | -1.205 / = | 11.505 / = |
+| 9 | 18255 1 69314 | identical, every branch of 10 trees (T_cluster 74, T_rec_charge 807 entries) | identical (16 layers) | 1380.3 / = | 2.964 / = | -15.000 / = |
+| 10 | 18259 1 74544 | identical, every branch of 10 trees (T_cluster 55, T_rec_charge 762 entries) | identical (16 layers) | 1418.7 / = | -0.905 / = | 11.065 / = |
+| 11 | 18313 1 81597 | identical, every branch of 10 trees (T_cluster 124, T_rec_charge 675 entries) | identical (16 layers) | 1483.6 / = | 0.361 / = | 14.398 / = |
+| 12 | 18255 1 90055 | identical, every branch of 10 trees (T_cluster 151, T_rec_charge 1174 entries) | identical (16 layers) | 2366.4 / = | -0.734 / = | 11.274 / = |
+| 13 | 18259 1 111412 | identical, every branch of 10 trees (T_cluster 75, T_rec_charge 427 entries) | identical (16 layers) | 889.3 / = | 1.576 / = | -1.847 / = |
+| 14 | 18259 1 116962 | identical, every branch of 10 trees (T_cluster 71, T_rec_charge 466 entries) | identical (16 layers) | 829.2 / = | 0.148 / = | -4.823 / = |
+| 15 | 18255 1 122660 | identical, every branch of 10 trees (T_cluster 64, T_rec_charge 821 entries) | identical (16 layers) | 1390.7 / = | 0.533 / = | 10.360 / = |
+| 16 | 18259 1 131357 | identical, every branch of 10 trees (T_cluster 113, T_rec_charge 377 entries) | identical (16 layers) | 769.0 / = | -0.688 / = | 11.609 / = |
+| 17 | 18264 1 137238 | identical, every branch of 10 trees (T_cluster 151, T_rec_charge 638 entries) | identical (16 layers) | 958.5 / = | 1.654 / = | -15.000 / = |
+| 18 | 18255 1 138009 | identical, every branch of 10 trees (T_cluster 66, T_rec_charge 579 entries) | identical (16 layers) | 1348.4 / = | 0.161 / = | 10.025 / = |
+| 19 | 18255 1 163543 | identical, every branch of 10 trees (T_cluster 74, T_rec_charge 643 entries) | identical (16 layers) | 1175.4 / = | -0.768 / = | 3.235 / = |
+| 20 | 18255 1 168596 | identical, every branch of 10 trees (T_cluster 131, T_rec_charge 921 entries) | identical (16 layers) | 1707.3 / = | 0.339 / = | -0.268 / = |
+| 21 | 18253 1 172230 | identical, every branch of 10 trees (T_cluster 69, T_rec_charge 745 entries) | identical (16 layers) | 1505.5 / = | -1.403 / = | 10.617 / = |
+| 22 | 18255 1 174637 | identical, every branch of 10 trees (T_cluster 50, T_rec_charge 478 entries) | identical (16 layers) | 972.0 / = | 0.812 / = | 10.666 / = |
+| 23 | 18255 1 196649 | identical, every branch of 10 trees (T_cluster 66, T_rec_charge 824 entries) | identical (16 layers) | 1495.6 / = | -0.544 / = | 7.968 / = |
+| 24 | 18409 1 214469 | identical, every branch of 10 trees (T_cluster 109, T_rec_charge 1176 entries) | identical (16 layers) | 2252.1 / = | -1.311 / = | 11.654 / = |
+| 25 | 18255 1 219295 | identical, every branch of 10 trees (T_cluster 92, T_rec_charge 767 entries) | identical (16 layers) | 1722.0 / = | -1.084 / = | 9.838 / = |
+| 26 | 18255 1 234638 | identical, every branch of 10 trees (T_cluster 95, T_rec_charge 790 entries) | identical (16 layers) | 1424.2 / = | 1.406 / = | 7.229 / = |
+| 27 | 18255 1 235435 | identical, every branch of 10 trees (T_cluster 42, T_rec_charge 263 entries) | identical (16 layers) | 869.1 / = | 2.629 / = | -15.000 / = |
+| 28 | 18255 1 239794 | identical, every branch of 10 trees (T_cluster 106, T_rec_charge 1018 entries) | identical (16 layers) | 2732.3 / = | -0.591 / = | 13.047 / = |
+| 29 | 18255 1 246579 | identical, every branch of 10 trees (T_cluster 86, T_rec_charge 929 entries) | identical (16 layers) | 1712.0 / = | -0.458 / = | 11.445 / = |
+| 30 | 18306 1 256587 | identical, every branch of 10 trees (T_cluster 136, T_rec_charge 1874 entries) | identical (16 layers) | 3525.9 / = | -1.089 / = | 10.342 / = |
+| 31 | 18279 1 267597 | identical, every branch of 10 trees (T_cluster 107, T_rec_charge 840 entries) | identical (16 layers) | 1763.9 / = | 0.019 / = | 11.589 / = |
+| 32 | 18255 1 268067 | identical, every branch of 10 trees (T_cluster 69, T_rec_charge 526 entries) | identical (16 layers) | 1340.8 / = | 0.512 / = | 8.340 / = |
+| 33 | 18255 1 268784 | identical, every branch of 10 trees (T_cluster 79, T_rec_charge 854 entries) | identical (16 layers) | 1785.2 / = | 0.568 / = | 6.151 / = |
+| 34 | 18255 1 269774 | identical, every branch of 10 trees (T_cluster 109, T_rec_charge 1179 entries) | identical (16 layers) | 1997.9 / = | -1.058 / = | 10.831 / = |
+| 35 | 18255 1 271851 | identical, every branch of 10 trees (T_cluster 138, T_rec_charge 884 entries) | identical (16 layers) | 1382.5 / = | -0.424 / = | -15.000 / = |
+| 36 | 18269 1 342199 | identical, every branch of 10 trees (T_cluster 74, T_rec_charge 613 entries) | identical (16 layers) | 1159.6 / = | 0.308 / = | 11.489 / = |
+| 37 | 18255 1 350186 | identical, every branch of 10 trees (T_cluster 110, T_rec_charge 316 entries) | identical (16 layers) | 661.0 / = | -1.519 / = | 9.512 / = |
+| 38 | 18255 1 360535 | identical, every branch of 10 trees (T_cluster 101, T_rec_charge 834 entries) | identical (16 layers) | 2145.1 / = | -0.471 / = | 10.459 / = |
+| 39 | 18255 1 389538 | identical, every branch of 10 trees (T_cluster 80, T_rec_charge 946 entries) | identical (16 layers) | 1272.0 / = | 0.489 / = | 10.913 / = |
+| 40 | 18355 1 400474 | identical, every branch of 10 trees (T_cluster 110, T_rec_charge 810 entries) | identical (16 layers) | 1677.1 / = | 0.340 / = | 11.793 / = |
+| 41 | 18255 1 422851 | identical, every branch of 10 trees (T_cluster 85, T_rec_charge 649 entries) | identical (16 layers) | 1284.4 / = | -1.079 / = | 13.065 / = |
+| 42 | 18255 1 423981 | identical, every branch of 10 trees (T_cluster 105, T_rec_charge 760 entries) | identical (16 layers) | 1921.5 / = | 0.234 / = | 10.828 / = |
+| 43 | 18255 1 433451 | identical, every branch of 10 trees (T_cluster 132, T_rec_charge 1144 entries) | identical (16 layers) | 2487.3 / = | -0.350 / = | 9.193 / = |
+| 44 | 18255 1 437699 | identical, every branch of 10 trees (T_cluster 121, T_rec_charge 692 entries) | identical (16 layers) | 1267.7 / = | -0.685 / = | 8.514 / = |
+| 45 | 18253 1 444187 | identical, every branch of 10 trees (T_cluster 90, T_rec_charge 451 entries) | identical (16 layers) | 1197.6 / = | 0.485 / = | 10.348 / = |
+| 46 | 18255 1 447477 | identical, every branch of 10 trees (T_cluster 77, T_rec_charge 537 entries) | identical (16 layers) | 1169.8 / = | 0.002 / = | 10.902 / = |
+| 47 | 18255 1 469665 | identical, every branch of 10 trees (T_cluster 71, T_rec_charge 379 entries) | identical (16 layers) | 426.4 / = | -0.487 / = | 3.812 / = |
+| 48 | 18255 1 489330 | identical, every branch of 10 trees (T_cluster 53, T_rec_charge 879 entries) | identical (16 layers) | 1752.3 / = | 0.064 / = | 12.936 / = |
+
+"=" means the 2-step value equals the 1-step value exactly; a difference would be shown in bold as "1-step / 2-step". "–": no neutrino candidate, so no T_tagger / T_kine (8 instead of 10 trees) in either arm.
+
+Tools (in `issues/33-sbnd-1step-to-2step/scripts/`):
+- `evt-summary.py`: per-event physics summary, SL7;
+- `evt-table-2step.py`: this table;
+- `bee-split.py` and `bee-diff.py`: the per-event Bee split and diff;
+- `issues/29-aurora-production/scripts/evt-branch-diff.py`: now compares all trees.
