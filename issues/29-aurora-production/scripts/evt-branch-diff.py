@@ -22,6 +22,8 @@ def vals(t, nm):
     v = getattr(t, nm)
     if hasattr(v, '__len__') and not isinstance(v, str): return [float(x) for x in v]
     return [float(v)]
+def same(a, b):   # exact equality, NaN == NaN (a NaN in both files is not a difference)
+    return len(a) == len(b) and all(x == y or (math.isnan(x) and math.isnan(y)) for x, y in zip(a, b))
 def fmt(v): return ('%g' % v[0]) if len(v) == 1 else ('[' + ', '.join('%g' % x for x in v[:6]) + (', ...' if len(v) > 6 else '') + ']')
 summary = {}
 for e in args[2:]:
@@ -42,7 +44,7 @@ for e in args[2:]:
                 ta.GetEntry(i); tb.GetEntry(i)
                 try: va, vb = vals(ta, nm), vals(tb, nm)
                 except Exception: break
-                if va == vb: continue
+                if same(va, vb): continue
                 ndiff += 1
                 if len(va) == len(vb):
                     for x, y in zip(va, vb):
@@ -71,6 +73,6 @@ for e in args[2:]:
         for k in KEYS:
             if ta.GetBranch(k):
                 va, vb = vals(ta, k), vals(tb, k)
-                if va != vb: print('    HEADLINE %s.%s ref=%s arm=%s' % (tn, k, fmt(va), fmt(vb))); S['headline'][k] = [va, vb]
+                if not same(va, vb): print('    HEADLINE %s.%s ref=%s arm=%s' % (tn, k, fmt(va), fmt(vb))); S['headline'][k] = [va, vb]
 if JSON:
     json.dump(summary, open(JSON, 'w'), indent=1); print('wrote', JSON)

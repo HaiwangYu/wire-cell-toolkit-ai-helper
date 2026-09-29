@@ -1,0 +1,49 @@
+#!/bin/bash
+#PBS -N wct-cmp-1step
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:30:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/compare-1step.out
+# Event-by-event comparison of two 1-step runs in the smoke.pbs layout (<run>/evt<k>/{tracking-pr.root,
+# mabc.zip}), paired by event number (Trun): issue 33's check that the 1-step chain is unchanged by the
+# M3/M4 build (attacher swap, MABC aux tensors, truth trees) apart from the new T_truth_* trees.
+#   qsub -v "REF=<old 1-step run>,ARM=<new 1-step run>" compare-1step.pbs
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+S29=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+S27=$Y/wire-cell-toolkit-ai-helper/issues/27-polaris-production/scripts
+S33=$Y/wire-cell-toolkit-ai-helper/issues/33-sbnd-1step-to-2step/scripts
+TOOLS=$Y/production-prep/r3-pilot-mccv-reference/scripts
+REF=${REF:?}; ARM=${ARM:?}; C=$ARM/cmp-1step; rm -rf $C; mkdir -p $C/ref $C/arm $C/bee-ref $C/bee-arm
+export Y
+echo "=== START $(date) job ${PBS_JOBID%%.*} REF=$REF ARM=$ARM"
+SL7_SETUP=$S29/setup-aurora-opt.sh $S29/in-aurora-sl7.sh bash -c "
+  for R in $REF $ARM; do [ -f \$R/rse-by-nskip.tsv ] || python3 $S27/rse-by-nskip.py \$R > /dev/null; done
+  declare -A A
+  while IFS=\$'\t' read -r k r s e t b; do [ \"\$k\" = nskip ] || [ \"\$e\" = - ] || A[\$e]=\$k; done < $ARM/rse-by-nskip.tsv
+  n=0; evs=''
+  while IFS=\$'\t' read -r k r s e t b; do
+    [ \"\$k\" = nskip ] && continue; [ \"\$e\" = - ] && continue; ka=\${A[\$e]:-}; [ -n \"\$ka\" ] || { echo \"event \$e: not in ARM\"; continue; }
+    mkdir -p $C/ref/evt_\$e $C/bee-ref/evt_\$e $C/bee-arm/evt_\$e
+    ln -sf $REF/evt\$k/tracking-pr.root $C/ref/evt_\$e/tracking-pr.root; ln -sf $ARM/evt\$ka/tracking-pr.root $C/arm/tracking-pr_\$e.root
+    ln -sf $REF/evt\$k/mabc.zip $C/bee-ref/evt_\$e/mabc.zip; ln -sf $ARM/evt\$ka/mabc.zip $C/bee-arm/evt_\$e/mabc.zip
+    n=\$((n+1)); evs=\"\$evs \$e\"
+  done < $REF/rse-by-nskip.tsv
+  echo paired=\$n
+  python3 $TOOLS/deep_compare.py $C/ref $C/arm new-1step 2>&1 | tee $C/deep_compare.txt | grep -v IDENTICAL | tail -5; echo IDENTICAL=\$(grep -c IDENTICAL $C/deep_compare.txt)
+  python3 $S29/evt-branch-diff.py --json $C/evt-diff.json --max 20 $C/ref $C/arm \$evs > $C/evt-diff.txt 2>&1
+  grep -cE '^    ' $C/evt-diff.txt | sed 's/^/branch-detail lines: /'
+  python3 $S27/branch-diff-tracking-pr.py $C/ref $C/arm T_tagger T_kine T_cluster T_rec_charge Trun T_bad_ch T_proj T_proj_data 2>&1 | tee $C/branch_diff.txt | tail -4
+  python3 $S33/bee-diff.py $C/bee-ref $C/bee-arm 2>&1 | tee $C/bee_diff.txt | tail -12
+  python3 - $C/arm <<'PY'
+import glob, sys, ROOT
+ROOT.gErrorIgnoreLevel = ROOT.kError
+for p in sorted(glob.glob(sys.argv[1] + '/tracking-pr_*.root')):
+    f = ROOT.TFile.Open(p); a, b = f.Get('T_truth_nu'), f.Get('T_truth_pf')
+    print(p.split('_')[-1][:-5], 'T_truth_nu', a.GetEntries() if a else None, 'T_truth_pf', b.GetEntries() if b else None)
+PY
+" 2>&1 | grep -v '^INFO'
+echo "=== END $(date)"

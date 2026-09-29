@@ -200,3 +200,50 @@ TensorFileSource(qlpctree.tar.gz, prefix clustering_) -> MABC clus_pr (clus_make
 - `clus/src/TaggerBeeVisitor.cxx`: the toolkit port of `labeler_tagger`'s tagger Bee sets. It is `pr()`'s `tagger_bee` entry, appended in step 2 only.
 
 **Runs (M2 config) queued at 2026-09-29 05:10:** `run-2step.pbs` NCpi0-19 (job 8877054, with the gates) and MC-9 (8877055), against the #32 hit-flash 1-step runs. At 06:00 no job was running on any Aurora queue, a machine-wide stall, so both are still queued.
+
+### (b) 2026-09-29: M2-M5 done -- the 2-step chain is identical to the 1-step on all three samples
+
+**Fixes found by the first runs:**
+- **Step 2 aborted at configure:** `NamedFactory: Failed to find instance "mabc_pr" of class "BeeSink"`. `pr()` names its `bee_sink` but does not list it in its uses; in the 1-step, the per-APA MABCs bring the shared sink in. Fixed in `wct-pr.jsonnet` only, by configuring the sink explicitly, so the 1-step config is untouched.
+- **The labeler's `sed-*` Bee sets differed in events 2+ of a multi-event `lar` job.** Its depo-smear RNG (`m_rng`, fixed seed) was seeded once per process. It is now re-seeded at every `visit()`, so every event gives what a one-event process gives, and one-event processes are unchanged (larwirecell `189ad26`).
+- **`evt-branch-diff.py` reported NaN == NaN as a difference** (`T_rec_charge.reduced_chi2`). It now compares with NaN equal to NaN.
+
+**Commits (local, not pushed):**
+- toolkit `5a51329e`: cfg split, aux tensors, truth trees, `TaggerBeeVisitor`;
+- larwirecell `4961f76`: `wclsTruthInformationAttacher`, `G4ProcessCode.h`;
+- larwirecell `189ad26`: the RNG re-seed;
+- wcp-porting-validation `0d3dec4f`: step-1 fcls, inputers.
+
+The build is `build-wct-lwc.pbs` job 8877108, with `tree_wirecell_refs=0`.
+
+**Config gates** (`wcsonnet`, in-job, sim and data): G-A (1-step byte-identical to HEAD, or exactly the attacher swap), G-B and G-C all PASS. Step 2's PR closure is the 1-step's 38 components plus `TaggerBeeVisitor:pr`.
+
+**Validation.** Each row is compared against our #32 hit-flash 1-step run of the same events. Step 1 runs as `lar` jobs of 10 events; step 2 is one standalone `wire-cell` per tar.
+
+| sample | run | step 1 wall | step 2 wall | `deep_compare` | every branch, every tree (exact) | census pairs | Bee, every layer | truth |
+|---|---|---|---|---|---|---|---|---|
+| MC-9 (gen2 CV) | `mc50-2step-m34-20260929-0550` | 5.2 min, 1 job | 49 s, 1 job | 9/9 | 9/9 | 0 | 9/9 | `check-truth` PASS; `T_truth_*` in 9/9 |
+| NCpi0-19 (data) | `ncsb-2step-m34-20260929-0550` | 6.0 min, 2 jobs | 3.4 min, 2 jobs | 19/19 | 19/19 | 0 | 19/19 | -- |
+| nueCC-48 (data) | `nuecc48-2step-m34-20260929-0601` | 3.5 min, 5 jobs | 6.4 min, 5 jobs | 48/48 | 48/48 | 0 | 48/48 | -- |
+| 1-step MC-9, new build | `mc50-1step-m34-20260929-0607` | -- | -- | 9/9 | 9/9 | 0 | 9/9 | `T_truth_*` in 9/9, same rows as step 2 |
+
+- **Bee:** "every layer" includes the tagger sets, now written by `TaggerBeeVisitor` in step 2, and the MC `sed-*` sets.
+- **The earlier M2 runs** (`mc50-2step-20260929-0513`, `ncsb-2step-20260929-0519`) were already exact in `tracking-pr.root`. They differed only in the not-yet-ported tagger Bee sets and in the RNG-dependent `sed-*` sets, both fixed above.
+- **`check-truth.py` (MC, per event):**
+  - `truth_nu` equals the labeler's `nu_*` metadata exactly: 1 or 2 neutrinos per event (the gen2 CV sample carries rockbox interactions).
+  - `truth_pf` holds the same particle ids as the labeler's Bee `mc` tree: 3 to 86 per event, split over neutrinos by `nu_row`. Each particle's parent equals `parent_trackid`, KE agrees to 0.1 MeV, and start/end agree.
+
+**Usage:**
+```
+# step 1 (LArSoft; all events of the job in one tar)
+lar -n <N> --nskip <k> -c wcls-img-clus-matching[-data].fcl -s <reco1.root> --no-output     # -> qlpctree.tar.gz, mabc.zip
+# step 2 (standalone; create pr_evt<E>/ for each event of the tar first)
+wire-cell -c pgrapher/experiment/sbnd/wct-pr.jsonnet --tla-str input=qlpctree.tar.gz --tla-str reality=data|sim
+#   -> pr_evt<E>/tracking-pr.root (+ T_truth_nu/T_truth_pf on MC), mabc-pr.zip
+```
+`scripts/run-2step.pbs` does both steps plus the comparison. `SKIP1=1,RUN_DIR=` re-runs only PR on existing tars, which is the iteration loop this refactor is for.
+
+**Open:**
+- the set ident is the art event number (unique per filtered file; a multi-subrun file could repeat it);
+- pushing the commits;
+- upstreaming.

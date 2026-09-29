@@ -11,6 +11,7 @@
 # 1-step reference run of the same events (issue 32 layout: <REF>/evt<k>/{tracking-pr.root,mabc.zip}).
 #
 #   qsub -v "RECO1=<file>,FCL=wcls-img-clus-matching[-data].fcl,REALITY=sim|data,NEVT=<n>,REF=<1-step run>,TAG=<tag>[,CHUNK=10][,DO_GATE=1]" run-2step.pbs
+#   re-run step 2 + compare on an existing run (step-1 tars kept):  add RUN_DIR=<run dir>,SKIP1=1
 #
 #   G. config gates (gate-2step-cfg.sh) -- DO_GATE=1 (default)
 #   1. step 1: ceil(NEVT/CHUNK) lar jobs in parallel, each `lar -n CHUNK --nskip c*CHUNK`
@@ -27,7 +28,8 @@ S33=$Y/wire-cell-toolkit-ai-helper/issues/33-sbnd-1step-to-2step/scripts
 TOOLS=$Y/production-prep/r3-pilot-mccv-reference/scripts
 RECO1=${RECO1:?}; FCL=${FCL:?}; REALITY=${REALITY:?}; NEVT=${NEVT:?}; REF=${REF:?}; TAG=${TAG:-2step}
 CHUNK=${CHUNK:-10}; CORES=${CORES:-2}; DO_GATE=${DO_GATE:-1}
-RUN=$Y/production-prep/$TAG-$(date +%Y%m%d-%H%M); mkdir -p $RUN
+RUN=${RUN_DIR:-$Y/production-prep/$TAG-$(date +%Y%m%d-%H%M)}; mkdir -p $RUN; SKIP1=${SKIP1:-0}
+[ "$SKIP1" = 1 ] && rm -rf $RUN/pr $RUN/cmp
 export Y SL7_IMAGE=${SL7_IMAGE:-} APPTAINER_MODE=${APPTAINER_MODE:-}; [ -n "$SL7_IMAGE" ] || unset SL7_IMAGE
 NCH=$(( (NEVT + CHUNK - 1) / CHUNK ))
 echo "=== START $(date) on $(hostname) job ${PBS_JOBID%%.*} RUN=$RUN RECO1=$RECO1 FCL=$FCL REALITY=$REALITY NEVT=$NEVT CHUNK=$CHUNK ($NCH lar jobs) REF=$REF"
@@ -38,8 +40,8 @@ echo "=== G. config gates"
 SL7_SETUP=$S29/setup-aurora-ap.sh $S29/in-aurora-sl7.sh $S33/gate-2step-cfg.sh $RUN/gate 2>&1 | grep -v '^INFO'
 fi
 
-echo "=== 1. step 1 (lar, $NCH jobs x <= $CHUNK events)"
-SL7_SETUP=$S29/setup-aurora-run.sh $S29/in-aurora-sl7.sh bash -c "
+echo "=== 1. step 1 (lar, $NCH jobs x <= $CHUNK events)$([ "$SKIP1" = 1 ] && echo ' -- SKIPPED, reusing' $RUN/ql)"
+[ "$SKIP1" = 1 ] || SL7_SETUP=$S29/setup-aurora-run.sh $S29/in-aurora-sl7.sh bash -c "
   t0=\$(date +%s)
   for c in \$(seq 0 $((NCH-1))); do
     d=$RUN/ql/c\$c; mkdir -p \$d; k=\$((c*$CHUNK)); n=\$(( $NEVT - k < $CHUNK ? $NEVT - k : $CHUNK ))
@@ -95,5 +97,20 @@ PY
   echo '--- Bee: split the multi-event zips per event, exact per-layer diff (all layers)'
   python3 $S33/bee-split.py $C/bee-arm $RUN/ql/c*/mabc.zip $RUN/pr/c*/mabc-pr.zip
   python3 $S33/bee-diff.py $C/bee-ref $C/bee-arm 2>&1 | tee $C/bee_diff.txt | tail -25
+  if [ $REALITY = sim ]; then
+    echo '--- M3: truth tables in the step-1 tars vs the labeler (check-truth.py)'
+    python3 $S33/check-truth.py $RUN/ql/c*/qlpctree.tar.gz 2>&1 | tee $C/check_truth.txt | tail -14
+    echo '--- M4: T_truth_nu / T_truth_pf in the step-2 tracking-pr.root'
+    python3 - $C/arm <<'PY'
+import glob, sys, ROOT
+ROOT.gErrorIgnoreLevel = ROOT.kError
+n = 0
+for p in sorted(glob.glob(sys.argv[1] + '/tracking-pr_*.root')):
+    f = ROOT.TFile.Open(p); a, b = f.Get('T_truth_nu'), f.Get('T_truth_pf')
+    print(p.split('_')[-1][:-5], 'T_truth_nu', a.GetEntries() if a else None, 'T_truth_pf', b.GetEntries() if b else None)
+    n += bool(a)
+print('=> %d files with T_truth_nu' % n)
+PY
+  fi
 " 2>&1 | grep -v '^INFO'
 echo "=== END $(date)"
