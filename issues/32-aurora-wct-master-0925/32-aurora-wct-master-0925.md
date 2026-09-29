@@ -427,4 +427,26 @@ Per event (Enu MeV / numu / nue; "clusters at another x" counts r3's PR clusters
 | 18 | r18255 s1 e506746 | 1728.4 / 0.58 / -15.00 | 2140.9 / 0.38 / -15.00 | 1728.4 / 0.58 / -15.00 | 28521/28521 (100.0%), 10/73 clusters | e- 5->8, gamma 4->7, mu- 2->1, pi+ 2->1, proton 2->3 |
 | 19 | r18255 s1 e521075 | 491.4 / -0.42 / -15.00 | 840.1 / -0.14 / -15.00 | 491.4 / -0.42 / -15.00 | 30994/31000 (100.0%), 5/87 clusters | e- 0->1, gamma 0->1, mu- 1->0, neutron 1->0 |
 
-The every-branch `tracking-pr.root` table for r3 vs Xin (same method as above) is pending: Aurora's `debug` queue has no online nodes today (job 8876739 moved to `debug-scaling`, queued); it will be added here.
+**`tracking-pr.root`, every branch at exact float (compare job 8876739 + `evt-branch-diff.py`, `production-prep/r3-ncpi0-vs-m0925/cmp-xin/`):** deep_compare exact **0/19**; census 1141 differing (tree, branch) pairs (the hit-flash re-run: 11, all in `T_rec_charge` at <= 1.4e-9). In **every** event `T_cluster` moves in `flash_id`, `flash_time_us`, `flash_pe`, `beam_flash`, `cluster_t0_us`, `npoints`, `length_cm`, `lm` (and `fc` 17, `in_scope` 18, `is_main`/`is_associated` 16, `tgm` 5 events), i.e. a different flash match and a different clustering; the T_kine energies and both BDT scores then move in every event. Caveat: r3's files have 8 trees and the older branch set, so only branches present in both are compared (the two trees and the provenance/record branches added since 09-08 are not in r3).
+
+| # | event | T_rec_charge points Xin / r3 | differing branches: Trun / T_cluster / T_kine / T_tagger | headline (Xin -> r3) |
+|---|---|---|---|---|
+| 1 | r18259 s1 e18625 | 822 / 836 | 0 / 13 / 29 / 208 | kine_reco_Enu 1502.46 -> 1448.63; kine_pio_mass 23.4334 -> 25.9634; numu_score 0.586107 -> 2.79614 |
+| 2 | r18345 s1 e21073 | 783 / 867 | 0 / 12 / 24 / 767 | kine_reco_Enu 1400.54 -> 1623.74; kine_pio_mass 148.525 -> 262.028; numu_score 0.562491 -> -0.696057; nue_score -7.35753 -> -2.49969 |
+| 3 | r18259 s1 e37112 | 427 / 489 | 0 / 9 / 24 / 758 | kine_reco_Enu 1119.46 -> 1147.83; kine_pio_mass 301.398 -> 290.687; numu_score 0.639571 -> -0.613598; nue_score -2.74542 -> -2.6173 |
+| 4 | r18255 s1 e56982 | 658 / 615 | 0 / 13 / 24 / 768 | kine_reco_Enu 1109.61 -> 1268.54; kine_pio_mass 141.941 -> 139.262; numu_score 0.229661 -> 0.065657; nue_score 2.82538 -> -4.8177 |
+| 5 | r18255 s1 e71372 | 1458 / 1465 | 0 / 11 / 29 / 223 | kine_reco_Enu 2290.48 -> 2422.85; kine_pio_mass 327.904 -> 193.613; numu_score 1.80398 -> 1.71327 |
+| 6 | r18364 s1 e84229 | 806 / 807 | 0 / 12 / 29 / 437 | kine_reco_Enu 1305.17 -> 1492.2; kine_pio_mass 177.126 -> 205.409; numu_score 0.500061 -> 0.61676 |
+| 7 | r18259 s1 e105946 | 491 / 516 | 0 / 12 / 25 / 211 | kine_reco_Enu 1098.61 -> 923.223; kine_pio_mass 89.5652 -> 35.4754; numu_score -0.228942 -> -0.15193 |
+| 8 | r18255 s1 e114446 | 519 / 42 | 0 / 13 / 24 / 220 | kine_reco_Enu 753.023 -> 125.77; kine_pio_mass 23.7483 -> 5.41556; numu_score -0.636342 -> -2.73984 |
+| 9 | r18255 s1 e142421 | 1238 / 1353 | 0 / 11 / 31 / 229 | kine_reco_Enu 2110.66 -> 2678.34; kine_pio_mass 465.09 -> 137.29; numu_score 2.69402 -> 3.05041 |
+| 10 | r18255 s1 e180801 | 628 / 625 | 0 / 13 / 24 / 806 | kine_reco_Enu 1241.82 -> 1302.47; kine_pio_mass 180.357 -> 114.077; numu_score -0.105212 -> 1.35915; nue_score -15 -> -3.59036 |
+| 11 | r18345 s1 e259542 | 861 / 774 | 0 / 12 / 27 / 452 | kine_reco_Enu 1378.78 -> 1437.92; kine_pio_mass 26.0113 -> 275.195; numu_score 0.376181 -> -0.425498 |
+| 12 | r18261 s1 e285567 | 824 / 811 | 0 / 12 / 31 / 881 | kine_reco_Enu 1631.48 -> 2169.07; kine_pio_mass 120.792 -> 198.423; numu_score 0.790748 -> 0.82979; nue_score -7.23398 -> -3.93641 |
+| 13 | r18255 s1 e314838 | 644 / 654 | 0 / 10 / 21 / 178 | kine_reco_Enu 1092.56 -> 1089.98; kine_pio_mass 170.216 -> 171.002; numu_score -0.0639492 -> -0.221284 |
+| 14 | r18255 s1 e359980 | 463 / 463 | 0 / 10 / 25 / 312 | kine_reco_Enu 693.191 -> 868.141; kine_pio_mass 335.335 -> 138.498; numu_score -1.10875 -> -0.628827 |
+| 15 | r18255 s1 e399860 | 574 / 612 | 0 / 12 / 23 / 809 | kine_reco_Enu 1164.55 -> 978.165; kine_pio_mass 73.585 -> 13.9795; numu_score -0.891174 -> -0.467035; nue_score 8.99561 -> 1.09321 |
+| 16 | r18255 s1 e463565 | 719 / 683 | 0 / 12 / 27 / 831 | kine_reco_Enu 1266.11 -> 1480.97; kine_pio_mass 61.7973 -> 128.426; numu_score -0.0318436 -> -0.0347881; nue_score -1.69123 -> -15 |
+| 17 | r18255 s1 e506114 | 915 / 990 | 0 / 12 / 22 / 160 | kine_reco_Enu 2247.2 -> 2158.73; kine_pio_mass 166.413 -> 212.764; numu_score -0.91853 -> -1.01167 |
+| 18 | r18255 s1 e506746 | 790 / 916 | 0 / 12 / 31 / 419 | kine_reco_Enu 1728.4 -> 2140.94; kine_pio_mass 181.661 -> 144.741; numu_score 0.579856 -> 0.376745 |
+| 19 | r18255 s1 e521075 | 261 / 269 | 0 / 13 / 24 / 192 | kine_reco_Enu 491.372 -> 840.144; kine_pio_mass 3.00622 -> 78.9452; numu_score -0.42232 -> -0.141461 |
