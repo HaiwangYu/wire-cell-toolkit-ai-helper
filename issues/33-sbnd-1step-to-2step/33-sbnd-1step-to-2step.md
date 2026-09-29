@@ -208,11 +208,11 @@ TensorFileSource(qlpctree.tar.gz, prefix clustering_) -> MABC clus_pr (clus_make
 - **The labeler's `sed-*` Bee sets differed in events 2+ of a multi-event `lar` job.** Its depo-smear RNG (`m_rng`, fixed seed) was seeded once per process. It is now re-seeded at every `visit()`, so every event gives what a one-event process gives, and one-event processes are unchanged (larwirecell `189ad26`).
 - **`evt-branch-diff.py` reported NaN == NaN as a difference** (`T_rec_charge.reduced_chi2`). It now compares with NaN equal to NaN.
 
-**Commits (local, not pushed):**
+**Commits (pushed 2026-09-29):**
 - toolkit `5a51329e`: cfg split, aux tensors, truth trees, `TaggerBeeVisitor`;
 - larwirecell `4961f76`: `wclsTruthInformationAttacher`, `G4ProcessCode.h`;
 - larwirecell `189ad26`: the RNG re-seed;
-- wcp-porting-validation `0d3dec4f`: step-1 fcls, inputers.
+- wcp-porting-validation `f3759e7a`: step-1 fcls, inputers.
 
 The build is `build-wct-lwc.pbs` job 8877108, with `tree_wirecell_refs=0`.
 
@@ -245,5 +245,4 @@ wire-cell -c pgrapher/experiment/sbnd/wct-pr.jsonnet --tla-str input=qlpctree.ta
 
 **Open:**
 - the set ident is the art event number (unique per filtered file; a multi-subrun file could repeat it);
-- pushing the commits;
 - upstreaming.
