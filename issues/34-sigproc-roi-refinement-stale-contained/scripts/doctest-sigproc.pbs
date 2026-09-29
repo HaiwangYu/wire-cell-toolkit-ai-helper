@@ -1,0 +1,33 @@
+#!/bin/bash
+#PBS -N wct-doctest-sigproc
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:20:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/doctest-sigproc-i34.out
+# Issue 34: run the sigproc doctest runner (incl. doctest_roi_refinement.cxx) inside the SL7 image,
+# after build-wct-lwc.pbs STAGES=wct.  Gates: the runner and the deployed lib are from this commit.
+#   qsub -W depend=afterok:<build job> doctest-sigproc.pbs
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+export Y
+echo "=== START $(date) on $(hostname) job ${PBS_JOBID%%.*}"
+cd $Y/wire-cell-toolkit
+echo "HEAD $(git rev-parse --short HEAD); built from $(cat $Y/aurora-build-logs/wct-build-commit.txt | cut -c1-8)"
+$S/in-aurora-sl7.sh bash -c "
+  B=build/sigproc
+  ls -l --time-style=+%F_%T \$B/wcdoctest-sigproc \$B/libWireCellSigProc.so $Y/opt/lib/libWireCellSigProc.so
+  echo deployed_lib_eq_build=\$(cmp -s \$B/libWireCellSigProc.so $Y/opt/lib/libWireCellSigProc.so && echo yes || echo NO)
+  echo '--- new test registered?'
+  \$B/wcdoctest-sigproc --list-test-cases 2>&1 | grep -i roi_refinement
+  echo '--- the issue-34 test'
+  \$B/wcdoctest-sigproc --test-case='ROI_refinement*' 2>&1 | tail -6
+  echo ROI_TEST_RC=\${PIPESTATUS[0]}
+  echo '--- whole sigproc doctest suite'
+  \$B/wcdoctest-sigproc 2>&1 | tail -6
+  echo SIGPROC_SUITE_RC=\${PIPESTATUS[0]}
+" 2>&1 | grep -v '^INFO'
+echo "=== END $(date)"
