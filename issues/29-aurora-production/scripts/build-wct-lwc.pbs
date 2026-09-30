@@ -100,9 +100,15 @@ $S/in-aurora-sl7.sh bash -c "
   for spec in $DOCTESTS; do
     pkg=\${spec%%:*}; tc=\${spec#*:}; [ \"\$tc\" = \"\$spec\" ] && tc=''
     python3 ./wcb -p --tests --target=wcdoctest-\$pkg -j$NJ 2>&1 | grep -v '^\[' | tail -5
-    echo \"--- wcdoctest-\$pkg \${tc:+-tc=\$tc}\"
-    if [ -n \"\$tc\" ]; then build/\$pkg/wcdoctest-\$pkg -tc=\"\$tc\"; else build/\$pkg/wcdoctest-\$pkg; fi
-    echo DOCTEST_\${pkg}_RC=\$?
+    # run from build/: the doctests locate their inputs as ../<pkg>/test/data/... (build-dir relative)
+    log=$Y/aurora-build-logs/doctest-\$pkg-$J.log
+    echo \"--- wcdoctest-\$pkg \${tc:+-tc=\$tc} (cwd build/, full output \$log)\"
+    ( cd build && if [ -n \"\$tc\" ]; then \$pkg/wcdoctest-\$pkg -tc=\"\$tc\"; else \$pkg/wcdoctest-\$pkg; fi ) > \$log 2>&1
+    rc=\$?
+    grep -E '^\[doctest\] (test cases|assertions|Status)' \$log
+    # a test case failed iff an ERROR:/FATAL line follows its TEST CASE: header (MESSAGE blocks look alike)
+    echo 'failing test cases:'; awk '/^TEST CASE:/ {tc=\$0} / (ERROR|FATAL ERROR): / && tc {print \"  \" tc; tc=\"\"}' \$log | sort -u
+    echo DOCTEST_\${pkg}_RC=\$rc
   done
 " 2>&1 | grep -v '^INFO'
 fi
