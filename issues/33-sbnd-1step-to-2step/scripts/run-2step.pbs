@@ -85,12 +85,13 @@ SL7_SETUP=$S29/setup-aurora-opt.sh $S29/in-aurora-sl7.sh bash -c "
   python3 $S29/evt-branch-diff.py --json $C/evt-diff.json --max 20 $C/ref $C/arm \$evs > $C/evt-diff.txt 2>&1
   python3 - $C/evt-diff.json <<'PY'
 import json, sys
-J = json.load(open(sys.argv[1])); nid = 0
+J = json.load(open(sys.argv[1])); nid = 0; only = set()
 for e, S in sorted(J.items(), key=lambda kv: int(kv[0])):
-    d = {tn: (T.get('entries'), sorted(T.get('branches', {}))) for tn, T in S['trees'].items() if T.get('branches') or ('entries' in T and T['entries'][0] != T['entries'][1]) or 'only_in' in T}
+    only |= {(tn, T['only_in']) for tn, T in S['trees'].items() if 'only_in' in T}
+    d = {tn: (T.get('entries'), sorted(T.get('branches', {}))) for tn, T in S['trees'].items() if 'only_in' not in T and (T.get('branches') or T['entries'][0] != T['entries'][1])}
     if not d: nid += 1; continue
     print(e, '; '.join('%s%s: %s' % (tn, '' if not v[0] or v[0][0] == v[0][1] else ' entries %s' % v[0], ','.join(v[1][:8]) + (' ...(%d)' % len(v[1]) if len(v[1]) > 8 else '')) for tn, v in d.items()))
-print('=> %d events: every branch of every tree identical in %d' % (len(J), nid))
+print('=> %d events: every branch of every shared tree identical in %d' % (len(J), nid) + ('; trees in one arm only: %s' % sorted(only) if only else ''))
 PY
   echo '--- census (all trees, exact float)'
   python3 $S27/branch-diff-tracking-pr.py $C/ref $C/arm T_tagger T_kine T_cluster T_rec_charge Trun T_bad_ch T_proj T_proj_data 2>&1 | tee $C/branch_diff.txt | tail -6

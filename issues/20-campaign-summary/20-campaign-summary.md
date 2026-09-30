@@ -1,5 +1,8 @@
 # Issue 20 — SBND Wire-Cell PR campaigns: summary and data guide
 
+> **File names renamed 2026-09-30 (issue 33 cleanup).** `wcls-img-clus-matching-xin-lib.jsonnet` is now `wcls-img-clus-matching-pr-lib.jsonnet`; the 1-step jobs `wcls-img-clus-matching-xin{,-hits}.jsonnet` are now `obsolete/wcls-img-clus-matching-pr-{flash,hits}.jsonnet` (the upstream name `wcls-img-clus-matching-xin.jsonnet` stays as a one-line shim); the fcls `wcls-img-clus-matching-xin{,-data,-hits,-data-hits}.fcl` are now `wcls-img-clus-matching-pr-{flash,flash-data,hits,data-hits}.fcl`. Production is the 2-step chain `wcls-img-clus-matching.jsonnet` + `wct-pr.jsonnet`. The names below are as they were when this work ran.
+
+
 One page covering everything produced by
 [#16](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/16),
 [#17](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/17),

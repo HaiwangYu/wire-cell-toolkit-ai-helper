@@ -1,5 +1,8 @@
 # Issue 33: split the SBND LArSoft 1-step chain into Q/L (LArSoft) + PR (standalone) with truth pass-through
 
+> **File names renamed 2026-09-30 (issue 33 cleanup).** `wcls-img-clus-matching-xin-lib.jsonnet` is now `wcls-img-clus-matching-pr-lib.jsonnet`; the 1-step jobs `wcls-img-clus-matching-xin{,-hits}.jsonnet` are now `obsolete/wcls-img-clus-matching-pr-{flash,hits}.jsonnet` (the upstream name `wcls-img-clus-matching-xin.jsonnet` stays as a one-line shim); the fcls `wcls-img-clus-matching-xin{,-data,-hits,-data-hits}.fcl` are now `wcls-img-clus-matching-pr-{flash,flash-data,hits,data-hits}.fcl`. Production is the 2-step chain `wcls-img-clus-matching.jsonnet` + `wct-pr.jsonnet`. The names below are as they were when this work ran.
+
+
 GitHub: https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/33.
 
 Builds on:
@@ -382,3 +385,46 @@ Tools (in `issues/33-sbnd-1step-to-2step/scripts/`):
 - `evt-table-2step.py`: this table;
 - `bee-split.py` and `bee-diff.py`: the per-event Bee split and diff;
 - `issues/29-aurora-production/scripts/evt-branch-diff.py`: now compares all trees.
+
+### (d) 2026-09-30: cleanup -- file renames, obsolete/ for the 1-step jobs, 2-step results unchanged
+
+
+**Renames (Haiwang's plan, 2026-09-30):**
+
+| before | after |
+|---|---|
+| toolkit `wcls-img-clus-matching-xin-lib.jsonnet` | `wcls-img-clus-matching-pr-lib.jsonnet` (the implementation) |
+| toolkit `wcls-img-clus-matching-xin.jsonnet` | `obsolete/wcls-img-clus-matching-pr-flash.jsonnet` (1-step, reco1 OpFlash) |
+| toolkit `wcls-img-clus-matching-xin-hits.jsonnet` | `obsolete/wcls-img-clus-matching-pr-hits.jsonnet` (1-step, OpHit flashes) |
+| toolkit `docs/wcls-img-clus-matching-xin-chain.md` | `docs/wcls-img-clus-matching-1step-chain.md` |
+| wcp `sbnd/wcls-img-clus-matching-xin{,-data,-hits,-data-hits}.fcl` | `sbnd/wcls-img-clus-matching-pr-{flash,flash-data,hits,data-hits}.fcl` |
+| wcp re-exports `sbnd/wcls-img-clus-matching-xin{,-hits}.jsonnet` | `sbnd/wcls-img-clus-matching-pr-{flash,hits}.jsonnet` |
+| wcp `sbnd/wcls-img-clus-matching-xin-preflip.fcl` | `sbnd/obsolete/` |
+
+- **Unchanged:** production is `wcls-img-clus-matching.jsonnet` + `wct-pr.jsonnet` (fcls `wcls-img-clus-matching{,-data}.fcl`).
+- **A one-line shim stays at `wcls-img-clus-matching-xin.jsonnet`.** It imports `obsolete/...-pr-flash.jsonnet`. The name is in WireCell upstream `master`, and `sbnd_xin/scripts/cfg/two_chain_gate.py` compiles that path, so without the shim Xin's gate breaks and every upstream merge conflicts on the file.
+- **Left alone:** the upstream-shared `clus.jsonnet` and `qlmatching.jsonnet` mention the old name only in comments, and the shim keeps it valid. Xin's `sbnd_xin/` is untouched.
+- **"obsolete" means "not production", not "unused".** The step-1 fcls `#include` the renamed hit fcls, and `obsolete/...-pr-hits.jsonnet` is the 1-step reference the 2-step is validated against.
+
+**Documents:**
+- **Living docs and running scripts** use the new names:
+  - ai-helper: the `docs/*.md` how-tos, `smoke.pbs`, `smoke-1evt.sh`, `setup-aurora-ap.sh`, `gate-1step-cfg.sh`, `compile-both-polaris.sh` and `gate-2step-cfg.sh`;
+  - wcp-porting-validation: `README`, `CLAUDE.md`, `docs_for_xin/`, `docs/{1,3,4,8}`, the `TensorSetLabeler`, `tgm-validation` and `prod-dev` READMEs.
+- **Two script fixes matter:**
+  - `compile-both-polaris.sh` compiled the bare old name through the wcp re-export and would have failed.
+  - `gate-2step-cfg.sh` G-A now compiles a pre-rename reference tree under the old names.
+- **Historical issue logs** (issues 1–34 and the `runs/` and `questions/` notes, 23 files) keep what actually ran. Each has a rename note under its title.
+
+**Proof that nothing changed:**
+- **Compiled configs:** every job compiles byte-identically before and after the rename, with go-jsonnet on the UAN: 1-step flash and hits, the shim, step 1 and step 2, for sim and data. The in-job `wcsonnet` gates G-A, G-B and G-C all PASS. The 1-step hashes equal the pre-rename gate outputs of 2026-09-29: flash `c5a2eda85ce4` (sim) / `f7efedfafa3a` (data), hits `a8b1c027d8f6` / `659fc1996817`.
+- **2-step re-run on the renamed tree**, against our #32 1-step runs:
+
+| sample | run | `deep_compare` | every branch, every shared tree | Bee, every layer | truth |
+|---|---|---|---|---|---|
+| MC-9 | `mc50-2step-rename-20260930-0319` | 9/9 | 9/9 (`T_truth_*` exist only in the 2-step, as before) | 9/9 | `check-truth` PASS; `T_truth_*` 9/9 |
+| NCpi0-19 | `ncsb-2step-rename-20260930-0319` | 19/19 | 19/19 | 19/19 | – |
+| nueCC-48 | `nuecc48-2step-rename-20260930-0335` | 48/48 | 48/48 | 48/48 | – |
+
+**Harness fix:** `run-2step.pbs`'s per-event summary now lists trees present in only one arm separately. It had counted MC's `T_truth_*` as differences.
+
+**Commits:** toolkit `22175a1c`, wcp-porting-validation `a97b77a7`, both local, pending Haiwang's go to push. ai-helper: this entry.

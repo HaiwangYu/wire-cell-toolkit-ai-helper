@@ -1,5 +1,5 @@
 # Aurora port of setup-polaris-ap.sh: env for the 1-step img-clus-match-pr chain
-# (wcls-img-clus-matching-xin.fcl).  Source INSIDE SL7.
+# (wcls-img-clus-matching-pr-flash.fcl).  Source INSIDE SL7.
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$HERE/setup-aurora-opt.sh"
 

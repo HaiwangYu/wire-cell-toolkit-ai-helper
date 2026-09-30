@@ -5,7 +5,7 @@
 #
 #   SL7_SETUP=$S/setup-aurora-run.sh in-aurora-sl7.sh $S/smoke-1evt.sh <outdir> <reco1.root> [nskip] [fcl]
 set -u
-OUT=$1; IN=$2; K=${3:-0}; FCL=${4:-wcls-img-clus-matching-xin.fcl}
+OUT=$1; IN=$2; K=${3:-0}; FCL=${4:-wcls-img-clus-matching-pr-flash.fcl}
 WCP_SBND=${WCP_SBND:-/lus/flare/projects/neutrinoGPU/yuhw/wcp-porting-validation/sbnd}
 mkdir -p "$OUT" && cd "$OUT" || exit 2
 echo "host=$(hostname) start=$(date -u +%FT%TZ) fcl=$FCL nskip=$K in=$IN"

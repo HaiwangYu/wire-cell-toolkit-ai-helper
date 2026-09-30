@@ -1,5 +1,8 @@
 # Issue 24 — our 1-step chain vs Xin's 2-step, at the prod0908 production point
 
+> **File names renamed 2026-09-30 (issue 33 cleanup).** `wcls-img-clus-matching-xin-lib.jsonnet` is now `wcls-img-clus-matching-pr-lib.jsonnet`; the 1-step jobs `wcls-img-clus-matching-xin{,-hits}.jsonnet` are now `obsolete/wcls-img-clus-matching-pr-{flash,hits}.jsonnet` (the upstream name `wcls-img-clus-matching-xin.jsonnet` stays as a one-line shim); the fcls `wcls-img-clus-matching-xin{,-data,-hits,-data-hits}.fcl` are now `wcls-img-clus-matching-pr-{flash,flash-data,hits,data-hits}.fcl`. Production is the 2-step chain `wcls-img-clus-matching.jsonnet` + `wct-pr.jsonnet`. The names below are as they were when this work ran.
+
+
 **Status: 308-EVENT GATE COMPLETE (ncpi0 19 + nuecc48 48 + mcp1k 241) — P1 PASS, P2 EXACT 308/308, T3 0 movers.** Toolkit and wcp-porting-img commits local, not pushed.
 
 **Documents:** procedure [`docs/sbnd-1step-build-run-validate.md`](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/blob/main/docs/sbnd-1step-build-run-validate.md) · narrative + lessons [`sbnd/docs/8-build-and-run-both-chains.md`](https://github.com/WireCell/wcp-porting-validation/blob/main/sbnd/docs/8-build-and-run-both-chains.md) (§7 = this round).

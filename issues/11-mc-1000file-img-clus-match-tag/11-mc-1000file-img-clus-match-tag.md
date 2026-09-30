@@ -1,5 +1,8 @@
 # Issue 11 — 1-step img/clus/match/tag over 1000 MC files (~13k events)
 
+> **File names renamed 2026-09-30 (issue 33 cleanup).** `wcls-img-clus-matching-xin-lib.jsonnet` is now `wcls-img-clus-matching-pr-lib.jsonnet`; the 1-step jobs `wcls-img-clus-matching-xin{,-hits}.jsonnet` are now `obsolete/wcls-img-clus-matching-pr-{flash,hits}.jsonnet` (the upstream name `wcls-img-clus-matching-xin.jsonnet` stays as a one-line shim); the fcls `wcls-img-clus-matching-xin{,-data,-hits,-data-hits}.fcl` are now `wcls-img-clus-matching-pr-{flash,flash-data,hits,data-hits}.fcl`. Production is the 2-step chain `wcls-img-clus-matching.jsonnet` + `wct-pr.jsonnet`. The names below are as they were when this work ran.
+
+
 Large-scale run of the **1-step chain** (imaging → clustering → Q/L matching →
 TGM/STM/FC taggers) over the first 1000 files of the Gen2 v10_14_02_03 MC list,
 as a scaled-up repeat of [issue 8](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/8)

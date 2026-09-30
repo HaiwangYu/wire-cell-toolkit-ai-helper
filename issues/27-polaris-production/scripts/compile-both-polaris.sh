@@ -29,7 +29,7 @@ wcsonnet \
   --ext-code 'output_mask_tags=["bad"]' \
   --ext-str opflash0_input_label=opflashtpc0: \
   --ext-str opflash1_input_label=opflashtpc1: \
-  wcls-img-clus-matching-xin.jsonnet > "$OUT/onestep.json" || { echo "1-step compile FAILED"; exit 1; }
+  wcls-img-clus-matching-pr-flash.jsonnet > "$OUT/onestep.json" || { echo "1-step compile FAILED"; exit 1; }
 
 wcsonnet pgrapher/experiment/sbnd/wct-clus-matching-perevt.jsonnet \
     > "$OUT/xin-step1.json" || { echo "step1 compile FAILED"; exit 1; }

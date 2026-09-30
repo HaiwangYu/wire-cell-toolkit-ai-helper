@@ -1,6 +1,7 @@
 #!/bin/bash
 # Config gates for the split of the SBND 1-step job into
-#   wcls-img-clus-matching-xin-lib.jsonnet (function) + two top-level jobs
+#   wcls-img-clus-matching-pr-lib.jsonnet (function) + two top-level jobs (since 2026-09-30:
+#   obsolete/wcls-img-clus-matching-pr-{flash,hits}.jsonnet; the upstream name -xin.jsonnet is a shim)
 # (issue 32, doc sbnd_xin/123 sec 16).  Run INSIDE SL7 with setup-aurora-ap.sh sourced:
 #   SL7_SETUP=$S/setup-aurora-ap.sh $S/in-aurora-sl7.sh $S/gate-1step-cfg.sh <outdir> [<git ref of the pre-split tree, default origin/master>]
 #
@@ -19,7 +20,7 @@ J=cfg/pgrapher/experiment/sbnd/wcls-img-clus-matching-xin.jsonnet
 (cd $WCT_SRC && git show "$REF:$J") > "$OUT/pre/pgrapher/experiment/sbnd/wcls-img-clus-matching-xin.jsonnet" || { echo "cannot git show $REF:$J"; exit 2; }
 echo "pre-split file from $REF: $(md5sum < $OUT/pre/pgrapher/experiment/sbnd/wcls-img-clus-matching-xin.jsonnet | cut -c1-8), $(wc -l < $OUT/pre/pgrapher/experiment/sbnd/wcls-img-clus-matching-xin.jsonnet) lines; new tree $(cd $WCT_SRC && git rev-parse --short HEAD)"
 
-# The fcl's extVar sets (wcls-img-clus-matching-xin.fcl / -data.fcl), as compile-both does.
+# The fcl's extVar sets (wcls-img-clus-matching-pr-flash.fcl / -pr-flash-data.fcl), as compile-both does.
 common=(--ext-str enable_tracking_root=true --ext-str enable_nugraph_h5=true --ext-str pr_operating_point=sync
         --ext-code 'trace_tags=["gauss", "wiener"]' --ext-code 'output_mask_tags=["bad"]'
         --ext-str opflash0_input_label=opflashtpc0: --ext-str opflash1_input_label=opflashtpc1:
@@ -33,9 +34,9 @@ rc=0
 for real in sim data; do
   if [ $real = sim ]; then ev=("${sim[@]}"); else ev=("${data[@]}"); fi
   WIRECELL_PATH=$OUT/pre:$WIRECELL_PATH wcsonnet "${common[@]}" "${ev[@]}" pgrapher/experiment/sbnd/wcls-img-clus-matching-xin.jsonnet > $OUT/pre-$real.json 2> $OUT/pre-$real.err || { echo "G-A $real: pre-split compile FAILED"; tail -3 $OUT/pre-$real.err; rc=1; continue; }
-  wcsonnet "${common[@]}" "${ev[@]}" pgrapher/experiment/sbnd/wcls-img-clus-matching-xin.jsonnet > $OUT/new-$real.json 2> $OUT/new-$real.err || { echo "G-A $real: new reco1 compile FAILED"; tail -3 $OUT/new-$real.err; rc=1; continue; }
+  wcsonnet "${common[@]}" "${ev[@]}" pgrapher/experiment/sbnd/obsolete/wcls-img-clus-matching-pr-flash.jsonnet > $OUT/new-$real.json 2> $OUT/new-$real.err || { echo "G-A $real: new reco1 compile FAILED"; tail -3 $OUT/new-$real.err; rc=1; continue; }
   if cmp -s $OUT/pre-$real.json $OUT/new-$real.json; then echo "G-A $real: PASS byte-identical ($(md5sum < $OUT/new-$real.json | cut -c1-12), $(wc -c < $OUT/new-$real.json) bytes)"; else echo "G-A $real: FAIL differs"; diff <(python3 -m json.tool $OUT/pre-$real.json) <(python3 -m json.tool $OUT/new-$real.json) | head -20; rc=1; fi
-  wcsonnet "${common[@]}" "${ev[@]}" pgrapher/experiment/sbnd/wcls-img-clus-matching-xin-hits.jsonnet > $OUT/hits-$real.json 2> $OUT/hits-$real.err || { echo "G-B $real: hits compile FAILED"; tail -3 $OUT/hits-$real.err; rc=1; continue; }
+  wcsonnet "${common[@]}" "${ev[@]}" pgrapher/experiment/sbnd/obsolete/wcls-img-clus-matching-pr-hits.jsonnet > $OUT/hits-$real.json 2> $OUT/hits-$real.err || { echo "G-B $real: hits compile FAILED"; tail -3 $OUT/hits-$real.err; rc=1; continue; }
   python3 - $OUT/new-$real.json $OUT/hits-$real.json $real <<'PY'
 import json, sys
 a, b, real = json.load(open(sys.argv[1])), json.load(open(sys.argv[2])), sys.argv[3]

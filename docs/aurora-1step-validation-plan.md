@@ -1,5 +1,8 @@
 # Aurora: validate the SBND 1-step chain against the FNAL reference (MC CV pilot, 18 events)
 
+> **File names renamed 2026-09-30 (issue 33 cleanup).** `wcls-img-clus-matching-xin-lib.jsonnet` is now `wcls-img-clus-matching-pr-lib.jsonnet`; the 1-step jobs `wcls-img-clus-matching-xin{,-hits}.jsonnet` are now `obsolete/wcls-img-clus-matching-pr-{flash,hits}.jsonnet` (the upstream name `wcls-img-clus-matching-xin.jsonnet` stays as a one-line shim); the fcls `wcls-img-clus-matching-xin{,-data,-hits,-data-hits}.fcl` are now `wcls-img-clus-matching-pr-{flash,flash-data,hits,data-hits}.fcl`. Production is the 2-step chain `wcls-img-clus-matching.jsonnet` + `wct-pr.jsonnet`. This document uses the new names.
+
+
 Written 2026-09-17 by the FNAL session for the **Aurora Claude Code session** to review and execute. Goal: show that the 1-step chain built on Aurora reproduces, event by event, the FNAL run that was itself shown exact against Xin's 2-step production ([#24](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/24), [#26](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/26)). Report results as a comment on #26. Ask before deviating; do not "fix" a difference by changing config — a difference is the finding.
 
 ## 0. What is being compared
@@ -7,9 +10,9 @@ Written 2026-09-17 by the FNAL session for the **Aurora Claude Code session** to
 | | FNAL reference | Aurora |
 |---|---|---|
 | input | `reco1-detsim-g4-gen-Gen2_2026-dcb3-ca6c-2a43-8740.root` (MC BNB CV, run 717 subrun 29, 18 events, 502 MB, md5 `21e15199859020fe60acb5ce69c4df1c`) | same file, staged (§2) |
-| chain | 1-step `lar -c wcls-img-clus-matching-xin.fcl`, one job per event | same |
+| chain | 1-step `lar -c wcls-img-clus-matching-pr-flash.fcl`, one job per event | same |
 | toolkit | `wire-cell-toolkit` `master-2026-09-08+yuhw` @ **`0ad64223`** (= PR [WireCell#530](https://github.com/WireCell/wire-cell-toolkit/pull/530)) | must match |
-| job config | `wcp-porting-validation` @ **`e100a631`** (`sbnd/wcls-img-clus-matching-xin.fcl` + `.jsonnet`, `pr-operating-point.jsonnet`, `enable_nugraph_h5: "false"`) | must match |
+| job config | `wcp-porting-validation` @ **`e100a631`** (`sbnd/wcls-img-clus-matching-pr-flash.fcl` + `.jsonnet`, `pr-operating-point.jsonnet`, `enable_nugraph_h5: "false"`) | must match |
 | larwirecell | SBND fork with `WireCellAIML` labeler (FNAL MRB tree `larsoft-wct036/v10_14_02`) | the Aurora build of the same source |
 | weights | `wire-cell-data` @ `9e2f4b8` + untracked `uboone/weights/XGB_nue_seed2_0923.xml` (199,034,452 B, md5 `2bdb5cec111bf6cb6dd828cd59fe7ea0`); DL vertex `uboone/scn_vtx/t48k-m16-l5-lr5d-res0.5-CP24.pth` (md5 `9cc1413e053c09534edc2d37cdfdc1d4`) | present under `/lus/flare/projects/neutrinoGPU/yuhw/wire-cell-data/` — verify md5 |
 | reference outputs | `run-C-noh5/` — 18 `tracking-pr.root` + 18 Bee zips | produced by you |
@@ -42,14 +45,14 @@ md5sum <wire-cell-data>/uboone/weights/XGB_nue_seed2_0923.xml <wire-cell-data>/u
 
 ## 3. Run
 
-Either the FNAL harness (`run-harness.sh <manifest> <out> <nworkers> 1 wcls-img-clus-matching-xin.fcl` — 5th arg is **required**; it writes `bee/`, `tracking-pr/`, `summary.csv` with `rc, wall_s, peak_rss_kb, audit, rse_check` per event) or an equivalent loop of
+Either the FNAL harness (`run-harness.sh <manifest> <out> <nworkers> 1 wcls-img-clus-matching-pr-flash.fcl` — 5th arg is **required**; it writes `bee/`, `tracking-pr/`, `summary.csv` with `rc, wall_s, peak_rss_kb, audit, rse_check` per event) or an equivalent loop of
 
 ```
-lar -n 1 --nskip <k> -c wcls-img-clus-matching-xin.fcl -s <input.root> --no-output     # per event, own cwd
+lar -n 1 --nskip <k> -c wcls-img-clus-matching-pr-flash.fcl -s <input.root> --no-output     # per event, own cwd
 ```
 with `FHICL_FILE_PATH` including `<wcp-porting-validation>/sbnd`, `OMP_NUM_THREADS=MKL_NUM_THREADS=1`, `timeout -k 60 3600`. Expect ~40–100 s and ~2.2 GB RSS per event on FNAL hardware; 18 concurrent is fine at ~40 GB.
 
-**MC fcl, not the data one**: this is `simtpc2d` MC — `wcls-img-clus-matching-xin.fcl`. (`-data.fcl` would fail loudly on product tags; there is no FrameShift on MC.)
+**MC fcl, not the data one**: this is `simtpc2d` MC — `wcls-img-clus-matching-pr-flash.fcl`. (`-data.fcl` would fail loudly on product tags; there is no FrameShift on MC.)
 
 ## 4. Gates on your own output (T1)
 

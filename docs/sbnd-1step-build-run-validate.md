@@ -1,5 +1,8 @@
 # SBND 1-step chain on sbndbuild/sbndgpvm: build, run, validate
 
+> **File names renamed 2026-09-30 (issue 33 cleanup).** `wcls-img-clus-matching-xin-lib.jsonnet` is now `wcls-img-clus-matching-pr-lib.jsonnet`; the 1-step jobs `wcls-img-clus-matching-xin{,-hits}.jsonnet` are now `obsolete/wcls-img-clus-matching-pr-{flash,hits}.jsonnet` (the upstream name `wcls-img-clus-matching-xin.jsonnet` stays as a one-line shim); the fcls `wcls-img-clus-matching-xin{,-data,-hits,-data-hits}.fcl` are now `wcls-img-clus-matching-pr-{flash,flash-data,hits,data-hits}.fcl`. Production is the 2-step chain `wcls-img-clus-matching.jsonnet` + `wct-pr.jsonnet`. This document uses the new names.
+
+
 A procedure, not a narrative. Every step names its **gate** and the **trap** it
 exists to catch. Written 2026-09-09 after two validation rounds (ai-helper #23,
 #24); the narrative lives in `wcp-porting-img/sbnd/docs/8-build-and-run-both-chains.md`.
@@ -132,7 +135,7 @@ file **together with** the toolkit commit that caused the drift.
   of localisation. **Run it before any event runs.**
 - `eb_fast` / `po_fast` / `dg_fast` live on the *clustering* entry points, not
   `pr()`, so the generated file cannot carry them — they are set in
-  `wcls-img-clus-matching-xin.jsonnet` by hand. The gate is what finds them missing.
+  `wcls-img-clus-matching-pr-flash.jsonnet` by hand. The gate is what finds them missing.
 
 ---
 
@@ -165,7 +168,7 @@ of ours (opflash_time; issue-10 NF/SP; w-gap rebase).
 
     run-harness.sh <manifest> <outdir> <nworkers> <cores> <fcl>     # fcl REQUIRED, no default
 
-- fcl: `wcls-img-clus-matching-xin.fcl` (MC, `simtpc2d`) or `-data.fcl` (data,
+- fcl: `wcls-img-clus-matching-pr-flash.fcl` (MC, `simtpc2d`) or `-data.fcl` (data,
   `sptpc2d`). A silently-wrong default once cost 3h16m and 13 217 failed events.
 - nugraph HDF5 is a side output switched by the fcl param `enable_nugraph_h5`
   (`"false"` since round 3, #26). It never feeds Bee or `tracking-pr.root`

@@ -1,5 +1,8 @@
 # SBND Wire-Cell "img-clus-match-tag-pr" round-3 datasets — where they are and what they are
 
+> **File names renamed 2026-09-30 (issue 33 cleanup).** `wcls-img-clus-matching-xin-lib.jsonnet` is now `wcls-img-clus-matching-pr-lib.jsonnet`; the 1-step jobs `wcls-img-clus-matching-xin{,-hits}.jsonnet` are now `obsolete/wcls-img-clus-matching-pr-{flash,hits}.jsonnet` (the upstream name `wcls-img-clus-matching-xin.jsonnet` stays as a one-line shim); the fcls `wcls-img-clus-matching-xin{,-data,-hits,-data-hits}.fcl` are now `wcls-img-clus-matching-pr-{flash,flash-data,hits,data-hits}.fcl`. Production is the 2-step chain `wcls-img-clus-matching.jsonnet` + `wct-pr.jsonnet`. This document uses the new names.
+
+
 For colleagues who want to *use* the outputs. Tracking issue: [ai-helper #26](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/26).
 Everything is under `/exp/sbnd/data/users/yuhw/production-prep/` on the SBND data disk (group `sbnd`, read in place — please do not copy 200 GB around). **Validation output, not a production release**: no stability guarantee; the version pins are in §5.
 
@@ -29,7 +32,7 @@ Data inputs are staged as frameshifted 1,000-event artROOT chunks in `r3-data-st
 
 ## 3. What the chain is
 
-One LArSoft job per event (`lar -c wcls-img-clus-matching-xin.fcl` for MC, `…-xin-data.fcl` for data) running the Wire-Cell toolkit end to end inside `larwirecell`:
+One LArSoft job per event (`lar -c wcls-img-clus-matching-pr-flash.fcl` for MC, `…-xin-data.fcl` for data) running the Wire-Cell toolkit end to end inside `larwirecell`:
 
 signal-processed reco1 wires (`dnnsp`) → 3D imaging → clustering → optical-flash / charge matching (Q/L) → the full pattern-recognition chain (Steiner, TGM / STM / FC cosmic taggers, neutrino tagger, DL vertex, ν<sub>μ</sub>/ν<sub>e</sub> BDTs, track fitting, kinematics) — the same algorithms and the **same operating point** as Xin Qian's standalone 2-step production, verified bit-identical on 308 data events and on every 10–18-event pilot of these samples (#24, #26). DL vertex: uBooNE-trained SCN net (`uboone/scn_vtx/t48k-m16-l5-lr5d-res0.5-CP24.pth`); BDTs: the 41 uBooNE `*.xml` weights. Data and MC differ only by the per-TPC point shift, the Q/L light scale, the FrameShift, and product labels (#26 audit).
 
@@ -69,7 +72,7 @@ No nugraph `.h5` this round (switched off; it was an unvalidated side output).
 |---|---|
 | wire-cell-toolkit | `master-2026-09-08+yuhw` @ `0ad64223` (PR [WireCell/wire-cell-toolkit#530](https://github.com/WireCell/wire-cell-toolkit/pull/530)) |
 | larwirecell (SBND fork, `WireCellAIML` labeler) | MRB tree `larsoft-wct036/v10_14_02/srcs/larwirecell`, installed to `/exp/sbnd/app/users/yuhw/opt` |
-| job config | `wcp-porting-validation` `sbnd/wcls-img-clus-matching-xin{,-data}.fcl` + `.jsonnet`, operating point `sbnd/pr-operating-point.jsonnet` @ `e100a631` |
+| job config | `wcp-porting-validation` `sbnd/wcls-img-clus-matching-pr-flash{,-data}.fcl` + `.jsonnet`, operating point `sbnd/pr-operating-point.jsonnet` @ `e100a631` |
 | sbndcode | `v10_14_02_03` (e26, SL7 container) |
 | Xin's reference | `ref/prod-2026-09-08` (prod0908); our chain reproduces it bit-for-bit on data (#24) |
 

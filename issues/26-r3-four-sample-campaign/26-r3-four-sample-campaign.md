@@ -1,5 +1,8 @@
 # Round 3: re-run the four SBND samples on the validated 1-step chain
 
+> **File names renamed 2026-09-30 (issue 33 cleanup).** `wcls-img-clus-matching-xin-lib.jsonnet` is now `wcls-img-clus-matching-pr-lib.jsonnet`; the 1-step jobs `wcls-img-clus-matching-xin{,-hits}.jsonnet` are now `obsolete/wcls-img-clus-matching-pr-{flash,hits}.jsonnet` (the upstream name `wcls-img-clus-matching-xin.jsonnet` stays as a one-line shim); the fcls `wcls-img-clus-matching-xin{,-data,-hits,-data-hits}.fcl` are now `wcls-img-clus-matching-pr-{flash,flash-data,hits,data-hits}.fcl`. Production is the 2-step chain `wcls-img-clus-matching.jsonnet` + `wct-pr.jsonnet`. The names below are as they were when this work ran.
+
+
 **Colleague-facing data guide: [`docs/sbnd-r3-data-guide.md`](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/blob/main/docs/sbnd-r3-data-guide.md)** (locations, inputs, chain, output format; updated as samples finish).
 
 Supersedes the #16/#18/#19 datasets (summarised in #20) with outputs from the

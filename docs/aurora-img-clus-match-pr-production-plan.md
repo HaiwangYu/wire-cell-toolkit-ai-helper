@@ -1,5 +1,8 @@
 # SBND img-clus-match-pr production on Aurora (ALCF): setup + validation plan v2
 
+> **File names renamed 2026-09-30 (issue 33 cleanup).** `wcls-img-clus-matching-xin-lib.jsonnet` is now `wcls-img-clus-matching-pr-lib.jsonnet`; the 1-step jobs `wcls-img-clus-matching-xin{,-hits}.jsonnet` are now `obsolete/wcls-img-clus-matching-pr-{flash,hits}.jsonnet` (the upstream name `wcls-img-clus-matching-xin.jsonnet` stays as a one-line shim); the fcls `wcls-img-clus-matching-xin{,-data,-hits,-data-hits}.fcl` are now `wcls-img-clus-matching-pr-{flash,flash-data,hits,data-hits}.fcl`. Production is the 2-step chain `wcls-img-clus-matching.jsonnet` + `wct-pr.jsonnet`. This document uses the new names.
+
+
 Goal: reproduce the Polaris workflow (`polaris-img-clus-match-pr-production-plan.md`,
 issue 27: local WCT `polaris-build-fixes` = master `67e2eba7` + 2 warning fixes
 `9195180d`, larwirecell `dev-v10_14_02_02` `a02a1a4`, SL7 container, 1-step
@@ -145,8 +148,8 @@ project-wide balance affects our jobs (submit the probe on `debug2` and see).
 | run/subrun | run 301, **one subrun per file** (subrun = file index), events sparse (dirt filter) |
 | events/file | **13.24** mean (2-25) |
 | size | 376 MB/file, **28.4 MB/event**; ~3.3 M events and ~94 TB per production; **1M events ~ 75.5k files ~ 28 TB**, read in place |
-| products | detsim keeps `sim::SimEnergyDeposit ionandscint:priorSCE`, drops `opdaq` waveforms; reco1 drops `recob::Wire *:gauss` and `*:wiener` and RawDigits -> the surviving wires are **`simtpc2d:dnnsp`**, exactly what `wcls-img-clus-matching-xin.fcl` reads (`recobwire_tags simtpc2d:dnnsp`, `summary_tags simtpc2d:wienersummary`, `input_mask_tags simtpc2d:badmasks`, `opflashtpc0/1`, MCTruth/MCParticle/SED for the labeler). **Open:** confirm with `eventdump.fcl` in the probe (A1) |
-| fcl | **MC**: `wcls-img-clus-matching-xin.fcl`; no FrameShift |
+| products | detsim keeps `sim::SimEnergyDeposit ionandscint:priorSCE`, drops `opdaq` waveforms; reco1 drops `recob::Wire *:gauss` and `*:wiener` and RawDigits -> the surviving wires are **`simtpc2d:dnnsp`**, exactly what `wcls-img-clus-matching-pr-flash.fcl` reads (`recobwire_tags simtpc2d:dnnsp`, `summary_tags simtpc2d:wienersummary`, `input_mask_tags simtpc2d:badmasks`, `opflashtpc0/1`, MCTruth/MCParticle/SED for the labeler). **Open:** confirm with `eventdump.fcl` in the probe (A1) |
+| fcl | **MC**: `wcls-img-clus-matching-pr-flash.fcl`; no FrameShift |
 | metadata | `<file>.root.json` next to each file (`event_count`, `runs`, `mc.pot`) -> the manifest can be built without opening ROOT files |
 
 Proposal for the 1M-event sample: prod1 `reco1/000000` .. `reco1/000075`
@@ -261,7 +264,7 @@ image for builds, saved to `$Y/images/`). Output answers Q2/Q3/Q4-products.
    `opt/`, and run one event with each.
 
 **Phase A3 (validation).** (a) 19 nc-sideband data events with `smoke.pbs`
-(`FCL=wcls-img-clus-matching-xin-data.fcl`), `compare-to-fnal.sh` against the
+(`FCL=wcls-img-clus-matching-pr-flash-data.fcl`), `compare-to-fnal.sh` against the
 FNAL run **and** against Polaris `ncsb-data-nuebdt-20260916-0446` -> exact 19/19
 both ways; Bee set uploaded from the UAN and linked in the issue. (b) 50-100
 Gen2 reco1 MC events (MC fcl) run per-event **and** per-file (`-n -1`) on

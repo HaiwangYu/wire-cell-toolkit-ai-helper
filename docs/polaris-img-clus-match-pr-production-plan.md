@@ -1,5 +1,8 @@
 # SBND img-clus-match-pr production on Polaris (ALCF): plan v1
 
+> **File names renamed 2026-09-30 (issue 33 cleanup).** `wcls-img-clus-matching-xin-lib.jsonnet` is now `wcls-img-clus-matching-pr-lib.jsonnet`; the 1-step jobs `wcls-img-clus-matching-xin{,-hits}.jsonnet` are now `obsolete/wcls-img-clus-matching-pr-{flash,hits}.jsonnet` (the upstream name `wcls-img-clus-matching-xin.jsonnet` stays as a one-line shim); the fcls `wcls-img-clus-matching-xin{,-data,-hits,-data-hits}.fcl` are now `wcls-img-clus-matching-pr-{flash,flash-data,hits,data-hits}.fcl`. Production is the 2-step chain `wcls-img-clus-matching.jsonnet` + `wct-pr.jsonnet`. This document uses the new names.
+
+
 Goal: run the WCT/larwirecell 1-step `img-clus-match-pr` chain on ~1M SBND
 reco1 events (artROOT with `recob::Wire` + `sim::SimEnergyDeposit`) on
 **Polaris** with our **local** wire-cell-toolkit (`master`) and larwirecell
@@ -280,7 +283,7 @@ sbndcode `v10_14_02_03`), input = Avinay's BNB nu+cosmic reco1 file
   (ROOT geometry import; rc=0, same as at FNAL).
 - Resync step 4/4 (`preflip`, informational, not the gate) fails to compile:
   `function has no parameter iso_endpoint` -- the preflip operating point in
-  `wcls-img-clus-matching-xin.jsonnet` still passes a knob that master's `pr()`
+  `wcls-img-clus-matching-pr-flash.jsonnet` still passes a knob that master's `pr()`
   dropped. wcsonnet dies on the uncaught exception and dumped a 170 MB core
   into `sbnd/` (deleted; wrapper now sets `ulimit -c 0`). To fix on the
   wcp-porting-validation side or drop the preflip step.
@@ -291,7 +294,7 @@ the NC-sideband sample to
 (19 events, run 18255, `Fall25-Run1_BNB_Dev_bnblight` reco1 filtered to the
 19 RSE in `nc-sideband-rse.csv`, `FrameShiftInfo` from process
 `FILTERFRAMESHIFT` already attached, `sptpc2d` wire tags, no MC truth). With
-`wcls-img-clus-matching-xin-data.fcl`: **19/19 rc=0, `audit=ok`, DL vertex 0
+`wcls-img-clus-matching-pr-flash-data.fcl`: **19/19 rc=0, `audit=ok`, DL vertex 0
 failures, 8 trees each with `T_tagger`/`T_kine` at 1 entry**; event 0 cold
 250 s (62 s first torch import), the other 18 in parallel 33-85 s each
 (2 cores each, 36 of 32 cores oversubscribed), RSS 1.94-1.97 GB; outputs
@@ -472,7 +475,7 @@ removed `iso_endpoint` knob -- informational only. If step 2 reports
 
 **4. Run events (job).**
 
-    cd $Y/polaris-build-logs && qsub -v "RECO1=<artroot>,FCL=wcls-img-clus-matching-xin[-data].fcl,NEVT=<n-1>,DO_RESYNC=0,TAG=<tag>" $S/smoke.pbs
+    cd $Y/polaris-build-logs && qsub -v "RECO1=<artroot>,FCL=wcls-img-clus-matching-pr-flash[-data].fcl,NEVT=<n-1>,DO_RESYNC=0,TAG=<tag>" $S/smoke.pbs
 
 One `lar -n 1 --nskip k ... --no-output` per event in its own cwd
 (`smoke-1evt.sh`, mirrors the FNAL harness), `taskset` 2 cores each, output in
