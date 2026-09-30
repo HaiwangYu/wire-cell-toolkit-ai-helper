@@ -20,11 +20,14 @@ echo "HEAD $(git rev-parse --short HEAD); built from $(cat $Y/aurora-build-logs/
 $S/in-aurora-sl7.sh bash -c "
   B=build/sigproc
   ls -l --time-style=+%F_%T \$B/wcdoctest-sigproc \$B/libWireCellSigProc.so $Y/opt/lib/libWireCellSigProc.so
-  echo deployed_lib_eq_build=\$(cmp -s \$B/libWireCellSigProc.so $Y/opt/lib/libWireCellSigProc.so && echo yes || echo NO)
+  # opt's copy is patchelf-stripped (RPATH), so compare .text, not the whole file
+  t1=\$(objcopy -O binary --only-section=.text \$B/libWireCellSigProc.so /dev/stdout | md5sum | cut -c1-32)
+  t2=\$(objcopy -O binary --only-section=.text $Y/opt/lib/libWireCellSigProc.so /dev/stdout | md5sum | cut -c1-32)
+  echo deployed_text_eq_build=\$([ \"\$t1\" = \"\$t2\" ] && echo yes || echo NO) \$t1
   echo '--- new test registered?'
-  \$B/wcdoctest-sigproc --list-test-cases 2>&1 | grep -i roi_refinement
+  \$B/wcdoctest-sigproc --list-test-cases 2>&1 | grep -i -E 'roi_refinement|stale'
   echo '--- the issue-34 test'
-  \$B/wcdoctest-sigproc --test-case='ROI_refinement*' 2>&1 | tail -6
+  \$B/wcdoctest-sigproc --test-case='*stale*' 2>&1 | tail -6
   echo ROI_TEST_RC=\${PIPESTATUS[0]}
   echo '--- whole sigproc doctest suite'
   \$B/wcdoctest-sigproc 2>&1 | tail -6

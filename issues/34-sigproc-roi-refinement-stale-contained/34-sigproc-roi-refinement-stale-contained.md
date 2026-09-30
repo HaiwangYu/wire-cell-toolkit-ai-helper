@@ -4,7 +4,7 @@ GitHub: https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/34.
 
 **Ask (Haiwang, 2026-09-29).** Find sources of run-by-run non-determinism in `ROI_refinement` and `ROI_formation`. Write a failing test first, then fix.
 
-Toolkit fix: branch `polaris-build-fixes`, commit `d2046242` (fork `HaiwangYu/wire-cell-toolkit`).
+Toolkit fix: branch `polaris-build-fixes` (fork `HaiwangYu/wire-cell-toolkit`). The fix is now **Xin's upstream `634fa688` + `af696a11`**, cherry-picked as `0beaed8a` + `17233155`. Our first version, `d2046242`, is reverted by `2ecb6645`. See section 2026-09-30 (c).
 
 ## The bug
 
@@ -87,3 +87,35 @@ The runs used a standalone runner: the test plus `ROI_refinement`, `ROI_formatio
 - **Relation to #31:** the example flip there, RSE 1/16/2, is on ch 342. SBND has 1984 U + 1984 V + 1664 W channels per TPC, so ch 342 is a **U**-plane channel. This bug only affects **V**: the stale keys are created when U ROIs are deleted, and only V-plane allocations can reuse those addresses. So it cannot explain that flip, and #31 must also have another cause (FP / thread order). The #31 V-plane differences would have to be checked channel by channel to see whether any are consistent with this bug.
 
 Follow-up (still open): an SP-level check. Run the detsim SP job (`wcls-sim-drift-depoflux-nf-sp.jsonnet`, as in #31) N times with `$Y/opt`, multithreaded, before and after the fix, and compare V-plane gauss/wiener frames byte for byte.
+
+## 2026-09-30 (c): adopted Xin's upstream fix; rebuild and doctest
+
+Xin fixed the same bug upstream, on `origin/apply-pointcloud`:
+- `634fa688` adds the OmnibusSigProc knob `r_erase_stale_contained`, which erases the key in both induction branches of `CleanUpInductionROIs`. It also adds the doctest `doctest_roi_refinement_stale_keys.cxx`.
+- `af696a11` switches the knob's default to **true**.
+
+Compared with our `d2046242`: the same root cause and the same two erase sites, and the same `get_contained_rois()` accessor. Ours also erased the key in `CleanUpCollectionROIs`, where it is harmless because W ROIs are never keys, so dropping it changes nothing.
+
+Xin's SBND DetSim measurement:
+
+| | legacy | fixed |
+|---|---|---|
+| events non-deterministic on V only (6 repeats) | 8/10 | 0/10 |
+| stale U keys per event | 11-14 k | 0 |
+| V address reuses per event | 470-2000 | 0 |
+
+- The fixed output equals the majority state of the legacy runs.
+- PDHD and PDVD NF+SP are byte-identical with the fix.
+- This closes our open "SP-level check" follow-up.
+
+To keep the upstream merge conflict-free, `polaris-build-fixes` now reverts ours (`2ecb6645`) and cherry-picks both of Xin's commits with `-x` (`0beaed8a`, `17233155`), pushed to the fork. The five touched sigproc files are byte-identical to `origin/apply-pointcloud`. Our `doctest_roi_refinement.cxx` went out with the revert; Xin's test covers the same case, plus the legacy path and the default.
+
+Build and test on Aurora:
+- **Rebuild (job 8879407, `STAGES=wct`, incremental):** `0.35.0-1723-g17233155`. `WCB_RC=0`, `nlibs=19`, `single_threaded_syms=0`, `fmt_needed=0`, `ldd_not_found=0`. `rpath_stripped=1`, because only `libWireCellSigProc.so` was reinstalled.
+- **Doctest (job 8879470, `scripts/doctest-sigproc.pbs`, SL7):**
+  - The deployed lib's `.text` equals the build's (`e0f7b7d4`). The check now compares `.text`, since the section-1a RPATH strip always changes the file.
+  - Both of Xin's cases are registered and pass: `ROI_refinement CleanUpInductionROIs contained_rois stale keys` and `OmnibusSigProc r_erase_stale_contained defaults to true` (2/2 cases, 10/10 assertions).
+  - The full suite is unchanged from (b): 12/13 cases and 16429/16429 assertions. The one failure is the pre-existing `L1SPFilterPD dump-mode` SIGSEGV (hard-coded `/home/xqian/tmp`).
+- `$Y/opt` now matches HEAD `17233155`.
+- A 1-step re-run is not needed: the 1-step chain has no SP stage, and (b) already showed it exact after the fix.
+- The scripts `after-build-doctest.sh` (a detached UAN watcher: the debug queue allows 1 queued job per user, so `-W depend` is refused) and `doctest-sigproc.pbs` are in `scripts/`.
