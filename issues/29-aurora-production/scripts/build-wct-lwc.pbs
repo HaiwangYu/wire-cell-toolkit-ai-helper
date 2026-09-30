@@ -86,8 +86,25 @@ $S/in-aurora-sl7.sh bash -c "
   mv build build.HIDDEN; nf=0; for f in $OPT/lib/libWireCell*.so $OPT/bin/wire-cell; do nf=\$((nf + \$(ldd \"\$f\" | grep -c 'not found'))); done; mv build.HIDDEN build
   echo ldd_not_found=\$nf '(want 0)'
   echo WCT_STAGE_DONE
-"
-grep -q "WCB_RC=0" $Y/aurora-build-logs/build-wct-lwc.out || { echo "WCT build failed; stopping."; echo "=== END $(date)"; exit 1; }
+" 2>&1 | tee $Y/aurora-build-logs/wct-stage-$J.log
+# check THIS job's stage output (it used to grep a fixed build-wct-lwc.out, i.e. an older run's log
+# whenever qsub -o named another file)
+grep -q "WCB_RC=0" $Y/aurora-build-logs/wct-stage-$J.log || { echo "WCT build failed; stopping."; echo "=== END $(date)"; exit 1; }
+fi
+# DOCTESTS="clus[:<doctest -tc filter>] root ..." -- build those packages' wcdoctest-<pkg> binaries
+# (the install above runs with --notests) and run them, optionally only the matching test cases.
+if [ -n "${DOCTESTS:-}" ]; then
+echo "=== 1d. doctests: $DOCTESTS"
+$S/in-aurora-sl7.sh bash -c "
+  cd $Y/wire-cell-toolkit
+  for spec in $DOCTESTS; do
+    pkg=\${spec%%:*}; tc=\${spec#*:}; [ \"\$tc\" = \"\$spec\" ] && tc=''
+    python3 ./wcb -p --tests --target=wcdoctest-\$pkg -j$NJ 2>&1 | grep -v '^\[' | tail -5
+    echo \"--- wcdoctest-\$pkg \${tc:+-tc=\$tc}\"
+    if [ -n \"\$tc\" ]; then build/\$pkg/wcdoctest-\$pkg -tc=\"\$tc\"; else build/\$pkg/wcdoctest-\$pkg; fi
+    echo DOCTEST_\${pkg}_RC=\$?
+  done
+" 2>&1 | grep -v '^INFO'
 fi
 if [[ " $STAGES " == *" lwc "* ]]; then
 

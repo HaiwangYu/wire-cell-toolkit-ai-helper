@@ -22,7 +22,7 @@ FCL=${FCL:-wcls-img-clus-matching-pr-flash.fcl}
 DO_RESYNC=${DO_RESYNC:-0}   # 0 since toolkit 7a85e5c5 / wcp-porting-validation f04d8937 (2026-09-21): pr-operating-point.jsonnet is gone; the two-chain gate (G4b) replaces the resync
 TAG=${TAG:-smoke}
 CORES=${CORES:-2}          # cores per lar process (taskset); cores 0 and 52 are reserved on Aurora
-RUN=$Y/production-prep/$TAG-$(date +%Y%m%d-%H%M)
+RUN=${RUN_DIR:-$Y/production-prep/$TAG-$(date +%Y%m%d-%H%M)}   # RUN_DIR: a fixed run dir (e.g. for a chained compare job)
 mkdir -p $RUN
 export Y SL7_IMAGE=${SL7_IMAGE:-} APPTAINER_MODE=${APPTAINER_MODE:-}; [ -n "$SL7_IMAGE" ] || unset SL7_IMAGE
 echo "=== START $(date) on $(hostname) job ${PBS_JOBID%%.*} RUN=$RUN RECO1=$RECO1 FCL=$FCL"

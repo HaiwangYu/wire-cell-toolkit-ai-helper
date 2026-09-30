@@ -46,10 +46,9 @@ print(f'G-B {label}: {"PASS" if gb else "FAIL"}'); ok &= gb
 # ---- G-C
 # bee_sink: step 2's own Bee zip.  bee_zip: the node's private zip name, unused when bee_sink is
 # set.  event_from_ident: clus.jsonnet's required partner of evt_subdir (the RSE still comes from
-# the step-1 metadata, which MABC ranks above the ident).  reset_shower_ids_per_event: the
-# multi-event process restarts the static shower-id counter per event, so every event's ids
-# equal a one-event process's -- REQUIRED for identity with the 1-step reference (one event per lar).
-ALLOWED = {'MultiAlgBlobClustering:clus_pr': {'bee_sink', 'bee_zip', 'event_from_ident', 'reset_shower_ids_per_event'},
+# the step-1 metadata, which MABC ranks above the ident).  (reset_shower_ids_per_event is a pr()
+# default since the PR 535 review, so both chains carry it and it is no longer allowed to differ.)
+ALLOWED = {'MultiAlgBlobClustering:clus_pr': {'bee_sink', 'bee_zip', 'event_from_ident'},
            'SbndPrMagnifyTrackingVisitor:pr': {'output_filename'},
            'UbooneTaggerOutputVisitor:pr': {'output_filename'}}
 pr1 = closure(I1, ['MultiAlgBlobClustering:clus_pr']) - {'BeeSink:mabc_shared'}
