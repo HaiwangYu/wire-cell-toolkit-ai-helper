@@ -427,4 +427,4 @@ Tools (in `issues/33-sbnd-1step-to-2step/scripts/`):
 
 **Harness fix:** `run-2step.pbs`'s per-event summary now lists trees present in only one arm separately. It had counted MC's `T_truth_*` as differences.
 
-**Commits:** toolkit `22175a1c`, wcp-porting-validation `a97b77a7`, both local, pending Haiwang's go to push. ai-helper: this entry.
+**Commits (pushed 2026-09-30):** toolkit `78eceb63` (was `22175a1c` before the PR 535 rebase), in WireCell PR 535. wcp-porting-validation `86de7d6a` (rebased from `a97b77a7`), plus `8854fbef`: a one-line wcp-level shim `sbnd/wcls-img-clus-matching-xin.jsonnet` -> `wcls-img-clus-matching-pr-flash.jsonnet`, because sbnd_xin's pr149/pr150 `cfg_proof*.sh` compile that bare name. ai-helper: this entry.
