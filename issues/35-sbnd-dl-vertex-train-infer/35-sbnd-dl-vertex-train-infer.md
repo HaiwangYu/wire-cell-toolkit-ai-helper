@@ -39,7 +39,7 @@ Per candidate, `TaggerCheckNeutrino::visit()` runs:
 3. **DL vertex** (`determine_overall_main_vertex_DL`, `NeutrinoVertexFinder.cxx:4703`).
    - **The network input** (`:4780-4804`) is every PR-graph vertex (its fit point if valid, else its wcpt) plus every segment's interior fit points, from every cluster of the bundle. The values are x, y, z in cm and q = dQ * `dQdx_scale` + `dQdx_offset`.
    - **The call** is `WCPPyUtil::SCN_Vertex("SCN_Vertex", "SCN_Vertex", weights, xyzq, "float32", false, top_k)`, which goes to `pyutil/python/SCN_Vertex.py` and `SCN/DeepVtx.py`.
-   - **Selection:** the top-5 voxels are reranked against the graph's vertex candidates, and the production DL vertex is snapped to the OFF-pass hint if it lies within 2 cm. If the DL doesn't change the vertex, the traditional `determine_overall_main_vertex` is used.
+   - **Selection:** the top-5 voxels are reranked against the graph's vertex candidates. Then, in `snap` mode (`:5271`), the OFF pass's final vertex is snapped to the nearest production candidate the cluster gate admits; if that candidate is within 2 cm it replaces the rerank's choice, otherwise production keeps its own pick. If the DL doesn't change the vertex, the traditional `determine_overall_main_vertex` is used.
 4. **Vertex refinement:** `snap_main_vertex_to_kink`, `snap_main_vertex_to_junction`, then `improve_vertex` (a refit), `main_vertex_graph_audit` and `stitch_disconnected_main_cluster`.
 5. **Final PR:** `clustering_points`, `examine_direction`, `demote_cross_cluster_straight_stems`, `orphan_dup_audit`, `shower_clustering_with_nv`, `reconcile_particle_flags`, the shower kinematics, the taggers (cosmic, numu, ssm, nue, singlephoton) and `fill_kine_tree`. The BDT scorers and the ROOT writers then run as later MABC visitors.
 
@@ -71,3 +71,4 @@ So the outline in the ask is roughly right, with three refinements:
 ## Log
 
 - 2026-10-01: scope and decisions; survey of the current flow (above).
+- 2026-10-01: M1 -- `cfg/pgrapher/experiment/sbnd/docs/sbnd-dl-vertex-flow.md` (toolkit branch `sbnd-dlvtx-35`, local; kept off PR 535's branch): per-event and DL-step mermaid diagrams, the stage/anchor table, the `do_multi_tracking` census by function, planned dump points.
