@@ -5,7 +5,12 @@ Reads T_dlvtx_cloud / T_dlvtx_call from tracking-pr.root files written with
 dl_vtx_dump=true.  For every recorded call it re-runs the SAME Python entry point
 production uses -- SCN_Vertex.SCN_Vertex (pyutil/python/SCN_Vertex.py, which
 WCPPyUtil::SCN_Vertex imports) -- on the recorded float32 cloud, with the recorded
-top_k and the same weights file, then compares the result with the recorded payload.
+top_k and the same weights file, then compares the result with the recorded payload:
+  exact       bit-identical payload;
+  equivalent  identical voxel coordinates and order (so the same ranking), every score within
+              SCORE_TOL -- measured on MC-9: 1-3 float32 ulps of score between the production
+              process and a fresh one, while a replay repeats bit-identically within one process;
+  MISMATCH    anything else (fails the gate).
 
 Run INSIDE SL7 with setup-aurora-run.sh sourced (PyROOT + the scn venv + $OPT/python):
   dlvtx-replay.py [--weights <path or WIRECELL_PATH-relative>] [--json out.json] <tracking-pr.root> ...
@@ -21,6 +26,7 @@ import SCN_Vertex
 
 ROOT.gErrorIgnoreLevel = ROOT.kError
 PROD_WEIGHTS = 'uboone/scn_vtx/t48k-m16-l5-lr5d-res0.5-CP24.pth'
+SCORE_TOL = 1e-6
 
 
 def resolve(path):
@@ -68,7 +74,7 @@ def main():
     a = ap.parse_args()
     weights = resolve(a.weights)
     print('weights:', weights)
-    n = n_exact = n_skip = 0
+    n = n_exact = n_equiv = n_skip = 0
     worst = 0.0
     rows = []
     perpass = collections.defaultdict(lambda: collections.Counter())
@@ -89,10 +95,14 @@ def main():
             same_len = len(out) == len(c['payload'])
             d = float(np.max(np.abs(out - c['payload']))) if same_len and len(out) else (0.0 if same_len else float('inf'))
             exact = same_len and bool(np.array_equal(out, c['payload']))
-            n += 1; n_exact += exact; worst = max(worst, d)
+            equiv = False
+            if same_len and not exact and c['top_k'] > 1 and len(out) % 4 == 0:
+                a4, b4 = out.reshape(-1, 4), c['payload'].reshape(-1, 4)
+                equiv = bool(np.array_equal(a4[:, :3], b4[:, :3])) and float(np.max(np.abs(a4[:, 3] - b4[:, 3]))) <= SCORE_TOL
+            n += 1; n_exact += exact; n_equiv += equiv; worst = max(worst, d)
             rows.append(dict(file=fn, rse=c['rse'], nu_index=nu, call_index=ci, pass_=pname, top_k=c['top_k'],
-                             n_points=c['n_points'], exact=exact, max_abs=d))
-            if not exact:
+                             n_points=c['n_points'], exact=exact, equivalent=equiv, max_abs=d))
+            if not exact and not equiv:
                 print('MISMATCH %s rse=%s nu=%d call=%d pass=%s: len %d vs %d, max |diff| %.3g'
                       % (os.path.basename(fn), c['rse'], nu, ci, pname, len(out), len(c['payload']), d))
             tv, tx, ty, tz = c['truth']
@@ -101,16 +111,16 @@ def main():
                 if c['trad'][0]: dists[pname + ':trad'].append(dist(c['trad'][1:], t))
                 if c['accepted']: dists[pname + ':dl'].append(dist(c['dl'], t))
                 if c['final'][0] and pname == 'prod': dists['final'].append(dist(c['final'][1:], t))
-    print('=> %d calls re-run: %d bit-identical, worst |diff| %.3g; %d skipped (payload from the OFF pass)'
-          % (n, n_exact, worst, n_skip))
+    print('=> %d calls re-run: %d bit-identical, %d equivalent (same voxels + ranking, |dscore| <= %g), %d MISMATCH; worst |diff| %.3g; %d skipped (payload from the OFF pass)'
+          % (n, n_exact, n_equiv, SCORE_TOL, n - n_exact - n_equiv, worst, n_skip))
     for p, cnt in sorted(perpass.items()):
         print('   pass %-4s: %d calls, DL accepted in %d' % (p, cnt['calls'], cnt['accepted']))
     for k, v in sorted(dists.items()):
         v = np.array(v)
         print('   truth distance %-10s n=%-4d median %.2f cm, <1 cm %d, <3 cm %d' % (k, len(v), np.median(v), (v < 1).sum(), (v < 3).sum()))
     if a.json:
-        json.dump(dict(weights=weights, calls=rows, n=n, n_exact=n_exact, worst=worst), open(a.json, 'w'), indent=1)
-    sys.exit(0 if n_exact == n else 1)
+        json.dump(dict(weights=weights, calls=rows, n=n, n_exact=n_exact, n_equivalent=n_equiv, worst=worst), open(a.json, 'w'), indent=1)
+    sys.exit(0 if n_exact + n_equiv == n else 1)
 
 
 if __name__ == '__main__':

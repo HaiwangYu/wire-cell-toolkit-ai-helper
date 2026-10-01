@@ -85,3 +85,29 @@ So the outline in the ask is roughly right, with three refinements:
   - **M3:** `scripts/dlvtx-replay.py` re-runs `SCN_Vertex.SCN_Vertex` (the module production imports) on each recorded cloud with its top_k and the same resolved weights, compares with the payload (bit-exact), and summarises the truth distances.
   - **harness:** `run-2step.pbs` gains `WCT_TLAS` and `DLVTX_REPLAY=1`.
   - **not recorded:** the dual-chain `voxels` / `union` modes' separate OFF inference (`dual_chain_scn_voxels`). Production runs `snap`, where the OFF pass's call goes through `determine_overall_main_vertex_DL` and is recorded.
+
+### (b) 2026-10-01: M2 + M3 validated
+
+
+**Build:** toolkit `sbnd-dlvtx-35` `17b2b468`, local. clus doctests 452/452 (1 skipped), root 8/8. The config gates pass, and with the knob off the hashes equal the PR 535 build's.
+
+**Runs:** step 2 with `--tla-code dl_vtx_dump=true`, on the existing PR 535 step-1 tars, compared with the #32 1-step references. Then `dlvtx-replay.py` re-runs `SCN_Vertex.SCN_Vertex` on every recorded call.
+
+| sample | `tracking-pr.root` (every shared tree) | Bee | network calls (OFF + prod) | replay: bit-identical / equivalent / MISMATCH | DL accepted (OFF, prod) |
+|---|---|---|---|---|---|
+| MC-9 (`mc50-dlvtx-20261001`) | 9/9 identical | 9/9 | 4 (2 + 2); only 2 events reach the DL step | 2 / 2 / 0 | 1/2, 1/2 |
+| NCpi0-19 (`ncsb-dlvtx-20261001`) | 19/19 | 19/19 | 40 (20 + 20) | 38 / 2 / 0 | 19/20, 18/20 |
+| nueCC-48 (`nuecc48-dlvtx-20261001`) | 48/48 | 48/48 | 96 (48 + 48) | 94 / 2 / 0 | 46/48, 48/48 |
+
+- **Recording only:** with the knob on, the reconstruction output is unchanged in every event. The arm gains exactly `T_dlvtx_call` / `T_dlvtx_cloud`; MC also has `T_truth_*`.
+- **"Equivalent":** identical voxel coordinates and order (the same ranking), with every score within 1e-6. Worst observed: 3.6e-7 on MC, 1.2e-7 on data, which is 1–3 float32 ulps.
+  - `dlvtx-call-diff.py` on MC event 16 shows the coordinates bit-identical and the replay repeating bit-identically within one process. So the residual is the network's float non-determinism between the production process and a fresh one, not an input difference.
+  - Scores enter the decision only as score × 1000 against the cut of 10, so a 1e-7 shift could matter only for a candidate sitting exactly on the cut.
+- **MC truth frame check, first look (2 events):** the accepted DL vertices are 1.2 / 1.3 cm from the SCE-shifted truth vertex. The traditional vertices are a median 12–14 cm away. That is consistent with the cloud frame being the t0-corrected reco frame. A larger MC sample is needed (M4).
+
+**Scripts:**
+- `dlvtx-replay.py` (gate: exact or equivalent);
+- `dlvtx-call-diff.py` (per-call detail);
+- `run-2step.pbs` with `WCT_TLAS` and `DLVTX_REPLAY=1`.
+
+**Next (M4):** a training-data note and an MC sample large enough to measure the truth-frame residual, plus Haiwang's choices on which pass and which cuts to train on.
