@@ -72,3 +72,16 @@ So the outline in the ask is roughly right, with three refinements:
 
 - 2026-10-01: scope and decisions; survey of the current flow (above).
 - 2026-10-01: M1 -- `cfg/pgrapher/experiment/sbnd/docs/sbnd-dl-vertex-flow.md` (toolkit branch `sbnd-dlvtx-35`, local; kept off PR 535's branch): per-event and DL-step mermaid diagrams, the stage/anchor table, the `do_multi_tracking` census by function, planned dump points.
+- 2026-10-01: M2 + M3 implemented (toolkit `sbnd-dlvtx-35` `17b2b468`, local; ai-helper scripts):
+  - **knob:** `dl_vtx_dump` (default false), a `pr()` parameter, passed through `sbnd-pr-stage.node()` and a `wct-pr.jsonnet` TLA.
+  - **recording:** `determine_overall_main_vertex_DL` records each network call as `PR::DlVtxCall` (`clus/inc/WireCellClus/PRDlVtxDump.h`):
+    - the exact float32 `vec_xyzq` copy (vertex block first), q scale/offset, top_k, the raw payload;
+    - the decision: traditional vertex, accepted DL vertex, dual-chain transfer.
+  - **OFF pass:** it records too (pass `off`) and hands its calls to production through `DualChainHint::dump_calls`, using a scope guard that covers every return.
+  - **carrier:** the candidate's calls ride on `TrackFitting::dlvtx_calls`, which is cleared at the event reset.
+  - **writer:** `SbndPrMagnifyTrackingVisitor::write_dlvtx` writes `T_dlvtx_call` (one row per call, with the candidate's final vertex) and `T_dlvtx_cloud` (one row per point). On MC, the truth vertex is the max-edep `truth_nu` row, given raw and shifted by the TrueFwd SCE map (`sce_field` = `sbnd_dualmap_fwd`, configured only with the knob on). SBND apa = sign of x.
+  - **knob off:** all eight compiled SBND configs (1-step flash/hits, step 1, step 2; sim and data) are byte-identical, and no tree is written.
+  - **knob on:** exactly three config changes (`TaggerCheckNeutrino.dl_vtx_dump`, `SbndPrMagnifyTrackingVisitor.sce_field`, `SCEFieldTH3:sbnd_dualmap_fwd`).
+  - **M3:** `scripts/dlvtx-replay.py` re-runs `SCN_Vertex.SCN_Vertex` (the module production imports) on each recorded cloud with its top_k and the same resolved weights, compares with the payload (bit-exact), and summarises the truth distances.
+  - **harness:** `run-2step.pbs` gains `WCT_TLAS` and `DLVTX_REPLAY=1`.
+  - **not recorded:** the dual-chain `voxels` / `union` modes' separate OFF inference (`dual_chain_scn_voxels`). Production runs `snap`, where the OFF pass's call goes through `determine_overall_main_vertex_DL` and is recorded.
