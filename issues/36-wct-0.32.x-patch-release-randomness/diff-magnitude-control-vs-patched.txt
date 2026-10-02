@@ -1,0 +1,4 @@
+bins of |a-b| over samples that differ: ['[0,0.0001)', '[0.0001,0.01)', '[0.01,0.1)', '[0.1,1)', '[1,10)', '[10,inf)']
+dnnsp: events=9 in-ROI samples=2617306 differing=1768503 (67.6% of in-ROI) hist=[1110863, 651903, 4594, 751, 384, 8]  rel. to in-ROI: ['42.44%', '24.91%', '0.18%', '0.03%', '0.01%', '0.00%']
+gauss: events=9 in-ROI samples=2974277 differing=16351 (0.5% of in-ROI) hist=[0, 0, 15120, 626, 488, 117]  rel. to in-ROI: ['0.00%', '0.00%', '0.51%', '0.02%', '0.02%', '0.00%']
+wiener: events=9 in-ROI samples=2452259 differing=19621 (0.8% of in-ROI) hist=[0, 0, 18437, 434, 578, 172]  rel. to in-ROI: ['0.00%', '0.00%', '0.75%', '0.02%', '0.02%', '0.01%']

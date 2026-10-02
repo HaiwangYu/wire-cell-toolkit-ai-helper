@@ -1,0 +1,47 @@
+runs=6 events=9 products=['dnnsp', 'gauss', 'wiener']
+  run0: /exp/sbnd/data/users/yuhw/wct-0.32.x-randomness/patched-0.32.x-70140ede/rep0/detsim.root
+  run1: /exp/sbnd/data/users/yuhw/wct-0.32.x-randomness/patched-0.32.x-70140ede/rep1/detsim.root
+  run2: /exp/sbnd/data/users/yuhw/wct-0.32.x-randomness/patched-0.32.x-70140ede/rep2/detsim.root
+  run3: /exp/sbnd/data/users/yuhw/wct-0.32.x-randomness/patched-0.32.x-70140ede/rep3/detsim.root
+  run4: /exp/sbnd/data/users/yuhw/wct-0.32.x-randomness/patched-0.32.x-70140ede/rep4/detsim.root
+  run5: /exp/sbnd/data/users/yuhw/wct-0.32.x-randomness/patched-0.32.x-70140ede/rep5/detsim.root
+evt 0 RSE 1/9/2:
+    dnnsp=IDENTICAL(b981f4f9d5)
+    gauss=IDENTICAL(ac7feecd47)
+    wiener=IDENTICAL(b64518d744)
+evt 1 RSE 1/9/4:
+    dnnsp=IDENTICAL(c12dcaddf8)
+    gauss=IDENTICAL(a1a27fafef)
+    wiener=IDENTICAL(1cd29350ee)
+evt 2 RSE 1/9/5:
+    dnnsp=IDENTICAL(b49b2ec6cb)
+    gauss=IDENTICAL(0379e8c71d)
+    wiener=IDENTICAL(6f071e8e08)
+evt 3 RSE 1/9/10:
+    dnnsp=IDENTICAL(22355bf51e)
+    gauss=IDENTICAL(e2bbe9dbec)
+    wiener=IDENTICAL(c0d25e13b1)
+evt 4 RSE 1/9/11:
+    dnnsp=IDENTICAL(f5ba5cf81d)
+    gauss=IDENTICAL(47a0bdb078)
+    wiener=IDENTICAL(670961899c)
+evt 5 RSE 1/9/12:
+    dnnsp=IDENTICAL(d8fdd32607)
+    gauss=IDENTICAL(270c8a631d)
+    wiener=IDENTICAL(c8082b9443)
+evt 6 RSE 1/9/13:
+    dnnsp=IDENTICAL(1c53398e93)
+    gauss=IDENTICAL(247edf456d)
+    wiener=IDENTICAL(e84bb323fa)
+evt 7 RSE 1/9/14:
+    dnnsp=IDENTICAL(6868823378)
+    gauss=IDENTICAL(d1c569c73f)
+    wiener=IDENTICAL(41d8c81440)
+evt 8 RSE 1/9/15:
+    dnnsp=IDENTICAL(884493a16b)
+    gauss=IDENTICAL(85e7bb9db0)
+    wiener=IDENTICAL(5e877f06c2)
+SUMMARY (events identical across all runs / events with >1 state):
+  dnnsp: identical 9/9, differing 0/9
+  gauss: identical 9/9, differing 0/9
+  wiener: identical 9/9, differing 0/9

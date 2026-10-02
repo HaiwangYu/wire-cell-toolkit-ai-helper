@@ -1,0 +1,47 @@
+runs=6 events=9 products=['dnnsp', 'gauss', 'wiener']
+  run0: /exp/sbnd/data/users/yuhw/wct-0.32.x-randomness/control-cvmfs-0.32.1/rep0/detsim.root
+  run1: /exp/sbnd/data/users/yuhw/wct-0.32.x-randomness/control-cvmfs-0.32.1/rep1/detsim.root
+  run2: /exp/sbnd/data/users/yuhw/wct-0.32.x-randomness/control-cvmfs-0.32.1/rep2/detsim.root
+  run3: /exp/sbnd/data/users/yuhw/wct-0.32.x-randomness/control-cvmfs-0.32.1/rep3/detsim.root
+  run4: /exp/sbnd/data/users/yuhw/wct-0.32.x-randomness/control-cvmfs-0.32.1/rep4/detsim.root
+  run5: /exp/sbnd/data/users/yuhw/wct-0.32.x-randomness/control-cvmfs-0.32.1/rep5/detsim.root
+evt 0 RSE 1/9/2:
+    dnnsp=IDENTICAL(7e668188c5)
+    gauss=DIFFER[2 states f1801cec87:[0] e492ec49c6:[1, 2, 3, 4, 5]; vs run0 worst: nch=1 roi-list-changed=0 nsamp=4 max|d|=0.02 ch=[9095]]
+    wiener=DIFFER[2 states f201daf91b:[0] 202ad076df:[1, 2, 3, 4, 5]; vs run0 worst: nch=1 roi-list-changed=0 nsamp=27 max|d|=0.22 ch=[9095]]
+evt 1 RSE 1/9/4:
+    dnnsp=DIFFER[2 states d4b080d5fd:[0, 2, 4, 5] 2f2df6e0aa:[1, 3]; vs run0 worst: nch=1 roi-list-changed=1 nsamp=6 max|d|=1 ch=[614]]
+    gauss=IDENTICAL(6fa463cbb9)
+    wiener=IDENTICAL(cc1d4f3283)
+evt 2 RSE 1/9/5:
+    dnnsp=IDENTICAL(414bb389f5)
+    gauss=IDENTICAL(bac0c9c934)
+    wiener=IDENTICAL(5bf2cad56e)
+evt 3 RSE 1/9/10:
+    dnnsp=IDENTICAL(9ef47e2806)
+    gauss=DIFFER[3 states f2452b8a29:[0, 2, 4, 5] 387812ad86:[1] 154a8762bb:[3]; vs run0 worst: nch=3 roi-list-changed=3 nsamp=93 max|d|=2.76 ch=[8223, 8224, 8225]]
+    wiener=DIFFER[3 states fe69df8c47:[0, 2, 4, 5] 7729de60c9:[1] fe4e0141fd:[3]; vs run0 worst: nch=3 roi-list-changed=3 nsamp=69 max|d|=2.94 ch=[8223, 8224, 8225]]
+evt 4 RSE 1/9/11:
+    dnnsp=IDENTICAL(346b9eccd5)
+    gauss=DIFFER[5 states b2304c2408:[0, 1] 71c6521d92:[2] e8f0bdf835:[3] 6d57e53738:[4] c8733d25a8:[5]; vs run0 worst: nch=2 roi-list-changed=2 nsamp=120 max|d|=3.72 ch=[7868, 7869]]
+    wiener=DIFFER[5 states 32ee892c94:[0, 1] c892481733:[2] 8bae21ec55:[3] d11314c796:[4] 2448098232:[5]; vs run0 worst: nch=2 roi-list-changed=2 nsamp=101 max|d|=5.2 ch=[7868, 7869]]
+evt 5 RSE 1/9/12:
+    dnnsp=DIFFER[2 states 047d52e810:[0, 2, 4] 9b24a1265a:[1, 3, 5]; vs run0 worst: nch=3 roi-list-changed=2 nsamp=85 max|d|=0.815 ch=[767, 828, 831]]
+    gauss=DIFFER[4 states 87b7a18f9a:[0] 7553498cd4:[1, 3, 4] 9a1f1b0e9e:[2] e7c24dc65f:[5]; vs run0 worst: nch=3 roi-list-changed=3 nsamp=161 max|d|=14.8 ch=[2260, 8878, 8879]]
+    wiener=DIFFER[4 states 57477d1fd1:[0] 798150bffb:[1, 3, 4] 4fa2efa89b:[2] 3ca5cb2630:[5]; vs run0 worst: nch=3 roi-list-changed=3 nsamp=152 max|d|=17.4 ch=[2260, 8878, 8879]]
+evt 6 RSE 1/9/13:
+    dnnsp=DIFFER[2 states 7e4647268c:[0, 2, 4] 5c3de11d15:[1, 3, 5]; vs run0 worst: nch=5 roi-list-changed=5 nsamp=139 max|d|=2.58 ch=[147, 882, 905, 906, 914]]
+    gauss=IDENTICAL(12112c2f3c)
+    wiener=IDENTICAL(5e5004fd1c)
+evt 7 RSE 1/9/14:
+    dnnsp=IDENTICAL(521115220a)
+    gauss=DIFFER[4 states dba55f6adf:[0] 807ef42cbf:[1, 2, 3] 98ff2a6053:[4] a109db0e34:[5]; vs run0 worst: nch=9 roi-list-changed=9 nsamp=447 max|d|=15 ch=[3557, 3558, 3559, 7744, 7925, 7926, 7979, 7980, 7981]]
+    wiener=DIFFER[4 states 46ed0130ee:[0] 61b290b2c7:[1, 2, 3] 1c76b66b07:[4] 99a74c0ceb:[5]; vs run0 worst: nch=9 roi-list-changed=8 nsamp=410 max|d|=18.6 ch=[3557, 3558, 3559, 7744, 7925, 7926, 7979, 7980, 7981]]
+evt 8 RSE 1/9/15:
+    dnnsp=IDENTICAL(9da125032b)
+    gauss=DIFFER[3 states 7503091eaa:[0] 5d2b625249:[1, 2, 4, 5] 33cef25d25:[3]; vs run0 worst: nch=2 roi-list-changed=2 nsamp=100 max|d|=15.6 ch=[2092, 3112]]
+    wiener=DIFFER[3 states 811d175917:[0] fbc9cbab85:[1, 2, 4, 5] eb065cfdab:[3]; vs run0 worst: nch=2 roi-list-changed=2 nsamp=100 max|d|=20.3 ch=[2092, 3112]]
+SUMMARY (events identical across all runs / events with >1 state):
+  dnnsp: identical 6/9, differing 3/9
+  gauss: identical 3/9, differing 6/9
+  wiener: identical 3/9, differing 6/9
