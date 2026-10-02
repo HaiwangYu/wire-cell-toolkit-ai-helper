@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -N dlvtx-stats-build
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/dlvtx-stats-build.out
+# issue 35: one job (the per-user queued-job limit was 1 during the 2026-10-02 stall):
+#   1. decoupling test + decision statistics on the existing dumps (SL7)
+#   2. the toolkit + larwirecell rebuild with the hint_* / cloud_no_exclusion branches, doctests
+set -u
+export Y
+echo "=== STATS $(date)"
+SL7_SETUP=/lus/flare/projects/neutrinoGPU/yuhw/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts/setup-aurora-opt.sh /lus/flare/projects/neutrinoGPU/yuhw/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts/in-aurora-sl7.sh bash -c "/lus/flare/projects/neutrinoGPU/yuhw/wire-cell-toolkit-ai-helper/issues/35-sbnd-dl-vertex-train-infer/scripts/decouple-and-stats.sh" 2>&1 | grep -v '^INFO'
+echo "=== BUILD $(date)"
+DO_CFG_GATE=0 DOCTESTS="clus root" bash /lus/flare/projects/neutrinoGPU/yuhw/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts/build-wct-lwc.pbs
