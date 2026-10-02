@@ -52,21 +52,47 @@ So the outline in the ask is roughly right, with three refinements:
 - The pr/79 sec 10 harvest (`dl_vtx_harvest` + `vertex_scoreboard`, both default off) copies the exact live `vec_xyzq` into the vertex scoreboard. `PrDisplayDump` writes it to the calib JSON as `hv_cloud`. It covers the production pass only, because the OFF pass sets `m_vtx_harvest = false`, and `PrDisplayDump` is not in the production pipeline.
 - Xin's `sbnd_xin/dl_vtx_training/build_dataset.py` rebuilds the cloud from the calib JSON's FINAL vertices and segments. His `parity_check.py` reproduces production's recorded top-1 voxel exactly on 39 of 66 events, which is this issue's domain mismatch, measured.
 
+## Goal, revised 2026-10-02
+
+Xin's finding: the current DL-vertex model does better on **exclusion-off** trajectory-fit points, while the other PR tasks do better on **exclusion-on** fits. That is why production runs the dual chain: an exclusion-off copy of the whole vertexing (the OFF pass) only to produce a vertex hint for the exclusion-on production pass.
+
+Haiwang's aim: dump **both** clouds for the next training round, train on each, and test whether a model trained on the exclusion-on cloud matches or beats the current one. If it does, the OFF pass can be dropped.
+
+### The three questions, from the code (toolkit `sbnd-dlvtx-35`)
+
+1. **How is the hint used? Does the model see it?** No. The OFF pass hands production one point, its final main vertex (`DualChainHint::vertex`). Production runs its own network call on its own exclusion-on cloud (`NeutrinoVertexFinder.cxx:4870`) and reranks its top-5; only then, in `snap` mode (`:5271`), the production candidate nearest the hint replaces the rerank pick if within 2 cm. The hint touches the selection after inference, never the input or the inference. (`voxels` / `union` modes would pool the OFF payload into the selection; production runs `snap`.)
+2. **Does the OFF vertex change the 2nd-round fit?** Before step C, no, by construction: the OFF pass has its own `TrackFitting` and `PR::Graph`, and the one Facade residue (`Flags::main_cluster`) is snapshotted and restored. So the production cloud and payload in `T_dlvtx_*` are independent of the OFF pass, and so is the OFF cloud. After step C, yes: the winning vertex (possibly the snapped one) drives `improve_vertex` and everything downstream, so the final fit, `T_rec_charge`, `final_*` and Bee depend on the hint. For training this is harmless: inputs are the step-C clouds, labels are MC truth. **Empirical check:** `dlvtx-decouple.py` compares the production clouds of a dual-chain-ON and a dual-chain-OFF run bit for bit (result below when the job runs).
+3. **Is the model called in round C, and used?** Called always. Used only when the snap is not accepted (no admissible candidate within 2 cm of the hint, or no hint). `dual_transferred` records this per call; `dlvtx-stats.py` gives the fractions.
+
+**Fact from the dual-chain-OFF run (NCpi0-19, `ncsb-dlvtx-nodual-20261002`):** dropping the OFF pass today changes the final result in 7 of 19 events (12 identical to the reference, step 2 3.4 min instead of 4.0). That is the size of what a model trained on the exclusion-on cloud has to recover.
+
+### The clouds the dump provides
+
+| `T_dlvtx_call.pass` | cloud | fit exclusion | graph | status |
+|---|---|---|---|---|
+| 1 (`off`) | the OFF pass's network input | off, from step A onward | the OFF pass's own graph and candidates | dumped |
+| 0 (`prod`) | the production network input | on | the production graph | dumped |
+| 0 with `cloud_no_exclusion = 1` | an exclusion-free refit of the production graph, built just for the cloud, then restored (`dl_vtx_cloud_no_exclusion`) | off, cloud only | the production graph's topology | dumpable via `pr_knobs` |
+
+Both `off` and `prod` rows carry MC truth; `hint_*` on the `prod` row is the OFF pass's final vertex.
+
 ## Plan
 
 | milestone | content | gate |
 |---|---|---|
-| M0 | this doc and issue | -- |
-| M1 (task 1) | `cfg/pgrapher/experiment/sbnd/docs/sbnd-dl-vertex-flow.md`: a mermaid diagram of the per-candidate sequence (both chains, where the network input is taken, where the refits happen), with file:line anchors | review |
-| M2 (task 2a) | **Dump.** A knob (e.g. `dl_vtx_dump`, default off) records every network call: pass (`off` / `prod`), `nu_index`, the exact `vec_xyzq`, top-K, the returned voxels and scores, the chosen and traditional vertices, and the snap outcome. `SbndPrMagnifyTrackingVisitor` writes it as `T_dlvtx_cloud` (one row per point) and `T_dlvtx_call` (one row per call: outputs and decision). On MC each call also carries the truth vertex transformed into the cloud's frame. | knob off: compiled config and outputs byte-identical; knob on: `T_dlvtx_*` present, and the production result unchanged |
-| M3 (task 2b) | **Standalone inference.** A script reads `T_dlvtx_cloud`, calls `SCN_Vertex.SCN_Vertex` with the same weights and top-K, and compares with `T_dlvtx_call`. | identical voxels and scores (bit-exact, or a stated float tolerance) for every call on MC-9, NCpi0-19 and nueCC-48 |
-| M4 | **Training-data note.** How to build a training set from `T_dlvtx_*` and the truth: which pass, frame, cuts. Point Xin's pipeline at the exact cloud instead of the rebuilt one. | -- |
-| M5 (task 3) | **Streamlining proposal**, after M1–M4: for example one parameterised PR-stage sequence run twice instead of `run_dual_chain_off_pass`'s copy, and the per-candidate loop structure. It must give identical results. | identical `tracking-pr.root` and Bee on the three samples |
+| M0 | this doc and issue | done |
+| M1 | `cfg/pgrapher/experiment/sbnd/docs/sbnd-dl-vertex-flow.md` | done (`9979a13f`) |
+| M2 | `dl_vtx_dump`: `T_dlvtx_call` / `T_dlvtx_cloud`, both passes, exact input, payload, decision, hint, MC truth | done (`17b2b468`, `78ba593c`, hint/cloud flag commit); recording-only verified on MC-9, NCpi0-19, nueCC-48 |
+| M3 | standalone replay `dlvtx-replay.py` | done: 140 + 20 calls, 0 mismatch (bit-identical or 1–3 ulps in scores) |
+| M3b | decoupling: production cloud independent of the OFF pass | `dlvtx-decouple.py`, pending the job |
+| M4 | **training set, both clouds:** a large MC sample (gen2 CV and nueCC MC) through step 1 + step 2 with `dl_vtx_dump=true` (and a `cloud_no_exclusion` variant); a note on frame, selection (truth vertex in the FV, candidate = the true interaction's bundle), and the `T_dlvtx_*` → npz export the training reads | truth-frame residual measured on hundreds of events; export reproduces the dumped floats |
+| M5 | **model on the exclusion-on cloud:** train on `prod` (and `cloud_no_exclusion`) clouds, evaluate against the current model on `off` clouds with the same labels | vertex accuracy at 1 cm comparable or better |
+| M6 (task 3) | **skip the OFF pass:** run production with the new weights and `dl_vtx_dual_chain=false`; compare with production | identical or better on the hand-scan and MC truth; step 2 ~15 % faster |
 
 ## Open items
 
 - **Truth frame.** The fit points live in the reco frame: drift x with the cluster t0 correction, and data y/z position offsets. The MC truth vertex needs SCE true->reco plus the same t0/drift convention. `wclsTensorSetLabeler` already shifts the depos true->reco (`sce_field_fwd`), so M2 should reuse that convention, then check it against the hand-scan labels on MC.
-- **The OFF pass and harvesting.** Today it explicitly disables the harvest. M2 must capture its call without changing its result.
+- **The OFF pass's call is captured** (done): it records with `pass = off`, result unchanged.
 
 ## Log
 
