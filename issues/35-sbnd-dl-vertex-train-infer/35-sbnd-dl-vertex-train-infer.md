@@ -84,7 +84,7 @@ Both `off` and `prod` rows carry MC truth; `hint_*` on the `prod` row is the OFF
 | M1 | `cfg/pgrapher/experiment/sbnd/docs/sbnd-dl-vertex-flow.md` | done (`9979a13f`) |
 | M2 | `dl_vtx_dump`: `T_dlvtx_call` / `T_dlvtx_cloud`, both passes, exact input, payload, decision, hint, MC truth | done (`17b2b468`, `78ba593c`, hint/cloud flag commit); recording-only verified on MC-9, NCpi0-19, nueCC-48 |
 | M3 | standalone replay `dlvtx-replay.py` | done: 140 + 20 calls, 0 mismatch (bit-identical or 1–3 ulps in scores) |
-| M3b | decoupling: production cloud independent of the OFF pass | `dlvtx-decouple.py`, pending the job |
+| M3b | decoupling: production cloud independent of the OFF pass | done: 20/20 clouds and payloads bit-identical with the dual chain off (log c) |
 | M4 | **training set, both clouds:** a large MC sample (gen2 CV and nueCC MC) through step 1 + step 2 with `dl_vtx_dump=true` (and a `cloud_no_exclusion` variant); a note on frame, selection (truth vertex in the FV, candidate = the true interaction's bundle), and the `T_dlvtx_*` → npz export the training reads | truth-frame residual measured on hundreds of events; export reproduces the dumped floats |
 | M5 | **model on the exclusion-on cloud:** train on `prod` (and `cloud_no_exclusion`) clouds, evaluate against the current model on `off` clouds with the same labels | vertex accuracy at 1 cm comparable or better |
 | M6 (task 3) | **skip the OFF pass:** run production with the new weights and `dl_vtx_dual_chain=false`; compare with production | identical or better on the hand-scan and MC truth; step 2 ~15 % faster |
@@ -137,3 +137,30 @@ Both `off` and `prod` rows carry MC truth; `hint_*` on the `prod` row is the OFF
 - `run-2step.pbs` with `WCT_TLAS` and `DLVTX_REPLAY=1`.
 
 **Next (M4):** a training-data note and an MC sample large enough to measure the truth-frame residual, plus Haiwang's choices on which pass and which cuts to train on.
+
+### (c) 2026-10-02: M3b decoupling and the hint statistics
+
+
+Run on the login node with the UPS ROOT (`setup-uan-root.sh`), since Aurora's scheduler is down.
+
+**Decoupling (NCpi0-19, production pass, dual chain ON vs OFF, `dlvtx-decouple.py`):** all 20 production clouds (x, y, z, q, float32) and all 20 payloads are **bit-identical** with and without the OFF pass. Only the decision differs, in 7 of 20 events:
+- 3 events (21073, 56982, 259542): with the dual chain off the DL is **not accepted** (`accepted` 1 → 0). Production's own rerank failed the score cut; only the snap had supplied a DL vertex.
+- 4 events (285567, 463565, 506114, 506746): a **different candidate** is accepted, 0.5–55 cm away; the final vertex follows.
+
+So the answer to question 2 is measured: nothing the OFF pass does reaches the production fit or inference. A model trained on `pass=prod` clouds has no hidden dependence on the OFF pass. The coupling starts only at the selection, which is what a retrained model has to replace.
+
+**How often the hint decides (`dlvtx-stats.py`, dual chain ON, MC-9 + NCpi0-19 + nueCC-48, 70 candidates):**
+
+| | OFF pass | production pass |
+|---|---|---|
+| network calls | 70 | 70 |
+| DL accepted | 66 | 67 |
+| snap overrode production's own pick (`dual_transferred`) | – | **19 (27 %)** |
+| production's own top-1 voxel → accepted vertex | – | median 0.69 cm; 42 within 1 cm, 14 beyond 5 cm |
+| traditional vertex → accepted DL vertex | – | median 7.0 cm; 31 within 1 cm, 34 beyond 5 cm |
+
+With the dual chain OFF (NCpi0-19): accepted 15/20 (vs 18/20 ON); production's own top-1 → accepted vertex median 0.27 cm, none beyond 5 cm (no snap, so the accepted vertex is always production's own choice).
+
+Reading: in about 27 % of candidates the OFF pass's answer wins over the exclusion-on model's own answer, and the 14 cases where production's top-1 voxel is more than 5 cm from the accepted vertex are these transfers. That 27 % is the gap a model trained on the exclusion-on cloud has to close for the OFF pass to be dropped.
+
+**Dump additions (toolkit `sbnd-dlvtx-35` `9781e43c`, to be built):** `T_dlvtx_call` gains `hint_valid`, `hint_x/y/z` (the OFF vertex given to the production call) and `cloud_no_exclusion`.
