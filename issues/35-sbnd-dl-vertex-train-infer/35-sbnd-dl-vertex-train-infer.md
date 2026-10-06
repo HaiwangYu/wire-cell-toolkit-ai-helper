@@ -164,3 +164,11 @@ With the dual chain OFF (NCpi0-19): accepted 15/20 (vs 18/20 ON); production's o
 Reading: in about 27 % of candidates the OFF pass's answer wins over the exclusion-on model's own answer, and the 14 cases where production's top-1 voxel is more than 5 cm from the accepted vertex are these transfers. That 27 % is the gap a model trained on the exclusion-on cloud has to close for the OFF pass to be dropped.
 
 **Dump additions (toolkit `sbnd-dlvtx-35` `9781e43c`, to be built):** `T_dlvtx_call` gains `hint_valid`, `hint_x/y/z` (the OFF vertex given to the production call) and `cloud_no_exclusion`.
+
+### (d) 2026-10-06: the rebuilt dump verified; the exclusion-free-refit variant exercised
+
+Both on the NCpi0-19 step-1 tars, step 2 only, compared with the #32 reference and replayed:
+- `ncsb-dlvtx-hint-20261005` (dump on): output identical 19/19, Bee 19/19; replay 40 calls, 38 bit-identical, 2 equivalent, 0 mismatch; the production row now carries `hint_valid=1` and the OFF pass's vertex in `hint_x/y/z`.
+- `ncsb-dlvtx-noexcl-20261005` (dump on + `pr_knobs={dl_vtx_cloud_no_exclusion:true}`): the production cloud is the exclusion-free refit (`cloud_no_exclusion=1`, e.g. 409 vs 399 points in event 114446; the log shows the refits), the replay passes 40/40, and the final output is still identical 19/19: the rerank landed on the same candidate in every event. This variant is NOT part of the current chain (the knob is off in production); it is an option for training only.
+
+Replay totals so far: 240 recorded network calls re-run standalone, 0 mismatches.
