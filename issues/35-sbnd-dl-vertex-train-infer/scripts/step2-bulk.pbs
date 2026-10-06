@@ -1,0 +1,89 @@
+#!/bin/bash
+#PBS -N wct-step2-bulk
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/step2-bulk.out
+# Step 2 of the SBND 2-step chain (standalone PR, wct-pr.jsonnet) over the step-1 tars of a
+# step1-bulk.pbs run, with the DL-vertex dump on (issue 35 M4): one wire-cell per tar, all
+# concurrently, each pinned to CORES cores; then the standalone replay check and the decision /
+# truth-distance statistics over every event.
+#
+#   qsub [-W depend=afterok:<step-1 job>] -v "RUN=<step-1 run dir>[,REALITY=sim][,CORES=2][,MAXPAR=100][,WCT_TLAS='--tla-code dl_vtx_dump=true']" step2-bulk.pbs
+#
+# Layout:  $RUN/f<NNN>/pr/{pr_evt<E>/tracking-pr.root, mabc-pr.zip, wct.log, time.txt}
+#          $RUN/resources-pr.tsv / resources-pr.md     per-process and summary resources
+#          $RUN/dlvtx-replay.json, dlvtx-replay.txt, dlvtx-stats.txt
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+S29=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+S35=$Y/wire-cell-toolkit-ai-helper/issues/35-sbnd-dl-vertex-train-infer/scripts
+RUN=${RUN:?}; REALITY=${REALITY:-sim}; CORES=${CORES:-2}; MAXPAR=${MAXPAR:-100}; WCT_TLAS=${WCT_TLAS:---tla-code dl_vtx_dump=true}
+export Y SL7_IMAGE=${SL7_IMAGE:-} APPTAINER_MODE=${APPTAINER_MODE:-}; [ -n "$SL7_IMAGE" ] || unset SL7_IMAGE
+J=${PBS_JOBID%%.*}; T_START=$(date +%s)
+QT=$(qstat -f $PBS_JOBID 2>/dev/null | awk -F' = ' '/qtime/ {print $2}'); ST=$(qstat -f $PBS_JOBID 2>/dev/null | awk -F' = ' '/stime/ {print $2}')
+echo "=== START $(date) job $J node $(hostname) RUN=$RUN REALITY=$REALITY TLAS=$WCT_TLAS"
+echo "queued: $QT   started: $ST"
+echo "WCT=$(git -C $Y/wire-cell-toolkit rev-parse --short HEAD) ($(git -C $Y/wire-cell-toolkit branch --show-current))"
+[ -f $RUN/inputs.tsv ] || { echo "no $RUN/inputs.tsv (step 1 did not run?)"; exit 2; }
+N=$(wc -l < $RUN/inputs.tsv); NTAR=$(ls $RUN/f*/qlpctree.tar.gz 2>/dev/null | wc -l); echo "inputs: $N files, $NTAR step-1 tars"
+
+SL7_SETUP=$S29/setup-aurora-run.sh $S29/in-aurora-sl7.sh bash -c "
+  t0=\$(date +%s); k=0; nrun=0
+  while IFS=\$'\t' read -r i n f; do
+    in=$RUN/f\$i/qlpctree.tar.gz; d=$RUN/f\$i/pr; mkdir -p \$d
+    [ -f \$in ] || { echo \"f\$i: no step-1 tar\"; echo 99 > \$d/rc.txt; continue; }
+    c=\$(( 1 + (k % $MAXPAR) * $CORES ))
+    ( cd \$d && /usr/bin/time -v -o time.txt taskset -c \$c-\$((c+$CORES-1)) wire-cell -l stdout -L debug -c pgrapher/experiment/sbnd/wct-pr.jsonnet --tla-str input=\$in --tla-str reality=$REALITY $WCT_TLAS > wct.log 2>&1; echo \$? > rc.txt ) &
+    k=\$((k+1)); nrun=\$((nrun+1))
+    if [ \$nrun -ge $MAXPAR ]; then wait -n; nrun=\$((nrun-1)); fi
+  done < $RUN/inputs.tsv
+  wait
+  echo node_wall_s=\$(( \$(date +%s) - t0 ))
+" 2>&1 | grep -v '^INFO'
+
+echo "=== resources"
+printf "index\tnevents\trc\twall_s\tcpu_s\tmaxrss_MB\tn_trackpr\ttrackpr_MB\tbeepr_MB\n" > $RUN/resources-pr.tsv
+while IFS=$'\t' read -r i n f; do
+  d=$RUN/f$i/pr; t=$d/time.txt
+  wall=$(awk -F': ' '/Elapsed/ {split($2,a,":"); if (length(a)==3) print a[1]*3600+a[2]*60+a[3]; else print a[1]*60+a[2]}' $t 2>/dev/null)
+  cpu=$(awk -F': ' '/User time/ {u=$2} /System time/ {s=$2} END {print u+s}' $t 2>/dev/null)
+  rss=$(awk -F': ' '/Maximum resident/ {printf "%.0f", $2/1024}' $t 2>/dev/null)
+  ntr=$(ls $d/pr_evt*/tracking-pr.root 2>/dev/null | wc -l); trmb=$(cat $d/pr_evt*/tracking-pr.root 2>/dev/null | wc -c | awk '{printf "%.1f", $1/1e6}')
+  mb() { [ -f "$1" ] && stat -c %s "$1" | awk '{printf "%.1f", $1/1e6}' || echo 0; }
+  printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" "$i" "$n" "$(cat $d/rc.txt 2>/dev/null)" "${wall:-}" "${cpu:-}" "${rss:-}" "$ntr" "$trmb" "$(mb $d/mabc-pr.zip)" >> $RUN/resources-pr.tsv
+done < $RUN/inputs.tsv
+python3 - $RUN $QT $ST $(( $(date +%s) - T_START )) <<'PY' | tee $RUN/resources-pr.md
+import sys, csv, datetime
+R, qt, st, job_s = sys.argv[1], ' '.join(sys.argv[2:5]), ' '.join(sys.argv[5:8]), int(sys.argv[8])
+rows = list(csv.DictReader(open(R + '/resources-pr.tsv'), delimiter='\t'))
+ok = [r for r in rows if r['rc'] == '0']
+f = lambda k: [float(r[k]) for r in ok if r[k] not in ('', None)]
+nev = sum(int(r['nevents']) for r in ok); ntr = sum(int(r['n_trackpr']) for r in ok)
+def parse(s):
+    try: return datetime.datetime.strptime(s, '%a %b %d %H:%M:%S %Y')
+    except Exception: return None
+qd, sd = parse(qt), parse(st); wait = (sd - qd).total_seconds() if qd and sd else None
+print('# step-2 (PR + DL dump) bulk run resources: %s' % R)
+print('- tars: %d run, %d ok (rc=0), %d failed; events %d, tracking-pr.root written %d' % (len(rows), len(ok), len(rows) - len(ok), nev, ntr))
+print('- queue wait: %s (queued %s, started %s)' % ('%.0f s' % wait if wait is not None else 'n/a', qt, st))
+print('- job wall (node): %d s = %.1f min' % (job_s, job_s / 60))
+if ok:
+    print('- per wire-cell process: wall median %.0f s, max %.0f s; CPU median %.0f s; max RSS median %.0f MB, max %.0f MB'
+          % (sorted(f('wall_s'))[len(ok)//2], max(f('wall_s')), sorted(f('cpu_s'))[len(ok)//2], sorted(f('maxrss_MB'))[len(ok)//2], max(f('maxrss_MB'))))
+    print('- CPU per event: %.1f s' % (sum(f('cpu_s')) / nev))
+    print('- output per event: tracking-pr.root %.2f MB, mabc-pr.zip %.2f MB; totals %.2f / %.2f GB'
+          % (sum(f('trackpr_MB')) / nev, sum(f('beepr_MB')) / nev, sum(f('trackpr_MB')) / 1e3, sum(f('beepr_MB')) / 1e3))
+bad = [r['index'] for r in rows if r['rc'] != '0']
+if bad: print('- FAILED indices: %s' % ' '.join(bad))
+PY
+
+echo "=== DL-vertex replay (standalone inference on the dumped clouds) + statistics"
+SL7_SETUP=$S29/setup-aurora-run.sh $S29/in-aurora-sl7.sh bash -c "
+  python3 $S35/dlvtx-replay.py --json $RUN/dlvtx-replay.json $RUN/f*/pr/pr_evt*/tracking-pr.root > $RUN/dlvtx-replay.txt 2>&1; tail -12 $RUN/dlvtx-replay.txt
+  python3 $S35/dlvtx-stats.py $RUN/f*/pr/pr_evt*/tracking-pr.root > $RUN/dlvtx-stats.txt 2>&1; cat $RUN/dlvtx-stats.txt
+" 2>&1 | grep -v '^INFO'
+echo "=== END $(date)"

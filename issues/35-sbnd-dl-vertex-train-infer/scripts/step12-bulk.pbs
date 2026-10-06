@@ -1,0 +1,16 @@
+#!/bin/bash
+#PBS -N wct-step12-bulk
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/step12-bulk.out
+# issue 35 M4: step 1 (step1-bulk.pbs) then step 2 + DL dump (step2-bulk.pbs) in ONE job, because
+# the per-user limit allows a single queued job (a dependent job counts too).  Same env vars.
+set -u
+export MANIFEST=/lus/flare/projects/neutrinoGPU/yuhw/production-prep/mc1k-dlvtx-20261006/manifest.tsv RUN=/lus/flare/projects/neutrinoGPU/yuhw/production-prep/mc1k-dlvtx-20261006 FCL=wcls-img-clus-matching.fcl REALITY=sim CORES=2 MAXPAR=100
+bash /lus/flare/projects/neutrinoGPU/yuhw/wire-cell-toolkit-ai-helper/issues/35-sbnd-dl-vertex-train-infer/scripts/step1-bulk.pbs
+echo; echo "######## step 2"; echo
+bash /lus/flare/projects/neutrinoGPU/yuhw/wire-cell-toolkit-ai-helper/issues/35-sbnd-dl-vertex-train-infer/scripts/step2-bulk.pbs
