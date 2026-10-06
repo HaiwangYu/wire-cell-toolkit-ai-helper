@@ -14,8 +14,22 @@ this repo; no commit or push anywhere else, the human reviews. Test output under
 - `FocusList` moves to a shared header used by `WaveformDigitizerSim` only. The five other digitizer copies are documented here as follow-up (§5).
 
 **Status (2026-10-05).** Proposal written, built and unit-tested in SL7, validated on 8
-regenerated FD-VD events (§3, §4): all gates pass. Uncommitted, for review. A third bug
-turned up during validation (§4.5); whether to add its fix is open.
+regenerated FD-VD events (§3, §4): all gates pass. Uncommitted, for review.
+
+**Update (2026-10-05, evening): scope widened for the tech-note.** Haiwang asked for a tech-note covering every
+simulation-code bug of the chain. It lives in a new repo,
+[HaiwangYu/FD-LE](https://github.com/HaiwangYu/FD-LE) `00-op-sim-debug/`; the 20+20-event before/after study is there,
+not here. Tech-note PDF:
+[`00-op-sim-debug/tech-note/fdvd-light-sim-tech-note.pdf`](https://github.com/HaiwangYu/FD-LE/blob/main/00-op-sim-debug/tech-note/fdvd-light-sim-tech-note.pdf)
+(FD-LE `1d466be`): 8 configurations on 20 solar-only + 20 mixed events, every gate 40/40.
+- **Correction to §4.5.** The `CFDTrigger` start-tick underflow is **not** new. Xin Qian found it first: bug **E** in
+  his fdvd_sim doc 30 crosswalk (from docs 03 §1.2 and 14 §3).
+- The proposal on the `fix-light-sim-pileup` branch (still uncommitted) and the patch copy here now also contain:
+  - **E**: the start-tick clamp, unconditional;
+  - **D**: `SIPMOpSensorSim` `DarkNoiseTimeInNs`, default **true** (legacy stores the us dark-count time as ns);
+  - **N1**: `BinomialQE`, default **true** (legacy draws Poisson(QE*n) on top of PDFastSim's Poisson).
+- The "legacy" setting must now turn off `MergeOverlappingRanges`, `DarkNoiseTimeInNs` and `BinomialQE`. It then
+  reproduces old samples except for the bug-E snippets.
 
 ## 1. Where the proposal lives
 

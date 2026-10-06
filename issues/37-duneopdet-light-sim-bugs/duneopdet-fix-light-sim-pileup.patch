@@ -8,10 +8,19 @@ index d4e4a31..82414a0 100644
  add_subdirectory(Ana)
 +add_subdirectory(test)
 diff --git a/duneopdet/OpticalDetector/SIPMOpSensorSim.fcl b/duneopdet/OpticalDetector/SIPMOpSensorSim.fcl
-index 08aa820..2000416 100644
+index 08aa820..b850c59 100644
 --- a/duneopdet/OpticalDetector/SIPMOpSensorSim.fcl
 +++ b/duneopdet/OpticalDetector/SIPMOpSensorSim.fcl
-@@ -24,6 +24,10 @@ xarapuca_ar_xe10ppm.InputTag:                "PDFastSimAr"
+@@ -7,6 +7,8 @@ xarapuca_ar:
+   QuantumEfficiency: 0.030 # 3% X-ARAPUCA efficiency
+   DarkNoiseRate:     10.0 # Hz
+   CrossTalk:         0.20
++  DarkNoiseTimeInNs: true  # false = legacy: dark-count times in us stored as ns (all within a few us of t = 0)
++  BinomialQE:        true  # false = legacy: Poisson(QE*n) on top of PDFastSim's Poisson (PE variance too large)
+ }
+ 
+ xarapuca_ar_refl:                             @local::xarapuca_ar
+@@ -24,6 +26,10 @@ xarapuca_ar_xe10ppm.InputTag:                "PDFastSimAr"
  xarapuca_ar_xe10ppm.Correction:              0.65
  xarapuca_ar_xe10ppm.LateLightCorrection:     0.31
  xarapuca_ar_xe10ppm.LateLightBoundary:       10   # ns
@@ -23,19 +32,26 @@ index 08aa820..2000416 100644
  # Early light already disabled at PDFastSim stage
  # Correct down by 0.7 to account for remaining Ar late light
 diff --git a/duneopdet/OpticalDetector/SIPMOpSensorSim_module.cc b/duneopdet/OpticalDetector/SIPMOpSensorSim_module.cc
-index 1f3d0ba..75a23ed 100644
+index 1f3d0ba..94e7b10 100644
 --- a/duneopdet/OpticalDetector/SIPMOpSensorSim_module.cc
 +++ b/duneopdet/OpticalDetector/SIPMOpSensorSim_module.cc
-@@ -59,6 +59,8 @@
+@@ -54,11 +54,15 @@
+ #include "CLHEP/Random/RandExponential.h"
+ #include "CLHEP/Random/RandFlat.h"
+ #include "CLHEP/Random/RandPoissonQ.h"
++#include "CLHEP/Random/RandBinomial.h"
+ 
+ // C++ includes
  
  #include <vector>
  #include <map>
 +#include <string>
 +#include <unordered_map>
++#include <algorithm>
  #include <cmath>
  #include <memory>
  
-@@ -82,6 +84,11 @@ namespace opdet {
+@@ -82,6 +86,21 @@ namespace opdet {
        fhicl::Atom<double>         Correction          { Name("Correction"),          Comment("Adjust the amount of total light. Kept seprate from QE for clarity."), 1};
        fhicl::OptionalAtom<double> LateLightCorrection { Name("LateLightCorrection"), Comment("Adjust the amount of late light")};
        fhicl::OptionalAtom<double> LateLightBoundary   { Name("LateLightBoundary"),   Comment("Boundary that defines late light (ns)") };
@@ -44,18 +60,45 @@ index 1f3d0ba..75a23ed 100644
 +                                                                "whole event (legacy; with pile-up every later interaction's light is late), "
 +                                                                "\"Track\" = first photon of the same track"),
 +                                                        "Event" };
++      fhicl::Atom<bool>           DarkNoiseTimeInNs   { Name("DarkNoiseTimeInNs"),
++                                                        Comment("Store dark-count times in ns, like the photon times. false reproduces the legacy "
++                                                                "behaviour, which stores the us value as ns and puts every dark count within "
++                                                                "a few us of t = 0. Default true."),
++                                                        true };
++      fhicl::Atom<bool>           BinomialQE          { Name("BinomialQE"),
++                                                        Comment("Detect each photon of an SDP with probability QE (binomial). false reproduces the "
++                                                                "legacy Poisson(QE*n), which on top of PDFastSim's own Poisson draw inflates the PE "
++                                                                "variance and allows more PE than photons. Default true."),
++                                                        true };
  
      };
      using Parameters = art::EDProducer::Table<Config>;
-@@ -105,6 +112,7 @@ namespace opdet {
+@@ -105,12 +124,16 @@ namespace opdet {
      bool          fCorrectLateLight;    // Do we apply a late light correction?
      double        fLateLightCorrection; // How much to correct the late light
      double        fLateLightBoundary;   // What is the boundary which defines late light?
 +    bool          fLateLightPerTrack;   // Is late light counted from each track's first photon (else the event's)?
++    bool          fDarkNoiseTimeInNs;   // Are dark-count times converted to ns (else legacy: us stored as ns)?
++    bool          fBinomialQE;          // Is detection binomial per photon (else legacy: Poisson on the mean)?
  
      // Random number engines
      CLHEP::HepRandomEngine& fSIPMEngine;
-@@ -215,6 +223,14 @@ namespace opdet {
+     CLHEP::RandExponential  fRandExponential;
+     CLHEP::RandFlat         fRandFlat;
+     CLHEP::RandPoissonQ     fRandPoissPhot;
++    CLHEP::RandBinomial     fRandBinomPhot;
+   
+     // Produce waveform on one of the optical detectors
+     // These cannot be const due to the random number generators
+@@ -151,6 +174,7 @@ namespace opdet {
+     , fRandExponential(fSIPMEngine)
+     , fRandFlat(fSIPMEngine)
+     , fRandPoissPhot(fSIPMEngine)
++    , fRandBinomPhot(fSIPMEngine)
+   {
+ 
+     // This module produces (infrastructure piece)
+@@ -215,6 +239,16 @@ namespace opdet {
          << "Leave both out to not adjust late light.\n";
      }
  
@@ -66,11 +109,13 @@ index 1f3d0ba..75a23ed 100644
 +        << "Must be \"Event\" or \"Track\".\n";
 +    }
 +    fLateLightPerTrack = (lateLightReference == "Track");
++    fDarkNoiseTimeInNs = config().DarkNoiseTimeInNs();
++    fBinomialQE        = config().BinomialQE();
 +
      if (fCorrectLateLight && fLateLightCorrection*tempQE > LarProp->ScintPreScale())
      {
        throw art::Exception(art::errors::Configuration)
-@@ -265,12 +281,24 @@ namespace opdet {
+@@ -265,12 +299,24 @@ namespace opdet {
      if (btr.timePDclockSDPsMap().size() == 0)
        return;
  
@@ -99,7 +144,7 @@ index 1f3d0ba..75a23ed 100644
        }
      }
  
-@@ -278,7 +306,7 @@ namespace opdet {
+@@ -278,7 +324,7 @@ namespace opdet {
      for (auto const& [time, sdps]: btr.timePDclockSDPsMap()) {
  
        double lateScale = 1.;
@@ -108,16 +153,40 @@ index 1f3d0ba..75a23ed 100644
          if (time > firstTime + fLateLightBoundary)
            lateScale = fLateLightCorrection;
        }
-@@ -286,6 +314,9 @@ namespace opdet {
+@@ -286,8 +332,20 @@ namespace opdet {
        // Loop through SDPs
        for(auto const& sdp : sdps) {
  
+-        // Reduce true photons by QE, poisson-fluctuate
+-        int nphot = fRandPoissPhot.fire(fQE * (double)sdp.numPhotons * lateScale);
 +        if (fCorrectLateLight && fLateLightPerTrack)
 +          lateScale = (time > firstTimeOfTrack.at(sdp.trackID) + fLateLightBoundary) ? fLateLightCorrection : 1.;
 +
-         // Reduce true photons by QE, poisson-fluctuate
-         int nphot = fRandPoissPhot.fire(fQE * (double)sdp.numPhotons * lateScale);
++        // Reduce true photons by QE. sdp.numPhotons is already a Poisson draw
++        // (PDFastSim), so each photon is detected with probability QE; a second
++        // Poisson draw on the mean would give Var/mean = 1+QE instead of 1-QE.
++        int nphot = 0;
++        if (fBinomialQE) {
++          double const p = std::min(1., fQE * lateScale);
++          if (sdp.numPhotons > 0)
++            nphot = static_cast<int>(fRandBinomPhot.fire(sdp.numPhotons, p));
++        }
++        else
++          nphot = fRandPoissPhot.fire(fQE * (double)sdp.numPhotons * lateScale);
  
+         // For each true photon detected
+         for(int truePh=0; truePh<nphot; ++truePh) {
+@@ -326,7 +384,9 @@ namespace opdet {
+ 	    //Currently using all zeros as an indicator of Dark Noise for the trackID.
+       int PE = 1+CrossTalk();
+       for(int j = 0; j < PE; j++) {
+-        dr_plusnoise.AddPhoton(dr_plusnoise.OpDetNum(), 0, darkNoiseTime);
++        // darkNoiseTime is in us (fTimeBegin, fTimeEnd, tau); DivRec times are ns
++        dr_plusnoise.AddPhoton(dr_plusnoise.OpDetNum(), 0,
++                               fDarkNoiseTimeInNs ? darkNoiseTime*1000. : darkNoiseTime);
+       }
+ 
+       // Find next time to simulate a single PE pulse
 diff --git a/duneopdet/OpticalDetector/WaveformDigitizerSim.fcl b/duneopdet/OpticalDetector/WaveformDigitizerSim.fcl
 index 9bb42cd..6283437 100644
 --- a/duneopdet/OpticalDetector/WaveformDigitizerSim.fcl
@@ -131,7 +200,7 @@ index 9bb42cd..6283437 100644
    PreTrigger:            20      # ticks
    Threshold:              1.5    # PE
 diff --git a/duneopdet/OpticalDetector/WaveformDigitizerSim_module.cc b/duneopdet/OpticalDetector/WaveformDigitizerSim_module.cc
-index a501702..5e5a056 100644
+index a501702..0e3e8b3 100644
 --- a/duneopdet/OpticalDetector/WaveformDigitizerSim_module.cc
 +++ b/duneopdet/OpticalDetector/WaveformDigitizerSim_module.cc
 @@ -47,6 +47,7 @@
@@ -232,6 +301,17 @@ index a501702..5e5a056 100644
  
        // Add a PE template to the waveform for each true photon
        for (auto dr_p: vDivRecs) AddPEsToWaveform(dr_p, nChannelsPerOpDet, pdWaveforms, fls);
+@@ -607,7 +567,9 @@ namespace opdet {
+           if (!fire) {
+             // Start a new readout window 
+             fire   = true;
+-            wstart = tick-fPreTrigger;
++            // Clamp at the start of the waveform: tick-fPreTrigger would wrap
++            // around (size_t) for a trigger in the first fPreTrigger ticks
++            wstart = (tick >= fPreTrigger) ? tick-fPreTrigger : 0;
+             wend   = tick-fPreTrigger+fReadoutWindow;
+           }
+           else {
 diff --git a/duneopdet/OpticalDetector/FocusList.h b/duneopdet/OpticalDetector/FocusList.h
 new file mode 100644
 index 0000000..c6ed291
