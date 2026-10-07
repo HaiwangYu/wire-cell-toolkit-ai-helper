@@ -48,7 +48,7 @@ def mb(p):
     return os.path.getsize(p) / 1e6 if os.path.exists(p) else 0.0
 
 
-units, events = [], []
+units, events, stubs = [], [], []
 for row in csv.reader(open(RUN + '/units.tsv'), delimiter='\t'):
     if not row or row[0].startswith('#'):
         continue
@@ -72,7 +72,11 @@ for row in csv.reader(open(RUN + '/units.tsv'), delimiter='\t'):
     for t in trs:
         e = int(re.search(r'pr_evt(\d+)', t).group(1))
         fh = ROOT.TFile.Open(t)
-        names = {k.GetName() for k in fh.GetListOfKeys()}
+        names = {k.GetName() for k in fh.GetListOfKeys()} if fh else set()
+        if 'Trun' not in names:
+            # a crashed step 2 leaves the previous event's file as a ~0.5 kB stub (closed lazily)
+            stubs.append('%s/%s' % (u, e))
+            continue
         E = dict(unit=u, ident=e, run='', subrun='', event='', candidate=int('T_kine' in names), ntrees=len(names),
                  calls_prod=0, calls_off=0, acc_prod=0, acc_off=0, cloud_pts=0, truth_nu=-1, truth_pf=-1,
                  nue_score='', numu_score='', enu='')
@@ -117,7 +121,8 @@ L = ['# %s: %s' % (LABEL, RUN), '',
      '| quantity | value |', '|---|---|',
      '| units | %d run, %d with both steps rc=0 |' % (len(units), len(ok)),
      '| failed units | %s |' % (', '.join('%s (ql %s, pr %s)' % (u['unit'], u['ql_rc'], u['pr_rc']) for u in units if u not in ok) or 'none'),
-     '| events in step-1 tars / tracking-pr.root written | %d / %d |' % (nev_tar, ntr),
+     '| events in step-1 tars / valid tracking-pr.root | %d / %d |' % (nev_tar, ntr),
+     '| stub tracking-pr.root (no Trun; crashed process) | %d %s |' % (len(stubs), ' '.join(stubs[:10])),
      '| units with "DL vertex failed" > 0 | %d |' % sum(1 for u in units if u['dl_fail'] not in ('', '0')),
      '| neutrino candidates (T_kine present) | %d (%.1f %%) |' % (sum(e['candidate'] for e in events), 100.0 * sum(e['candidate'] for e in events) / max(ntr, 1)),
      '| DL calls prod / off | %d / %d |' % (sum(e['calls_prod'] for e in events), sum(e['calls_off'] for e in events)),

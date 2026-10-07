@@ -43,7 +43,7 @@ Builds on:
 | M2 | config proof on compiled JSON, `scripts/cfg-proof.py` | C1–C10 below all PASS |
 | M3 | smoke: 1 MC CV file + 5 beam-off events through both steps; replay of the recorded DL calls | rc 0; `T_dlvtx_*` and `T_truth_*` present; beam-off `frame_apply_at_caf` non-zero |
 | M4 | production: MC CV (154 files, 2,017 events), MC nueCC (225 files, 2,001 events), beam-off (1,000 events) | every unit rc 0 or its failure explained |
-| M5 | summary: resources, sizes, DL-dump counts; data guide | – |
+| M5 | summary: resources, sizes, DL-dump counts; where the data is | log (b) |
 
 ## Config proof (`scripts/cfg-proof.py`)
 
@@ -137,3 +137,52 @@ Results: log (a).
 **M4 launched** 2026-10-06 23:38: `scripts/run-all.sh` runs MC CV, then MC nueCC, then beam-off.
 - Each species has at most 28 units at once, all under `taskset -c 32-63`, with a 50 GB RSS guard.
 - `memwatch.log` samples our process count and RSS every minute.
+
+### (b) 2026-10-07: M4 production done -- 5,018 / 5,018 events, every unit rc 0, 0 DL failures
+
+Wall: MC CV 23:38–00:18 (40 min), MC nueCC 00:18–01:23 (65 min), beam-off 01:23–01:39 (16 min), plus one retry (2.5 min).
+The cap held. `memwatch.log` peaked at 29 of our processes (28 in the pool plus the crash diagnosis) and 47.9 GB RSS, all on cores 32–63.
+
+| | MC BNB CV | MC nueCC | beam-off |
+|---|---|---|---|
+| units (all rc 0 both steps) | 154 | 225 (1 after a retry, below) | 50 |
+| events: step-1 tar / valid `tracking-pr.root` | 2,017 / 2,017 | 2,001 / 2,001 | 1,000 / 1,000 |
+| `DL vertex failed` | 0 | 0 | 0 |
+| neutrino candidates (`T_kine`) | 965 (47.8 %) | 1,894 (94.7 %) | 96 (9.6 %) |
+| events with `T_dlvtx_call` | 944 | 1,890 | 66 |
+| DL calls prod / off | 960 / 960 | 1,961 / 1,961 | 66 / 66 |
+| DL accepted prod / off | 930 / 545 | 1,915 / 1,574 | 55 / 3 |
+| prod `dual_transferred` (OFF hint replaced prod's pick) | 460 | 659 | 55 |
+| `T_dlvtx_cloud` points | 538,677 | 1,851,221 | 34,984 |
+| events with `T_truth_nu` / `T_truth_pf` | 2,017 | 2,001 | 0 (data) |
+| final vertex vs SCE-shifted truth: median, < 1 cm | 0.71 cm, 55 % | 0.71 cm, 55 % | – |
+| step 1 CPU / event, max RSS | 24.7 s, 2.0 GB | 28.7 s, 2.2 GB | 18.5 s, 2.0 GB |
+| step 2 CPU / event, max RSS | 4.0 s, 1.8 GB | 20.0 s, 2.7 GB | 2.5 s, 2.1 GB |
+| per event: tar / step-1 Bee / h5 / `tracking-pr.root` / step-2 Bee (MB) | 1.78 / 5.18 / 1.25 / 0.17 / 0.27 | 1.95 / 5.89 / 1.44 / 0.35 / 0.37 | 2.06 / 0.77 / 1.35 / 0.05 / 0.28 |
+| disk | 17 GB | 19 GB | 4.3 GB |
+
+- The truth distances count every candidate with a DL call. #35's 65 % < 1 cm is on its training selection (truth in the active volume, the true interaction's candidate), so the two are not the same quantity.
+- Statistics: `dlvtx-stats.py` (#35), in `<species>/dlvtx-stats.txt`. Per-unit and per-event tables: `<species>/{units-summary.tsv, events.tsv, summary.md}`.
+
+**Finding: a non-deterministic step-2 segfault (MC nueCC `f001`, event 10603).**
+- **First run:** rc 139, peak RSS 4.4 GB (typical 1.5 GB).
+  - The segfault is in `TrackFitting::update_association` (`clus/src/TrackFitting.cxx:3734`), reached from `TaggerCheckNeutrino::visit` → `improve_vertex` → `do_multi_tracking` → `form_map_graph` (`:4655`), at a PLT call with a shallow stack.
+  - The ROOT handler then crashed a second time inside `TTree::TTree`.
+- **Same tar, same binary, re-run twice** (`crash-nuecc-f001-10603/rerun1`, and the retry in place): rc 0, all 10 events. The 6 events both runs completed are identical in every branch of every tree, `T_dlvtx_*` included.
+- So it is an intermittent defect (uninitialised or out-of-bounds memory is the likely class), not a data-driven crash. The crashed log is kept in `mc-nuecc/f001/pr-crash139/wct.log.gz`.
+- **Side effect:** the event processed just before the crash (9269) was left as a 479-byte `tracking-pr.root` stub, because the writer closes a file lazily. A crashed step 2 therefore loses one more event than it reports, and the whole tar must be re-run. `summarize.py` counts files without `Trun` as stubs.
+- Not filed upstream; same standing as crash 471/18/33 (#26 §5a): to fix ourselves later.
+
+**Where the data is** (`/exp/sbnd/data/users/yuhw/production-prep/r5-dlvtx-xin-samples/`):
+```
+{mc-cv,mc-nuecc,beam-off}/<unit>/ql/qlpctree.tar.gz   step-1 tar (all events of the unit; MC: truth_nu / truth_pf tables)
+                                 ql/mabc.zip           step-1 Bee (imaging, clustering, op, sed-* on MC)
+                                 ql/nugraph.h5         labeler HDF5
+                                 pr/pr_evt<E>/tracking-pr.root   PR output + T_dlvtx_call / T_dlvtx_cloud (+ T_truth_* on MC)
+                                 pr/mabc-pr.zip        step-2 Bee (PR layers, taggers)
+{species}/units.tsv     unit -> reco1 file, nskip, n      (MC: f<NNN> = one #30 reco1 file; beam-off: c<NN> = events 20*NN .. 20*NN+19)
+{species}/events.tsv    unit, event, run/subrun/event, candidate, DL calls/accepted, cloud points, truth rows, scores, Enu
+```
+The inputs are the #30 reco1 files under `production-prep/xin-round3-samples/`. Beam-off is the frameshifted 1,000-event file.
+
+Milestones M0–M5 done.
