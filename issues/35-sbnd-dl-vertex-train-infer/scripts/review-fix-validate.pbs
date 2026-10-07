@@ -1,0 +1,41 @@
+#!/bin/bash
+#PBS -N review-fix-validate
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/review-fix-validate.out
+# issue 35, PR 536 review fixes (Xin, 2026-10-07) -- one job:
+#   1. clean build of sbnd-dlvtx-35 (master + dump + review fixes) into $OPT, doctests clus + root;
+#   2. the knob-off gate: the 2-step chain on MC-10 and NCpi0-19 vs the master runs of 2026-10-07 (must be identical);
+#   3. step 2 with dl_vtx_dump=true on those step-1 tars + the standalone replay (new columns);
+#   4. the 1006-event bulk sample re-dumped (step 2 only, new dir, the step-1 tars of mc1k-dlvtx-20261006 symlinked) + replay + stats.
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw; export Y
+S29=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+S33=$Y/wire-cell-toolkit-ai-helper/issues/33-sbnd-1step-to-2step/scripts
+S35=$Y/wire-cell-toolkit-ai-helper/issues/35-sbnd-dl-vertex-train-infer/scripts
+P=$Y/production-prep; D=${D:-20261007}; T=${T:-fix}
+echo "=== F0 $(date): branch $(git -C $Y/wire-cell-toolkit branch --show-current) $(git -C $Y/wire-cell-toolkit log --oneline -1)"
+[ "$(git -C $Y/wire-cell-toolkit branch --show-current)" = sbnd-dlvtx-35 ] || { echo "not on sbnd-dlvtx-35; stopping"; exit 2; }
+echo "=== F1 $(date): clean build + doctests clus root"
+CLEAN=1 STAGES="wct" DOCTESTS="clus root" DO_CFG_GATE=0 bash $S29/build-wct-lwc.pbs 2>&1 | grep -E "^===|WCB_RC|nlibs|ldd_not_found|FAILED|STAGE_DONE|^real|\[doctest\]|failing|^  TEST|DOCTEST_.*_RC"
+grep -q WCT_STAGE_DONE $Y/aurora-build-logs/wct-stage-${PBS_JOBID%%.*}.log || { echo "build failed, stopping"; exit 1; }
+echo "=== F2 $(date): knob-off gate, 2-step on MC-10 and NCpi0-19 vs the master runs"
+RECO1=/lus/flare/projects/neutrinoGPU/abhat/sbnd/gen2-cv-50evt-benchmark-20260915/reco1/reco1-gen2cv-50evt-bench-20260915.root FCL=wcls-img-clus-matching.fcl REALITY=sim NEVT=10 REF=$P/mc10-master-$D-ref RUN_DIR=$P/mc10-$T-$D DO_GATE=0 CPU0=1 bash $S33/run-2step.pbs > $P/mc10-$T-$D.log 2>&1 &
+RECO1=$Y/sbnd-gen2-data/nc-sideband-lynn/filtered-reco1/nc-sideband_filtered_frameshift.root FCL=wcls-img-clus-matching-data.fcl REALITY=data NEVT=19 REF=$P/ncsb-master-$D-ref RUN_DIR=$P/ncsb-$T-$D DO_GATE=0 CPU0=41 bash $S33/run-2step.pbs > $P/ncsb-$T-$D.log 2>&1 &
+wait
+for t in mc10 ncsb; do echo "--- $t-$T-$D.log"; grep -E "rc=|step._wall_s|paired=|IDENTICAL=|^=> |trees in one arm|Bee identical" $P/$t-$T-$D.log | head -20; done
+echo "=== F3 $(date): step 2 with dl_vtx_dump=true + replay (vs the master runs)"
+for t in mc10 ncsb; do mkdir -p $P/$t-$T-dump-$D; ln -sfn $P/$t-$T-$D/ql $P/$t-$T-dump-$D/ql; done
+RECO1=x FCL=x REALITY=sim NEVT=10 REF=$P/mc10-master-$D-ref RUN_DIR=$P/mc10-$T-dump-$D SKIP1=1 DO_GATE=0 CPU0=1 WCT_TLAS="--tla-code dl_vtx_dump=true" DLVTX_REPLAY=1 bash $S33/run-2step.pbs > $P/mc10-$T-dump-$D.log 2>&1 &
+RECO1=x FCL=x REALITY=data NEVT=19 REF=$P/ncsb-master-$D-ref RUN_DIR=$P/ncsb-$T-dump-$D SKIP1=1 DO_GATE=0 CPU0=41 WCT_TLAS="--tla-code dl_vtx_dump=true" DLVTX_REPLAY=1 bash $S33/run-2step.pbs > $P/ncsb-$T-dump-$D.log 2>&1 &
+wait
+for t in mc10 ncsb; do echo "--- $t-$T-dump-$D.log"; grep -E "rc=|step._wall_s|paired=|IDENTICAL=|^=> |trees in one arm|Bee identical|MISMATCH|bit-identical" $P/$t-$T-dump-$D.log | head -20; done
+echo "=== F4 $(date): bulk re-dump of the 1006 events (step 2 only) + replay + stats"
+B=$P/mc1k-dlvtx-$D; mkdir -p $B; cp $P/mc1k-dlvtx-20261006/inputs.tsv $P/mc1k-dlvtx-20261006/manifest.tsv $B/
+while IFS=$'\t' read -r i n f; do mkdir -p $B/f$i; ln -sfn $P/mc1k-dlvtx-20261006/f$i/qlpctree.tar.gz $B/f$i/qlpctree.tar.gz; done < $B/inputs.tsv
+RUN=$B bash $S35/step2-bulk.pbs 2>&1 | grep -vE "^INFO|^\s*$" | tail -30
+echo "=== END $(date)"

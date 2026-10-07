@@ -48,7 +48,7 @@ def load(fn):
     calls = {}
     for e in tc:
         key = (e.nu_index, e.call_index)
-        calls[key] = dict(rse=(e.runNo, e.subRunNo, e.eventNo), pass_=getattr(e, 'pass'),
+        calls[key] = dict(rse=(e.runNo, e.subRunNo, e.eventNo), pass_=getattr(e, 'pass'), status=getattr(e, 'status', 0),
                           top_k=e.top_k, n_points=e.n_points, n_vertex_rows=e.n_vertex_rows,
                           payload=np.array(list(e.payload), dtype=np.float32), payload_from_off=e.payload_from_off,
                           trad=(e.trad_valid, e.trad_x, e.trad_y, e.trad_z), accepted=e.accepted,
@@ -74,7 +74,7 @@ def main():
     a = ap.parse_args()
     weights = resolve(a.weights)
     print('weights:', weights)
-    n = n_exact = n_equiv = n_skip = 0
+    n = n_exact = n_equiv = n_skip = n_fail = 0
     worst = 0.0
     rows = []
     perpass = collections.defaultdict(lambda: collections.Counter())
@@ -82,11 +82,14 @@ def main():
     for fn in a.files:
         calls, f = load(fn)
         for (nu, ci), c in sorted(calls.items()):
-            pname = 'off' if c['pass_'] == 1 else 'prod'
+            pname = {0: 'prod', 1: 'off', 2: 'off-voxels'}.get(c['pass_'], 'pass%d' % c['pass_'])
             perpass[pname]['calls'] += 1
             perpass[pname]['accepted'] += c['accepted']
             if c['payload_from_off']:
                 n_skip += 1      # dual-chain voxels mode: no inference in this call
+                continue
+            if c['status']:
+                n_fail += 1      # the network threw / bad payload size: cloud recorded, nothing to compare
                 continue
             x, y, z, q = (np.array(v, dtype=np.float32) for v in c['pts'])
             assert len(x) == c['n_points']
@@ -111,8 +114,8 @@ def main():
                 if c['trad'][0]: dists[pname + ':trad'].append(dist(c['trad'][1:], t))
                 if c['accepted']: dists[pname + ':dl'].append(dist(c['dl'], t))
                 if c['final'][0] and pname == 'prod': dists['final'].append(dist(c['final'][1:], t))
-    print('=> %d calls re-run: %d bit-identical, %d equivalent (same voxels + ranking, |dscore| <= %g), %d MISMATCH; worst |diff| %.3g; %d skipped (payload from the OFF pass)'
-          % (n, n_exact, n_equiv, SCORE_TOL, n - n_exact - n_equiv, worst, n_skip))
+    print('=> %d calls re-run: %d bit-identical, %d equivalent (same voxels + ranking, |dscore| <= %g), %d MISMATCH; worst |diff| %.3g; %d skipped (payload from the OFF pass), %d failed calls (status != 0)'
+          % (n, n_exact, n_equiv, SCORE_TOL, n - n_exact - n_equiv, worst, n_skip, n_fail))
     for p, cnt in sorted(perpass.items()):
         print('   pass %-4s: %d calls, DL accepted in %d' % (p, cnt['calls'], cnt['accepted']))
     for k, v in sorted(dists.items()):

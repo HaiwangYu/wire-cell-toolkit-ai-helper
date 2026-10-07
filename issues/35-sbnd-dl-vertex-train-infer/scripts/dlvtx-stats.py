@@ -24,7 +24,10 @@ for fn in sys.argv[1:]:
     f = ROOT.TFile.Open(fn); tc = f.Get('T_dlvtx_call')
     if not tc: continue
     for e in tc:
-        p = 'off' if getattr(e, 'pass') == 1 else 'prod'
+        p = {0: 'prod', 1: 'off', 2: 'off-voxels'}.get(getattr(e, 'pass'), 'other')
+        cnt[p]['status != 0'] += (getattr(e, 'status', 0) != 0)
+        cnt[p]['two_end_veto'] += getattr(e, 'two_end_veto', 0)
+        cnt[p]['rerank_valid'] += getattr(e, 'rerank_valid', 0)
         cnt[p]['calls'] += 1; cnt[p]['accepted'] += e.accepted; cnt[p]['dual_transferred'] += e.dual_transferred
         cnt[p]['accepted_and_transferred'] += (e.accepted and e.dual_transferred)
         cnt[p]['payload_from_off'] += e.payload_from_off
@@ -43,10 +46,10 @@ for fn in sys.argv[1:]:
             if e.accepted:
                 d_top1_dl.append(math.dist(t1, (e.dl_x, e.dl_y, e.dl_z)))
                 if e.trad_valid: d_trad_dl.append(math.dist((e.trad_x, e.trad_y, e.trad_z), (e.dl_x, e.dl_y, e.dl_z)))
-for p in ('off', 'prod'):
+for p in sorted(cnt):
     c = cnt[p]
-    print('pass %-4s: calls %d, DL accepted %d, dual_transferred %d (accepted & transferred %d), payload_from_off %d'
-          % (p, c['calls'], c['accepted'], c['dual_transferred'], c['accepted_and_transferred'], c['payload_from_off']))
+    print('pass %-4s: calls %d, DL accepted %d, dual_transferred %d (accepted & transferred %d), payload_from_off %d, own pick valid (rerank_valid) %d, two_end_veto %d, status != 0: %d'
+          % (p, c['calls'], c['accepted'], c['dual_transferred'], c['accepted_and_transferred'], c['payload_from_off'], c['rerank_valid'], c['two_end_veto'], c['status != 0']))
 def summ(name, v):
     if not v: return
     v = np.array(v); print('   %-42s n=%-3d median %.2f cm, <1 cm %d, <2 cm %d, >5 cm %d' % (name, len(v), np.median(v), (v < 1).sum(), (v < 2).sum(), (v > 5).sum()))

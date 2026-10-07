@@ -85,5 +85,6 @@ echo "=== DL-vertex replay (standalone inference on the dumped clouds) + statist
 SL7_SETUP=$S29/setup-aurora-run.sh $S29/in-aurora-sl7.sh bash -c "
   python3 $S35/dlvtx-replay.py --json $RUN/dlvtx-replay.json $RUN/f*/pr/pr_evt*/tracking-pr.root > $RUN/dlvtx-replay.txt 2>&1; tail -12 $RUN/dlvtx-replay.txt
   python3 $S35/dlvtx-stats.py $RUN/f*/pr/pr_evt*/tracking-pr.root > $RUN/dlvtx-stats.txt 2>&1; cat $RUN/dlvtx-stats.txt
+  python3 $S35/dlvtx-truth-eval.py --tsv $RUN/dlvtx-truth-eval.tsv $RUN/f*/pr/pr_evt*/tracking-pr.root > $RUN/dlvtx-truth-eval.txt 2>&1; cat $RUN/dlvtx-truth-eval.txt
 " 2>&1 | grep -v '^INFO'
 echo "=== END $(date)"
