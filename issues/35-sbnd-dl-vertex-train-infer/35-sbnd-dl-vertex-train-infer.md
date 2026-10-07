@@ -103,6 +103,7 @@ What the dump is and how it was checked, in one place; details in the log entrie
 | standalone inference == in-chain inference | 1200 calls (MC-9, NCpi0-19 x3, nueCC-48, gen2 CV 1006) | 0 mismatches: same voxels and ranking; scores bit-identical or within 1.8e-6 float32 noise (b, d, e) |
 | truth frame | gen2 CV, 373 selected candidates | SCE-shifted truth vertex within 1 cm of the final vertex in 65 %, median 0.54 cm (e) |
 | raw model output on the two clouds | same | top-1 42 % < 1 cm on both the exclusion-off and the exclusion-on cloud, median 1.53 vs 1.41 cm (e) |
+| PR 536 review fixes (log g, toolkit `21562551`) | MC-10, NCpi0-19, bulk 1006 | knob off: configs 8/8 byte-identical, `tracking-pr.root` + Bee identical to master 9/9 + 19/19; dump on: only the two trees added, replay 46 + 960 calls 0 mismatch, 0 failed; doctests clus 473/473, root 10/10 (g) |
 | merge of master `0319ea67` (PR 535 merged + 22 commits) | MC-10, NCpi0-19 | compiled configs byte-identical (8/8); step-1 tars, `tracking-pr.root` every branch and Bee every layer identical to a master build, 9/9 + 19/19; dump on: only the two trees added; replay 46 calls 0 mismatch; doctests clus 471/471, root 9/9 (f) |
 
 The dump is ready to be read for training: `T_dlvtx_call` (one row per network call, both passes, with the exact float32 input and output, the decision, the hint, and the raw and SCE-shifted MC truth vertex) and `T_dlvtx_cloud` (one row per input point). Branch documentation: log (b) and `cfg/pgrapher/experiment/sbnd/docs/sbnd-dl-vertex-flow.md`.
@@ -258,3 +259,32 @@ Doctests on the merged build: `wcdoctest-clus` 471 cases / 717031 assertions pas
 
 **State.** `$OPT` now holds the merged build (master + dump), larwirecell built against master in job A. Replay totals: 1246 calls, 0 mismatches.
 - 2026-10-07: draft PR WireCell/wire-cell-toolkit#536 (`sbnd-dlvtx-35` -> master, head `78f81c64`), body = the dump, knob-off neutrality, the log (f) validation table; Haiwang adds the preamble and un-drafts it.
+
+### (g) 2026-10-07: PR 536 review (Xin) -- the fixes, validated; the bulk sample re-dumped
+
+Xin's review (https://github.com/WireCell/wire-cell-toolkit/pull/536#pullrequestreview-5442481514): 10 numbered points + 4 smaller ones, all verified against the code before acting. Decisions (Haiwang, 2026-10-07): fix all of them; truth per candidate = option A (every interaction as vectors, the reader chooses); `T_dlvtx_cloud` stays one row per point (+ `pass`); the writer doctest = knob-default + struct contract (a full-Ensemble test does not fit the root test file).
+
+**Impact on the existing samples** (`mc1k-dlvtx-20261006`, and issue 38's 5018 events): none of the clouds, payloads or decisions change. Points 1-2 are the `union`/`voxels` modes, production runs `snap` (0 rows `payload_from_off`); point 3: 0 rows with an empty payload; point 4: 6/474 events have two candidates (handled by the cloud-containment selection); 5, 6, 8 are missing diagnostic columns; 9: the only override used (`dl_vtx_cloud_no_exclusion`) is not among the overriding named keys; 10: every dump used the TLA, so the SCE shift was applied. Point 7 settled by measurement on the 373 selected bulk candidates: nearest cloud point to the SCE-shifted truth median 0.42 cm (93 % < 1 cm) vs the raw truth 0.69 cm (69 %); the x offset between the two frames is 0.06 cm median, so the neutrino-time vs flash-time term is negligible for beam neutrinos.
+
+**Toolkit `21562551`** (on `sbnd-dlvtx-35`, pushed; PR 536 updated):
+| # | fix |
+|---|---|
+| 1 | payload recorded right after this call's inference, before the union-mode pooling; `n_off_voxels` |
+| 2 | the voxels/union OFF call in `dual_chain_scn_voxels` recorded as `pass = 2` (`off-voxels`): cloud + payload, no decision fields |
+| 3 | `status`: 0 ok, 1 the network threw (payload empty), 2 unexpected payload size; the replay skips them |
+| 4 | `truth_valid` requires edep > 0; `truth_n` + `truth_all_{nu_idx,pdg,ccnc,E,edep,t,x,y,z,reco_x,reco_y,reco_z}` vectors (every interaction of the event); the scalar max-edep `truth_*` kept |
+| 5 | `rerank_valid`, `rerank_x/y/z`, `rerank_row`: the call's own pick before the dual-chain snap |
+| 6 | `two_end_veto`; `dual_transferred = 1, accepted = 0` documented as "transferred then vetoed" (9/480 bulk rows) |
+| 8 | `trad_row`, `rerank_row`, `dl_row`: index inside the cloud's vertex block, -1 if none |
+| 9 | `tcn_overrides` merged last (`tcn_knobs + {named keys} + tcn_overrides`); proof: `pr_knobs={cosmic_consistent_fv:false}` now compiles to false |
+| 10 | `truth_sce_applied`; the writer gets its own `dl_vtx_dump` key from the same jsonnet gate; comment in `pr()` says `pr_knobs={dl_vtx_dump:true}` records without the writer keys |
+| schema | with the writer key the two trees are written on every event (empty when nothing was recorded): 1006/1006 files have both, 532 empty |
+| cloud | `pass` column on `T_dlvtx_cloud` |
+| tests | `dl_vtx_dump` default-false checks in `doctest_clus_knob_defaults` and `doctest_sbnd_pr_tracking_defaults`; `clus/test/doctest_dlvtx_dump.cxx` pins the `DlVtxCall` defaults (row indices -1, status 0) |
+| doc | `sbnd-dl-vertex-flow.md` sections 2 and 4 current (the dump is implemented; what each column is) |
+
+**Validation** (`scripts/review-fix-validate.pbs`, job 8908664, 215 s queue, 35 min wall): clean build; doctests clus 473/473 (717k assertions), root 10/10; knob-off gate on MC-10 and NCpi0-19 vs the master runs of the morning: `tracking-pr.root` every branch identical 9/9 + 19/19, Bee 9/9 + 19/19; config proof 8/8 byte-identical to master (UAN); dump on: every shared branch identical, only the two trees added, replay 6 + 40 calls 0 mismatch, 0 failed.
+
+**Bulk re-dump** `mc1k-dlvtx-20261007` (step 2 only on the 2026-10-06 step-1 tars, symlinked; the old dump untouched): 1006/1006, 3.1 min node wall; replay 960 calls, 714 bit-identical, 246 equivalent, 0 mismatch, 0 failed; decisions identical to the old dump (off accepted 241, prod accepted 463, transferred 247); new columns: own pick valid 245 (off) / 250 (prod), two_end_veto 4 / 9, `truth_sce_applied` 960/960, `dl_row >= 0` on every accepted row (704), `trad_row >= 0` on 951 = every `trad_valid` row, `truth_n > 1` in 562 rows. The selection-aware truth table is unchanged (373 selected; raw top-1 42 % < 1 cm both clouds; final 65 %). Replay totals: 2252 calls, 0 mismatches.
+
+Reply draft for the PR: `pr536-reply-draft.md` in this directory (not posted; Haiwang posts).
