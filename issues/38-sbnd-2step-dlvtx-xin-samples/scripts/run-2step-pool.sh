@@ -17,7 +17,9 @@
 # Layout:  <run>/<unit>/ql/{qlpctree.tar.gz, mabc.zip, nugraph.h5, lar.log.gz, time.txt, rc}
 #          <run>/<unit>/pr/{pr_evt<E>/tracking-pr.root, mabc-pr.zip, wct.log.gz, time.txt, rc}
 #          <run>/units.tsv (copy), <run>/RUN-RECORD.txt (pins), <run>/pool.log
-# Re-running skips units whose pr/rc is 0 (resume after an interruption).
+# Re-running skips units whose pr/rc is 0 (resume after an interruption).  Within one invocation a second
+# pass retries every unit not at rc 0 once; before each launch the pool waits while there is no valid
+# Kerberos ticket (klist -s), so a lapsed ticket pauses the run instead of failing it.
 set -u
 UNITS=${1:?units.tsv}; RUN=${2:?run dir}; REALITY=${3:?sim|data}; MAXPAR=${4:-28}
 CPUSET=${CPUSET:-32-63}; MEM_GUARD_GB=${MEM_GUARD_GB:-50}; WCT_TLAS=${WCT_TLAS:---tla-code dl_vtx_dump=true}
@@ -68,25 +70,44 @@ chmod +x $RUN/unit.sh
 
 ourmem_gb() { ps -u $USER -o rss=,comm= | awk '$2 ~ /^(lar|wire-cell)$/ {s+=$1} END {printf "%d", s/1048576}'; }
 
-echo "$(/bin/date '+%F %T') pool start: $(wc -l < $UNITS) units" >> $RUN/pool.log
-nrun=0
-while IFS=$'\t' read -r u f k n; do
-  [ -z "$u" ] && continue; [[ $u == \#* ]] && continue
-  [ "$(cat $RUN/$u/pr/rc 2>/dev/null)" = 0 ] && continue
-  while [ $nrun -ge $MAXPAR ]; do wait -n; nrun=$((nrun-1)); done
-  while [ "$(ourmem_gb)" -ge $MEM_GUARD_GB ]; do sleep 20; done
-  # setup-dlvtx.sh: the uBooNE scn product (torch, sparseconvnet) + opt/python (SCN_Vertex.py).  WITHOUT
-  # IT THE DL VERTEX FAILS SILENTLY ("DL vertex failed: ... No module named 'SCN_Vertex'"), the job still
-  # exits 0 and every candidate falls back to the traditional vertex (found in the issue-38 smoke).
-  # setup-dlvtx.sh calls path-prepend, a FUNCTION defined by setup-local-opt.sh that the wrapper's
-  # `bash -c` does not inherit -> "command not found", PYTHONPATH unchanged, and `source` still
-  # returns 0.  So setup-ap.sh is re-sourced (idempotent) in the same shell first, and unit.sh
-  # refuses to run step 2 unless SCN_Vertex is importable.
-  ( SL7_SETUP=$SBND/setup-ap.sh $WRAP bash -c "cd $SBND && source $SBND/setup-ap.sh >/dev/null 2>&1; source $SBND/setup-dlvtx.sh && $RUN/unit.sh $u $f $k $n" > /dev/null 2>&1
-    echo "$(/bin/date '+%F %T') $u ql_rc=$(cat $RUN/$u/ql/rc 2>/dev/null) pr_rc=$(cat $RUN/$u/pr/rc 2>/dev/null) dl_fail=$(cat $RUN/$u/pr/dl_fail 2>/dev/null)" >> $RUN/pool.log ) &
-  nrun=$((nrun+1))
-  sleep 2
-done < $UNITS
-wait
-echo "$(/bin/date '+%F %T') pool done" >> $RUN/pool.log
+krb_wait() {
+  # FNAL Kerberos: once the ticket lapses every exec through /nashome fails in seconds (rc 126, #26).
+  # Do not burn units: wait (absolute paths -- PATH walks /nashome) until someone runs kinit.
+  if ! /usr/bin/klist -s 2>/dev/null; then
+    echo "$(/bin/date '+%F %T') NO VALID KERBEROS TICKET -- waiting; run kinit (renewable) to resume" >> $RUN/pool.log
+    until /usr/bin/klist -s 2>/dev/null; do /usr/bin/sleep 60; done
+    echo "$(/bin/date '+%F %T') ticket valid again -- resuming" >> $RUN/pool.log
+  fi
+}
+
+run_pass() {   # run_pass <pass number>: every unit whose pr/rc is not 0
+  local pass=$1 nrun=0 u f k n
+  echo "$(/bin/date '+%F %T') pool pass $pass start: $(wc -l < $UNITS) units listed" >> $RUN/pool.log
+  while IFS=$'\t' read -r u f k n; do
+    [ -z "$u" ] && continue; [[ $u == \#* ]] && continue
+    [ "$(cat $RUN/$u/pr/rc 2>/dev/null)" = 0 ] && continue
+    # a retried unit keeps its failed step-2 output as pr-try<pass-1> (step 1 is re-run only if its rc != 0)
+    [ $pass -gt 1 ] && [ -d $RUN/$u/pr ] && mv $RUN/$u/pr $RUN/$u/pr-try$((pass-1))
+    while [ $nrun -ge $MAXPAR ]; do wait -n; nrun=$((nrun-1)); done
+    while [ "$(ourmem_gb)" -ge $MEM_GUARD_GB ]; do /usr/bin/sleep 20; done
+    krb_wait
+    # setup-dlvtx.sh: the uBooNE scn product (torch, sparseconvnet) + opt/python (SCN_Vertex.py).  WITHOUT
+    # IT THE DL VERTEX FAILS SILENTLY ("DL vertex failed: ... No module named 'SCN_Vertex'"), the job still
+    # exits 0 and every candidate falls back to the traditional vertex (found in the issue-38 smoke).
+    # setup-dlvtx.sh calls path-prepend, a FUNCTION defined by setup-local-opt.sh that the wrapper's
+    # `bash -c` does not inherit -> "command not found", PYTHONPATH unchanged, and `source` still
+    # returns 0.  So setup-ap.sh is re-sourced (idempotent) in the same shell first, and unit.sh
+    # refuses to run step 2 unless SCN_Vertex is importable.
+    ( SL7_SETUP=$SBND/setup-ap.sh $WRAP bash -c "cd $SBND && source $SBND/setup-ap.sh >/dev/null 2>&1; source $SBND/setup-dlvtx.sh && $RUN/unit.sh $u $f $k $n" > /dev/null 2>&1
+      echo "$(/bin/date '+%F %T') $u ql_rc=$(cat $RUN/$u/ql/rc 2>/dev/null) pr_rc=$(cat $RUN/$u/pr/rc 2>/dev/null) dl_fail=$(cat $RUN/$u/pr/dl_fail 2>/dev/null) pass=$pass" >> $RUN/pool.log ) &
+    nrun=$((nrun+1))
+    /usr/bin/sleep 2
+  done < $UNITS
+  wait
+  echo "$(/bin/date '+%F %T') pool pass $pass done" >> $RUN/pool.log
+}
+
+run_pass 1
+run_pass 2    # one automatic retry of every unit not at rc 0 (e.g. the non-deterministic step-2 segfault, a lapsed ticket)
+echo "$(/bin/date '+%F %T') pool done: $(for d in $RUN/*/pr/rc; do cat $d; done | grep -cx 0) units at rc 0" >> $RUN/pool.log
 echo "end        $(/bin/date '+%F %T %Z')" >> $RUN/RUN-RECORD.txt

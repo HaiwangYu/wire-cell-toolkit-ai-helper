@@ -186,3 +186,41 @@ The cap held. `memwatch.log` peaked at 29 of our processes (28 in the pool plus 
 The inputs are the #30 reco1 files under `production-prep/xin-round3-samples/`. Beam-off is the frameshifted 1,000-event file.
 
 Milestones M0–M5 done.
+
+### (c) 2026-10-07: the intended campaign -- the four #26 samples (~10k each) on `sbnd-dlvtx-35` `21562551`
+
+**Correction (Haiwang, 2026-10-07):** the samples meant are #26's four, not #30's. The #30 run of logs (a)–(b) stays on disk (`r5-dlvtx-xin-samples/`) as a by-product. Also: "pull the updated `sbnd-dlvtx-35`, recompile, then run".
+
+**Toolkit update `78f81c64` → `21562551`** (one commit: the PR 536 review fixes to the dump).
+- New `T_dlvtx_call` fields: `status`, the call's own pre-snap pick `rerank_*`, `two_end_veto`, the vertex-block row indices `trad_row` / `rerank_row` / `dl_row`, and `n_off_voxels`.
+- Truth now requires edep > 0 and adds `truth_sce_applied` plus every `truth_nu` interaction as `truth_all_*`. `T_dlvtx_cloud` gains a `pass` column.
+- The writer gets its own `dl_vtx_dump` key, so both trees are written on every event. `tcn_overrides` is merged last.
+- **Rebuild:** incremental `wcb install` on today's configure, `BUILD_RC=0` in 4.1 min. The RPATH strip was re-applied (3 files relinked), and the gate passes: 0 not found, 0 outside `opt`, `__libc_single_threaded` 0. The new field names are in the binaries.
+- **larwirecell:** not rebuilt. It includes none of the changed headers (`PRDlVtxDump.h`, `SbndPrMagnifyTrackingVisitor.h`).
+- **Config proof** (`r6-dlvtx-r26-samples/cfg-proof/report.txt`): **ALL PASS, 43 checks.** With the dump off, all 8 jobs are still byte-identical to master `0319ea67`. With it on, the only new difference is `SbndPrMagnifyTrackingVisitor:pr.dl_vtx_dump=true` (step 2 sim `dd55f6bd1e1c`, data `e22f8c270449`).
+
+**Inputs: exactly #26's events**, from its per-event manifests (`r3-*/lists/*.manifest`).
+
+| species | #26 events | units | this run |
+|---|---|---|---|
+| MC BNB CV | 13,217 (1,000 files) | one per file, `--nskip 0 -n <#26 count>` | **13,113 (990 files)**: 10 files (104 events, all in `.../CV/reco1/000041/000412/`) no longer exist on `/pnfs`, and `samweb locate-file` does not know them. They were retired after round 3. List: `lists/mc-cv.missing.txt` |
+| MC nueCC | 8,877 (999 files) | one per file | 8,877; all 999 files ONLINE |
+| beam-on (MCP2025C FixedDev, frameshifted) | 10,000 (11 staged chunks) | 502 units of ≤ 20 via `--nskip` | 10,000 |
+| beam-off (SBND2026A InTime, frameshifted) | 10,000 (12 staged chunks) | 508 units | 10,000 |
+
+- No unit repeats an event number, so the tar's set ident (the event number) is unique in every unit.
+- The data come from the staged `r3-data-stage-2026-09-09` chunks (86 GB), which must be kept until this run ends.
+
+**Smoke on the new build** (`r6-dlvtx-r26-samples/smoke/`, the first unit of each species): all rc 0, 0 DL failures. FrameShift is 0 on MC, 1806–2148 ns on beam-on and 257–2376 ns on beam-off. The new branches are present.
+
+**Harness changes** (`run-2step-pool.sh`, `run-all.sh`):
+- **Second pass:** within one invocation, every unit not at rc 0 is retried once. The failed step-2 output is kept as `pr-try1`. This covers the non-deterministic step-2 segfault of log (b).
+- **Kerberos wait:** before every launch the pool checks `klist -s` (absolute paths) and waits while there is no valid ticket, instead of failing units with rc 126 (#26).
+  - The current ticket is **not renewable** (`kinit -R` is refused) and expires 2026-10-07 22:05.
+  - `krb-renew.sh` runs hourly and will keep a renewable ticket alive once one exists.
+- `run-all.sh` now takes the species list.
+
+**Launched 2026-10-07 10:53:** MC CV, then MC nueCC, beam-on, beam-off.
+- Same cap as before: at most 28 units on cores 32–63, and a 50 GB RSS guard.
+- Expected wall time is about 13 h, which is past the ticket's end.
+- Estimated disk is about 290 GB in `production-prep/r6-dlvtx-r26-samples/`, from about 8.9 MB/event on MC and 4.5 MB/event on data.
