@@ -32,14 +32,14 @@ Builds on:
 | wire-cell-toolkit | `sbnd-dlvtx-35` `78f81c64` (fork) | master `0319ea67` merged + the DL dump |
 | larwirecell (MRB tree) | `dev-v10_14_02_02` `189ad26` | fast-forwarded from `a02a1a4`: adds `wclsOpHitSource` (`f8177c7`), `wclsTruthInformationAttacher` (`4961f76`), labeler RNG re-seed (`189ad26`) |
 | wcp-porting-validation | `main` `072505ce` | our local `e100a631` (nugraph switch, superseded by the 1-step to 2-step move) discarded; kept as local tag `r3-validated-1step-cfg` |
-| wire-cell-data | see `RUN-RECORD.txt` | DL weights `uboone/scn_vtx/t48k-m16-l5-lr5d-res0.5-CP24.pth` md5 `9cc1413e…`; `XGB_nue_seed2_0923.xml` md5 `2bdb5cec…` |
+| wire-cell-data | `9e2f4b8` + untracked `uboone/weights/XGB_nue_seed2_0923.xml` | DL weights `uboone/scn_vtx/t48k-m16-l5-lr5d-res0.5-CP24.pth` md5 `9cc1413e…`; `XGB_nue_seed2_0923.xml` md5 `2bdb5cec…` |
 
 ## Plan
 
 | milestone | content | gate |
 |---|---|---|
 | M0 | this doc + issue | – |
-| M1 | sources synced; clean WCT configure + install in SL7; larwirecell rebuilt and hand-copied to `opt` | build doc 8 post-build gate |
+| M1 | sources synced; clean WCT configure + install in SL7; build-tree RPATH stripped; larwirecell rebuilt and hand-copied to `opt` | procedure doc §1, §1a, §2 gates |
 | M2 | config proof on compiled JSON, `scripts/cfg-proof.py` | C1–C10 below all PASS |
 | M3 | smoke: 1 MC CV file + 5 beam-off events through both steps; replay of the recorded DL calls | rc 0; `T_dlvtx_*` and `T_truth_*` present; beam-off `frame_apply_at_caf` non-zero |
 | M4 | production: MC CV (154 files, 2,017 events), MC nueCC (225 files, 2,001 events), beam-off (1,000 events) | every unit rc 0 or its failure explained |
@@ -72,3 +72,68 @@ Results: log (a).
 ## Log
 
 - 2026-10-06: scope; issue #38 opened; sources synced (pins above).
+
+### (a) 2026-10-06: M1 build, M2 config proof, M3 smoke
+
+**M1 build** (procedure `docs/sbnd-1step-build-run-validate.md` §1, §1a, §2):
+- **WCT:** `rm -rf build`, `configure-wct.sh`, `./wcb -p --notests install -j16` in SL7: `BUILD_RC=0`, 10.7 min. Previous `opt/lib` kept in `opt/lib-backup-0ad64223-20261006`.
+- **Gate §1:** 19 libs incl. Mcs; `__libc_single_threaded` undefined 0; spdlog `v1_14_1`; `NEEDED fmt` 0; `miniz.h` present and current. The binary knows the new keys `dl_vtx_dump`, `main_vertex_swap_apply`, `nu_particle_links`, `sce_field`, `prompt_min_pe`, `reset_shower_ids_per_event`.
+- **§1a RPATH:** the fresh install again carried `DT_RPATH` into `wire-cell-toolkit/build/<pkg>` (the old one started with `opt/lib`). 20 files were patched (backup `production-prep/opt-rpath-backup-20261006`). Gate with `build/` hidden: 0 `not found` and 0 WireCell libs outside `opt`, for all WCT libs, `wire-cell`, `wcsonnet` and the larwirecell libs.
+- **larwirecell:** fast-forwarded `a02a1a4` to `189ad26`, sources touched, `make -j16`: `MAKE_RC=0`.
+  - Three libs changed and were deployed to `opt/larwirecell/.../lib`:
+    - `libWireCellLarsoft.so` adds `wclsOpHitSource` and `wclsTruthInformationAttacher`;
+    - `libWireCellAIML.so` adds the RNG re-seed;
+    - `libWireCellQLMatch.so` changed through WCT headers.
+  - The other 8 are byte-identical. Backup in `lib-backup-a02a1a4-20261006`.
+  - `FrameShiftInfo` is compiled in, so `HAVE_SBND_FRAMESHIFTINFO` is set.
+
+**M2 config proof: ALL PASS (43 checks)**, `production-prep/r5-dlvtx-xin-samples/cfg-proof/report.txt`. Compiled hashes (md5, first 12):
+
+| job | old `51b5a1fc` | master `0319ea67` = dlvtx (dump off) | dlvtx, dump on |
+|---|---|---|---|
+| step 1 sim / data | `ab6cceaee873` / `118521ffcdcb` | same | – |
+| step 2 sim / data | `06633b330910` / `54ade89edbab` | `06c0cbbbbfa2` / `c15477ed8dcb` | `87b7c48c0307` / `99fdef8b7464` |
+| 1-step flash sim / data | `a9d2e1ee966c` / `80d054fa866d` | `087e75ab8fd8` / `d0be25e4f82d` | – |
+| 1-step hits sim / data | `29bc37c41ece` / `30ab048cc59e` | `11b55d2ecb9c` / `56139e87d709` | – |
+
+- **C1:** step 1 byte-identical old to master. Step 2 and both 1-step jobs move by exactly two keys: `TaggerCheckNeutrino:pr.main_vertex_swap_apply` and `UbooneTaggerOutputVisitor:pr.nu_particle_links`, absent to true. This is the note's changes 2 and 3. Change 1, the flash prompt-time rule, is a C++ default and cannot show in JSON.
+- **C2:** all 8 jobs byte-identical between master and `sbnd-dlvtx-35` with the dump off.
+- **C3:** the dump adds `SCEFieldTH3:sbnd_dualmap_fwd` (`SCEoffsets_SBND_E500_dualmap_CV_voxelTH3.root` from sbnd_data v01_42_00, `TrueFwd_*`, sign 1). It sets `TaggerCheckNeutrino:pr.dl_vtx_dump=true` and `SbndPrMagnifyTrackingVisitor:pr.sce_field`. Nothing else changes.
+- **C4:** with the overlay `clus.jsonnet` (swap off, particle links off), step 2 equals old step 2 except an explicit `main_vertex_swap_apply:false`, for sim and data.
+- **C5:** the old-flash-rule step 1 differs from step 1 only in `SBNDOpFlashFinder:tpc{0,1}.prompt_min_{pe,hits,opdets}=0`.
+- **C6:** the runtime `WIRECELL_PATH` compiles all 8 jobs identically to a minimal path, so no cfg file is shadowed.
+- **C7:** every component type is registered by a loaded plugin. One subtlety: `ChannelSelector` is not in any fcl's plugin list. It is registered by `libWireCellSigProc`, which loads as a `NEEDED` dependency of `libWireCellLarsoft`.
+- **C8:** all 43 input data files resolve, and no other root holds a different file of the same name. They are:
+  - the geometry, charge error, semi-analytical model, opdet geometry and track-fitting json;
+  - the SCE map;
+  - the DL weights `t48k-…-CP24.pth` (md5 `9cc1413e053c`);
+  - 36 BDT xmls, incl. `XGB_nue_seed2_0923.xml` (md5 `2bdb5cec111b`).
+- **C9, data vs sim:** step 1 differs in exactly what #26 listed:
+  - the four `simtpc2d`/`sptpc2d` tags;
+  - per-TPC `pos_offset` and the `y_cor/z_cor` coords;
+  - `QLMatching data=true, QtoL=0.86`;
+  - the labeler's `reality`.
+
+  Step 2 differs only in `pos_offset` and the Bee/tagger coords. FrameShift has no config key: `wclsOpHitSource` reads art label `frameshift` and silently uses 0 if it is absent, so it is checked in the smoke log instead.
+- **C10, step 2 operating point:** `nu_per_bundle`, `fit_exclusion`, `dl_vtx_rerank` (top 5, accept 10, scale 1000), `dl_vtx_dual_chain` with `snap` / transfer / 2 cm, `main_vertex_swap_apply`, `nu_particle_links`. This is the #35 production point.
+
+**M3 smoke** (`r5-dlvtx-xin-samples/smoke/`): MC CV `f000` (18 events), MC nueCC `f000` (6), beam-off `c00` (5 events).
+- **First try: the DL vertex failed silently in every candidate** (`No module named 'SCN_Vertex'`; rc 0 everywhere).
+  - Without `sbnd/setup-dlvtx.sh` (uBooNE `scn` product + `opt/python`), the chain falls back to the traditional vertex.
+  - Sourcing that script inside the wrapper's `bash -c` did nothing either. It calls `path-prepend`, a shell function from `setup-local-opt.sh` that the new shell does not inherit, and `source` still returned 0.
+  - **Fix in `run-2step-pool.sh`:** re-source `setup-ap.sh` (idempotent; `WIRECELL_PATH` unchanged) and then `setup-dlvtx.sh`. Step 2 refuses to start unless `SCN_Vertex`, `torch` and `sparseconvnet` are importable. Every unit records its `DL vertex failed` count (`pr/dl_fail`).
+- **After the fix:**
+
+| species | events | rc | DL failed | candidates | DL calls prod / off | `T_truth_*` | step 1 CPU/evt | step 2 CPU/evt | max RSS |
+|---|---|---|---|---|---|---|---|---|---|
+| MC CV | 18 | 0 / 0 | 0 | 8 | 9 / 9 | 18/18 | 29.4 s | 3.2 s | 1.9 GB |
+| MC nueCC | 6 | 0 / 0 | 0 | 6 | 7 / 7 | 6/6 | 27.3 s | 26.4 s | 1.8 GB |
+| beam-off | 5 | 0 / 0 | 0 | 1 | 1 / 1 | none (data) | 25.2 s | 3.5 s | 1.8 GB |
+
+- **FrameShift on data:** `wclsOpHitSource` logs `frame_apply_at_caf` 256–1297 ns on the five beam-off events, and `FlashTensorToOpticalPCs` applies it (`correct_flash_time=true`).
+- **Replay** (`issues/35-*/scripts/dlvtx-replay.py`, here on sbndbuild03): 34 recorded calls re-run standalone, 20 bit-identical and 14 equivalent (worst 7.2e-7), **0 mismatch**.
+- Output per event, roughly: tar 2–2.6 MB, step-1 Bee 1–6 MB, h5 1.5–1.8 MB, `tracking-pr.root` 0.1–0.4 MB, step-2 Bee 0.3–0.4 MB.
+
+**M4 launched** 2026-10-06 23:38: `scripts/run-all.sh` runs MC CV, then MC nueCC, then beam-off.
+- Each species has at most 28 units at once, all under `taskset -c 32-63`, with a 50 GB RSS guard.
+- `memwatch.log` samples our process count and RSS every minute.
