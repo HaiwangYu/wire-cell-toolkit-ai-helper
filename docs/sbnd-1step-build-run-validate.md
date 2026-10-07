@@ -112,6 +112,11 @@ a `libWireCellMcs.so` dependency).
 
 ## 3. Sync the PR operating point — after EVERY toolkit merge or pull
 
+> **Retired 2026-09-21 (wcp `f04d8937`).** The operating point is now `pr()`'s own defaults in the
+> toolkit's `clus.jsonnet`, `sbnd/pr-operating-point.jsonnet` is deleted and the `pr_operating_point`
+> extVar is ignored. Production is the 2-step chain (#33). Instead of this section, prove the compiled
+> configs: `issues/38-*/scripts/cfg-proof.py` (#38 log (a)). Kept below for the record.
+
 Our 1-step calls `clus_maker.pr()` directly, so it never sees the production knob
 values Xin records as TLA defaults in `wct-pr-perevt.jsonnet`. `sbnd/pr-operating-point.jsonnet`
 (GENERATED — do not edit) carries them; it goes stale the moment the toolkit moves.
@@ -202,6 +207,13 @@ of ours (opflash_time; issue-10 NF/SP; w-gap rebase).
   together only via `-xin-data.fcl`; a silent mismatch is not possible in the
   1-step (it is in the 2-step, hence Xin's `.lineage_reality` check).
   `issues/26-*/scripts/compile-realities.sh` regenerates the diff.
+- **The DL vertex needs `sbnd/setup-dlvtx.sh`, and sourcing it can silently do nothing** (#38).
+  Without it every candidate logs `DL vertex failed: … No module named 'SCN_Vertex'` (or `'torch'`),
+  falls back to the traditional vertex, and the job exits 0. The script calls `path-prepend`, a shell
+  **function** defined by `setup-local-opt.sh`. A `bash -c` started by `in-gpvm-sl7.sh` does not
+  inherit it, so every prepend fails with "command not found" and `source` still returns 0. Re-source
+  `setup-ap.sh` (idempotent) in the same shell first, check `python3 -c 'import SCN_Vertex, torch,
+  sparseconvnet'` before the job, and gate on `grep -c 'DL vertex failed'` = 0 afterwards.
 - Sizing: measured peak RSS **2.1 GB** per `lar` process. Size on *sampled
   concurrent* RSS, not sum of peaks; run a sampler (`memwatch.sh`) so the budget
   is measured. `taskset` the TBB pool.
