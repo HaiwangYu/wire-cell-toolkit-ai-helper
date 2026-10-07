@@ -90,7 +90,7 @@ Both `off` and `prod` rows carry MC truth; `hint_*` on the `prod` row is the OFF
 | M5 | **model on the exclusion-on cloud:** train on `prod` (and `cloud_no_exclusion`) clouds, evaluate against the current model on `off` clouds with the same labels | vertex accuracy at 1 cm comparable or better |
 | M6 (task 3) | **skip the OFF pass:** run production with the new weights and `dl_vtx_dual_chain=false`; compare with production | identical or better on the hand-scan and MC truth; step 2 ~15 % faster |
 
-## Validation summary (2026-10-07, toolkit `sbnd-dlvtx-35` `9781e43c` on the fork)
+## Validation summary (2026-10-07, toolkit `sbnd-dlvtx-35` = master `0319ea67` + the dump, on the fork)
 
 What the dump is and how it was checked, in one place; details in the log entries.
 
@@ -103,6 +103,7 @@ What the dump is and how it was checked, in one place; details in the log entrie
 | standalone inference == in-chain inference | 1200 calls (MC-9, NCpi0-19 x3, nueCC-48, gen2 CV 1006) | 0 mismatches: same voxels and ranking; scores bit-identical or within 1.8e-6 float32 noise (b, d, e) |
 | truth frame | gen2 CV, 373 selected candidates | SCE-shifted truth vertex within 1 cm of the final vertex in 65 %, median 0.54 cm (e) |
 | raw model output on the two clouds | same | top-1 42 % < 1 cm on both the exclusion-off and the exclusion-on cloud, median 1.53 vs 1.41 cm (e) |
+| merge of master `0319ea67` (PR 535 merged + 22 commits) | MC-10, NCpi0-19 | compiled configs byte-identical (8/8); step-1 tars, `tracking-pr.root` every branch and Bee every layer identical to a master build, 9/9 + 19/19; dump on: only the two trees added; replay 46 calls 0 mismatch; doctests clus 471/471, root 9/9 (f) |
 
 The dump is ready to be read for training: `T_dlvtx_call` (one row per network call, both passes, with the exact float32 input and output, the decision, the hint, and the raw and SCE-shifted MC truth vertex) and `T_dlvtx_cloud` (one row per input point). Branch documentation: log (b) and `cfg/pgrapher/experiment/sbnd/docs/sbnd-dl-vertex-flow.md`.
 
@@ -230,3 +231,29 @@ Reading: (1) the raw network output is at 42 % < 1 cm on BOTH clouds with the cu
 
 **Scripts** (ai-helper): `step1-bulk.pbs` / `step2-bulk.pbs` (resource summary argv fix: PBS timestamps contain spaces), `dlvtx-stats.py` (+ truth distances per pass), `dlvtx-truth-eval.py` (new), `dlvtx-replay.py` (tolerance), `setup-uan-root.sh` (torch on the UAN). Toolkit `sbnd-dlvtx-35` unchanged.
 - 2026-10-07: toolkit branch `sbnd-dlvtx-35` (4 commits, head `9781e43c`) pushed to the fork `HaiwangYu/wire-cell-toolkit`; the stray 574 MB core file under issue 31 deleted.
+
+### (f) 2026-10-07: master merged into `sbnd-dlvtx-35`; output identical to master
+
+**Merge.** `origin/master` `0319ea67` (PR 535 merged on 2026-09-30 as `51b5a1fc`, then the 22 commits of master's `cfg/pgrapher/experiment/sbnd/docs/deploy-validation-2026-10-01.md`) merged into `sbnd-dlvtx-35` as `f6d49e53`, no conflicts (6 files touched by both sides, all hunks disjoint). Local `master` tracks `origin/master`; the pre-merge head is tagged `sbnd-dlvtx-35-pre-master-merge` (`9781e43c`). Pushed to the fork after the gates below, with a re-check note in `sbnd-dl-vertex-flow.md`.
+
+**Code reading.** With `dl_vtx_dump` off every branch addition is inert: `NeutrinoVertexFinder` records nothing (`dump_i = -1`), `TaggerCheckNeutrino` never calls `set_dlvtx_calls`, the OFF pass's `DumpHandOff` guard moves an empty vector, `TrackFitting::reset_for_new_event` clears an empty vector. Nothing in master's new code (`main_vertex_swap_apply` now on, `nu_particle_links` / `T_segment`, `kine_overlap_probe`, ICARUS knobs) reads the dump state, and the hand-off sits after master's swap inside the same per-candidate block, so with the knob on the dump records the cluster production actually used.
+
+**Config proof (UAN, go-jsonnet).** Step 1, step 2 and the two obsolete 1-step jobs, sim and data: all 8 compiled configs byte-identical between master's `cfg/` and the merged tree. Dump on adds exactly `SCEFieldTH3:sbnd_dualmap_fwd` and changes `TaggerCheckNeutrino:pr` and `SbndPrMagnifyTrackingVisitor:pr`, as before.
+
+**Runs** (`scripts/master-validate.pbs` job 8907945, `scripts/merged-validate.pbs` job 8907985; both one debug node, queue waits 11 and 17 min, 23 and 26 min wall):
+- job A: clean build of master into `$OPT` (+ larwirecell), then the 2-step chain on MC-10 (gen2 CV benchmark reco1, 10 events, 9 paired with the reference) and NCpi0-19 (data) -> `mc10-master-20261007`, `ncsb-master-20261007`; compared with the 2026-09-26 one-step references for attribution of master's own changes.
+- job B: the master runs laid out as references (`make-ref-from-2step.sh`), clean build of the merge, the same chain -> `mc10-merged-20261007`, `ncsb-merged-20261007`, then step 2 again with `dl_vtx_dump=true` on the merged step-1 tars (`*-merged-dump-20261007`) with the replay, then the doctests.
+
+| merged vs master, knob off | MC-10 | NCpi0-19 |
+|---|---|---|
+| step-1 `qlpctree.tar.gz` members (md5 of every member) | 4112/4112 identical | 4094 + 3689 identical |
+| `tracking-pr.root`, every branch of every tree | 9/9 | 19/19 |
+| Bee, every layer | 9/9 | 19/19 |
+| dump on: every shared branch identical, trees only in the dump arm | 9/9, `T_dlvtx_call` + `T_dlvtx_cloud` | 19/19, same |
+| replay of the dumped calls | 6 calls, 0 mismatch | 40 calls, 0 mismatch |
+
+Doctests on the merged build: `wcdoctest-clus` 471 cases / 717031 assertions passed, `wcdoctest-root` 9 / 4068 passed.
+
+**Master vs the 2026-09-26 one-step references** (job A, for the record; master's deploy note predicts these): MC-10 3/9 events differ, all only in `T_flash time_us` and the cluster t0 that follows it (change 1, the prompt-time bin rule); NCpi0-19 10/19 differ, 9 of them flash times only, and event 359980 changes its main cluster and kinematics (change 2, `main_vertex_swap_apply`); `T_segment` is added everywhere (change 3). Nothing else moves.
+
+**State.** `$OPT` now holds the merged build (master + dump), larwirecell built against master in job A. Replay totals: 1246 calls, 0 mismatches.
