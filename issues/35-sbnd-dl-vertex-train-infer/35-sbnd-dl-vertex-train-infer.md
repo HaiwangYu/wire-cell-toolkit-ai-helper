@@ -21,6 +21,7 @@ Builds on:
 | truth vertex | **MC truth.** The in-detector interaction of the #33 `truth_nu` table, transformed into the frame of the fit points |
 | format | **New trees in `tracking-pr.root`** behind a knob, default off, so production files are unchanged unless asked |
 | Xin's `sbnd_xin/dl_vtx_training` | **Own tools.** The standalone inference imports the same Python module production's `SCN_Vertex` calls, and Xin's area stays untouched. His scripts can read our dump. |
+| training-format export (Haiwang, 2026-10-07) | **Not from us.** The `T_dlvtx_call` / `T_dlvtx_cloud` trees are the deliverable; the training side reads them (PyROOT or uproot). No npz export. |
 
 ## What the code does today (survey 2026-10-01, toolkit `c3cce7f3`)
 
@@ -85,9 +86,25 @@ Both `off` and `prod` rows carry MC truth; `hint_*` on the `prod` row is the OFF
 | M2 | `dl_vtx_dump`: `T_dlvtx_call` / `T_dlvtx_cloud`, both passes, exact input, payload, decision, hint, MC truth | done (`17b2b468`, `78ba593c`, hint/cloud flag commit); recording-only verified on MC-9, NCpi0-19, nueCC-48 |
 | M3 | standalone replay `dlvtx-replay.py` | done: 140 + 20 calls, 0 mismatch (bit-identical or 1–3 ulps in scores) |
 | M3b | decoupling: production cloud independent of the OFF pass | done: 20/20 clouds and payloads bit-identical with the dual chain off (log c) |
-| M4 | **training set, both clouds:** a large MC sample (gen2 CV and nueCC MC) through step 1 + step 2 with `dl_vtx_dump=true` (and a `cloud_no_exclusion` variant); a note on frame, selection (truth vertex in the FV, candidate = the true interaction's bundle), and the `T_dlvtx_*` → npz export the training reads | gen2 CV 1006 events dumped and replayed 960/960 (log e); selection-aware truth eval: 373 training events, raw top-1 median 1.4 cm (prod) / 1.5 cm (off); TODO nueCC sample, npz export |
+| M4 | **training set, both clouds:** a large MC sample through step 1 + step 2 with `dl_vtx_dump=true`; the selection (truth vertex in the active volume, candidate = the true interaction's bundle) as `dlvtx-truth-eval.py`; no export from us (the trees are read directly) | done for gen2 CV: 1006 events dumped, replayed 960/960, 373 training events (log e, validation summary below); a nueCC-enriched sample is optional for yield |
 | M5 | **model on the exclusion-on cloud:** train on `prod` (and `cloud_no_exclusion`) clouds, evaluate against the current model on `off` clouds with the same labels | vertex accuracy at 1 cm comparable or better |
 | M6 (task 3) | **skip the OFF pass:** run production with the new weights and `dl_vtx_dual_chain=false`; compare with production | identical or better on the hand-scan and MC truth; step 2 ~15 % faster |
+
+## Validation summary (2026-10-07, toolkit `sbnd-dlvtx-35` `9781e43c` on the fork)
+
+What the dump is and how it was checked, in one place; details in the log entries.
+
+| check | sample | result |
+|---|---|---|
+| knob off changes nothing | all 8 compiled SBND configs | byte-identical; no tree written (b) |
+| knob on changes only the dump | MC-9, NCpi0-19, nueCC-48, gen2 CV 1006 | `tracking-pr.root` identical to the #32 reference apart from the two new trees; Bee identical (b, d) |
+| production cloud independent of the OFF pass | NCpi0-19, dual chain off | 20/20 clouds and payloads bit-identical (c) |
+| OFF pass recorded with its hint | NCpi0-19 | `pass=off` rows, `hint_valid=1` on the production row (d) |
+| standalone inference == in-chain inference | 1200 calls (MC-9, NCpi0-19 x3, nueCC-48, gen2 CV 1006) | 0 mismatches: same voxels and ranking; scores bit-identical or within 1.8e-6 float32 noise (b, d, e) |
+| truth frame | gen2 CV, 373 selected candidates | SCE-shifted truth vertex within 1 cm of the final vertex in 65 %, median 0.54 cm (e) |
+| raw model output on the two clouds | same | top-1 42 % < 1 cm on both the exclusion-off and the exclusion-on cloud, median 1.53 vs 1.41 cm (e) |
+
+The dump is ready to be read for training: `T_dlvtx_call` (one row per network call, both passes, with the exact float32 input and output, the decision, the hint, and the raw and SCE-shifted MC truth vertex) and `T_dlvtx_cloud` (one row per input point). Branch documentation: log (b) and `cfg/pgrapher/experiment/sbnd/docs/sbnd-dl-vertex-flow.md`.
 
 ## Open items
 
@@ -209,4 +226,7 @@ Reading: (1) the raw network output is at 42 % < 1 cm on BOTH clouds with the cu
 
 **Note on the selection counts.** 82/1006 truth-outside and ~530 events without any DL call: the gen2 CV sample is a full-spill mix, so many events have no in-window candidate or the interaction in the dirt / cryostat wall. For the training set only the 373 count; a nueCC-enriched sample (M4, still to run) will have a far higher yield per event.
 
+**Decision (Haiwang, 2026-10-07):** no npz export from us; the trees are read directly by the training side.
+
 **Scripts** (ai-helper): `step1-bulk.pbs` / `step2-bulk.pbs` (resource summary argv fix: PBS timestamps contain spaces), `dlvtx-stats.py` (+ truth distances per pass), `dlvtx-truth-eval.py` (new), `dlvtx-replay.py` (tolerance), `setup-uan-root.sh` (torch on the UAN). Toolkit `sbnd-dlvtx-35` unchanged.
+- 2026-10-07: toolkit branch `sbnd-dlvtx-35` (4 commits, head `9781e43c`) pushed to the fork `HaiwangYu/wire-cell-toolkit`; the stray 574 MB core file under issue 31 deleted.
