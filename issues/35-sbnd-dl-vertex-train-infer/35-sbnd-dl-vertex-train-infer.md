@@ -257,3 +257,4 @@ Doctests on the merged build: `wcdoctest-clus` 471 cases / 717031 assertions pas
 **Master vs the 2026-09-26 one-step references** (job A, for the record; master's deploy note predicts these): MC-10 3/9 events differ, all only in `T_flash time_us` and the cluster t0 that follows it (change 1, the prompt-time bin rule); NCpi0-19 10/19 differ, 9 of them flash times only, and event 359980 changes its main cluster and kinematics (change 2, `main_vertex_swap_apply`); `T_segment` is added everywhere (change 3). Nothing else moves.
 
 **State.** `$OPT` now holds the merged build (master + dump), larwirecell built against master in job A. Replay totals: 1246 calls, 0 mismatches.
+- 2026-10-07: draft PR WireCell/wire-cell-toolkit#536 (`sbnd-dlvtx-35` -> master, head `78f81c64`), body = the dump, knob-off neutrality, the log (f) validation table; Haiwang adds the preamble and un-drafts it.
