@@ -14,6 +14,7 @@
 #   re-run step 2 + compare on an existing run (step-1 tars kept):  add RUN_DIR=<run dir>,SKIP1=1
 #   NO_MKDIR=1: do not pre-create pr_evt<E>/ (the writers create it themselves since the PR 535 review)
 #   WCT_TLAS="--tla-code dl_vtx_dump=true ...": extra TLAs for the step-2 wire-cell (space separated)
+#   CPU0=<n>: first core of the per-chunk taskset ranges (default 1), so two instances can share a node
 #   DLVTX_REPLAY=1: after the compare, re-run the DL vertex standalone on the step-2 T_dlvtx_* (issue 35)
 #
 #   G. config gates (gate-2step-cfg.sh) -- DO_GATE=1 (default)
@@ -30,7 +31,7 @@ S27=$Y/wire-cell-toolkit-ai-helper/issues/27-polaris-production/scripts
 S33=$Y/wire-cell-toolkit-ai-helper/issues/33-sbnd-1step-to-2step/scripts
 TOOLS=$Y/production-prep/r3-pilot-mccv-reference/scripts
 RECO1=${RECO1:?}; FCL=${FCL:?}; REALITY=${REALITY:?}; NEVT=${NEVT:?}; REF=${REF:?}; TAG=${TAG:-2step}
-CHUNK=${CHUNK:-10}; CORES=${CORES:-2}; DO_GATE=${DO_GATE:-1}; NO_MKDIR=${NO_MKDIR:-0}; WCT_TLAS=${WCT_TLAS:-}; DLVTX_REPLAY=${DLVTX_REPLAY:-0}
+CHUNK=${CHUNK:-10}; CORES=${CORES:-2}; CPU0=${CPU0:-1}; DO_GATE=${DO_GATE:-1}; NO_MKDIR=${NO_MKDIR:-0}; WCT_TLAS=${WCT_TLAS:-}; DLVTX_REPLAY=${DLVTX_REPLAY:-0}
 RUN=${RUN_DIR:-$Y/production-prep/$TAG-$(date +%Y%m%d-%H%M)}; mkdir -p $RUN; SKIP1=${SKIP1:-0}
 [ "$SKIP1" = 1 ] && rm -rf $RUN/pr $RUN/cmp
 export Y SL7_IMAGE=${SL7_IMAGE:-} APPTAINER_MODE=${APPTAINER_MODE:-}; [ -n "$SL7_IMAGE" ] || unset SL7_IMAGE
@@ -48,7 +49,7 @@ echo "=== 1. step 1 (lar, $NCH jobs x <= $CHUNK events)$([ "$SKIP1" = 1 ] && ech
   t0=\$(date +%s)
   for c in \$(seq 0 $((NCH-1))); do
     d=$RUN/ql/c\$c; mkdir -p \$d; k=\$((c*$CHUNK)); n=\$(( $NEVT - k < $CHUNK ? $NEVT - k : $CHUNK ))
-    cpu=\$(( 1 + c*$CORES ))
+    cpu=\$(( $CPU0 + c*$CORES ))
     ( cd \$d && /usr/bin/time -v -o time.txt taskset -c \$cpu-\$((cpu+$CORES-1)) lar -n \$n --nskip \$k -c $FCL -s $RECO1 --no-output > lar.log 2>&1; echo \"c\$c nskip=\$k n=\$n rc=\$? wall_s=\$(awk -F': ' '/Elapsed/ {print \$2}' time.txt) rss_kb=\$(awk '/Maximum resident/ {print \$NF}' time.txt)\" ) &
   done; wait
   echo step1_wall_s=\$(( \$(date +%s) - t0 ))
@@ -62,7 +63,7 @@ SL7_SETUP=$S29/setup-aurora-run.sh $S29/in-aurora-sl7.sh bash -c "
     in=$RUN/ql/c\$c/qlpctree.tar.gz; d=$RUN/pr/c\$c; mkdir -p \$d; [ -f \$in ] || { echo \"c\$c: no step-1 tar\"; continue; }
     ids=\$(python3 -c \"import tarfile,re,sys; print(' '.join(sorted({m.group(1) for n in tarfile.open(sys.argv[1]).getnames() for m in [re.match(r'clustering_tensorset_(\\d+)_metadata.json', n)] if m}, key=int)))\" \$in)
     [ $NO_MKDIR = 1 ] || for e in \$ids; do mkdir -p \$d/pr_evt\$e; done
-    cpu=\$(( 1 + c*$CORES ))
+    cpu=\$(( $CPU0 + c*$CORES ))
     ( cd \$d && /usr/bin/time -v -o time.txt taskset -c \$cpu-\$((cpu+$CORES-1)) wire-cell -l stdout -L debug -c pgrapher/experiment/sbnd/wct-pr.jsonnet --tla-str input=\$in --tla-str reality=$REALITY $WCT_TLAS > wct.log 2>&1; echo \"c\$c events=[\$ids] rc=\$? wall_s=\$(awk -F': ' '/Elapsed/ {print \$2}' time.txt) rss_kb=\$(awk '/Maximum resident/ {print \$NF}' time.txt)\" ) &
   done; wait
   echo step2_wall_s=\$(( \$(date +%s) - t0 ))

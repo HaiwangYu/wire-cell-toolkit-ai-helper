@@ -1,0 +1,43 @@
+#!/bin/bash
+#PBS -N merged-validate
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/merged-validate.out
+# issue 35, merge of origin/master into sbnd-dlvtx-35 -- job B, the GATE:
+#   1. the master runs of job A laid out as references;
+#   2. clean build of master+sbnd-dlvtx-35 into $OPT;
+#   3. the 2-step chain on the same MC-10 and NCpi0-19, compared with the master runs -> must be identical
+#      (tracking-pr.root every branch, Bee every layer);
+#   4. step 2 again with dl_vtx_dump=true on the merged step-1 tars + the standalone replay;
+#   5. doctests clus + root.
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw; export Y
+S29=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+S33=$Y/wire-cell-toolkit-ai-helper/issues/33-sbnd-1step-to-2step/scripts
+S35=$Y/wire-cell-toolkit-ai-helper/issues/35-sbnd-dl-vertex-train-infer/scripts
+P=$Y/production-prep; D=${D:-20261007}
+echo "=== B0 $(date): references from the master runs; checkout sbnd-dlvtx-35 (master merged)"
+$S35/make-ref-from-2step.sh $P/mc10-master-$D $P/mc10-master-$D-ref $P/mc50-hits-20260926-0608/rse-by-nskip.tsv
+$S35/make-ref-from-2step.sh $P/ncsb-master-$D $P/ncsb-master-$D-ref $P/ncsb-hits-20260926-0535/rse-by-nskip.tsv
+cd $Y/wire-cell-toolkit && git checkout -q sbnd-dlvtx-35 && git log --oneline -1 && cd $Y
+echo "=== B1 $(date): clean build of master+sbnd-dlvtx-35"
+CLEAN=1 STAGES="wct" DO_CFG_GATE=0 bash $S29/build-wct-lwc.pbs 2>&1 | grep -E "^===|WCB_RC|nlibs|ldd_not_found|FAILED|STAGE_DONE|^real"
+grep -q WCT_STAGE_DONE $Y/aurora-build-logs/wct-stage-${PBS_JOBID%%.*}.log || { echo "build failed, stopping"; exit 1; }
+echo "=== B2 $(date): 2-step on MC-10 and NCpi0-19 vs the master runs"
+RECO1=/lus/flare/projects/neutrinoGPU/abhat/sbnd/gen2-cv-50evt-benchmark-20260915/reco1/reco1-gen2cv-50evt-bench-20260915.root FCL=wcls-img-clus-matching.fcl REALITY=sim NEVT=10 REF=$P/mc10-master-$D-ref RUN_DIR=$P/mc10-merged-$D DO_GATE=0 CPU0=1 bash $S33/run-2step.pbs > $P/mc10-merged-$D.log 2>&1 &
+RECO1=$Y/sbnd-gen2-data/nc-sideband-lynn/filtered-reco1/nc-sideband_filtered_frameshift.root FCL=wcls-img-clus-matching-data.fcl REALITY=data NEVT=19 REF=$P/ncsb-master-$D-ref RUN_DIR=$P/ncsb-merged-$D DO_GATE=0 CPU0=41 bash $S33/run-2step.pbs > $P/ncsb-merged-$D.log 2>&1 &
+wait
+for t in mc10 ncsb; do echo "--- $t-merged-$D.log"; grep -E "^=== |rc=|step._wall_s|paired=|IDENTICAL=|^=> |identical|differ" $P/$t-merged-$D.log | head -40; done
+echo "=== B3 $(date): step 2 with dl_vtx_dump=true on the merged step-1 tars + replay (vs the master runs)"
+for t in mc10 ncsb; do mkdir -p $P/$t-merged-dump-$D; ln -sfn $P/$t-merged-$D/ql $P/$t-merged-dump-$D/ql; done
+RECO1=x FCL=x REALITY=sim NEVT=10 REF=$P/mc10-master-$D-ref RUN_DIR=$P/mc10-merged-dump-$D SKIP1=1 DO_GATE=0 CPU0=1 WCT_TLAS="--tla-code dl_vtx_dump=true" DLVTX_REPLAY=1 bash $S33/run-2step.pbs > $P/mc10-merged-dump-$D.log 2>&1 &
+RECO1=x FCL=x REALITY=data NEVT=19 REF=$P/ncsb-master-$D-ref RUN_DIR=$P/ncsb-merged-dump-$D SKIP1=1 DO_GATE=0 CPU0=41 WCT_TLAS="--tla-code dl_vtx_dump=true" DLVTX_REPLAY=1 bash $S33/run-2step.pbs > $P/ncsb-merged-dump-$D.log 2>&1 &
+wait
+for t in mc10 ncsb; do echo "--- $t-merged-dump-$D.log"; grep -E "^=== |rc=|step._wall_s|paired=|IDENTICAL=|^=> |identical|differ|MISMATCH" $P/$t-merged-dump-$D.log | head -40; done
+echo "=== B4 $(date): doctests clus + root"
+STAGES="" DOCTESTS="clus root" DO_CFG_GATE=0 bash $S29/build-wct-lwc.pbs 2>&1 | grep -E "^===|\[doctest\]|failing|DOCTEST_.*_RC"
+echo "=== END $(date)"

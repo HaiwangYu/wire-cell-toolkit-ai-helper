@@ -1,0 +1,31 @@
+#!/bin/bash
+#PBS -N master-validate
+#PBS -A neutrinoGPU::debug2
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/aurora-build-logs/master-validate.out
+# issue 35, merge of origin/master (0319ea67) into sbnd-dlvtx-35 -- job A, the REFERENCE:
+#   1. clean build of toolkit `master` into $OPT + larwirecell against it (no doctests here);
+#   2. the 2-step chain on MC-10 (gen2 CV benchmark reco1, 10 events) and NCpi0-19 (data), both
+#      compared with the 1-step references of 2026-09-26 (expected to differ by the three behaviour
+#      changes of master's deploy-validation-2026-10-01.md: flash prompt time, main_vertex_swap_apply,
+#      nu_particle_links).  Job B (merged-validate.pbs) then builds master+sbnd-dlvtx-35 and compares with THESE runs.
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw; export Y
+S29=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+S33=$Y/wire-cell-toolkit-ai-helper/issues/33-sbnd-1step-to-2step/scripts
+P=$Y/production-prep; D=${D:-20261007}
+echo "=== A0 $(date): checkout master"
+cd $Y/wire-cell-toolkit && git checkout -q master && git log --oneline -1 && cd $Y
+echo "=== A1 $(date): clean build of master + larwirecell"
+CLEAN=1 STAGES="wct lwc" DO_CFG_GATE=0 bash $S29/build-wct-lwc.pbs 2>&1 | grep -E "^===|WCB_RC|MRB_RC|nlibs|ldd_not_found|tree_wirecell_refs|FAILED|STAGE_DONE|^real"
+grep -q WCT_STAGE_DONE $Y/aurora-build-logs/wct-stage-${PBS_JOBID%%.*}.log || { echo "build failed, stopping"; exit 1; }
+echo "=== A2 $(date): 2-step on MC-10 and NCpi0-19 (concurrently, cores 1-20 and 41-80)"
+RECO1=/lus/flare/projects/neutrinoGPU/abhat/sbnd/gen2-cv-50evt-benchmark-20260915/reco1/reco1-gen2cv-50evt-bench-20260915.root FCL=wcls-img-clus-matching.fcl REALITY=sim NEVT=10 REF=$P/mc50-hits-20260926-0608 RUN_DIR=$P/mc10-master-$D DO_GATE=0 CPU0=1 bash $S33/run-2step.pbs > $P/mc10-master-$D.log 2>&1 &
+RECO1=$Y/sbnd-gen2-data/nc-sideband-lynn/filtered-reco1/nc-sideband_filtered_frameshift.root FCL=wcls-img-clus-matching-data.fcl REALITY=data NEVT=19 REF=$P/ncsb-hits-20260926-0535 RUN_DIR=$P/ncsb-master-$D DO_GATE=0 CPU0=41 bash $S33/run-2step.pbs > $P/ncsb-master-$D.log 2>&1 &
+wait
+for t in mc10 ncsb; do echo "--- $t-master-$D.log"; grep -E "^=== |rc=|step._wall_s|paired=|IDENTICAL=|^=> |identical|differ" $P/$t-master-$D.log | head -40; done
+echo "=== END $(date)"
