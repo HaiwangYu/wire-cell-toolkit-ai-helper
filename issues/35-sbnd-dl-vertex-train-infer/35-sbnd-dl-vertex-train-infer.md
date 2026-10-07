@@ -85,7 +85,7 @@ Both `off` and `prod` rows carry MC truth; `hint_*` on the `prod` row is the OFF
 | M2 | `dl_vtx_dump`: `T_dlvtx_call` / `T_dlvtx_cloud`, both passes, exact input, payload, decision, hint, MC truth | done (`17b2b468`, `78ba593c`, hint/cloud flag commit); recording-only verified on MC-9, NCpi0-19, nueCC-48 |
 | M3 | standalone replay `dlvtx-replay.py` | done: 140 + 20 calls, 0 mismatch (bit-identical or 1–3 ulps in scores) |
 | M3b | decoupling: production cloud independent of the OFF pass | done: 20/20 clouds and payloads bit-identical with the dual chain off (log c) |
-| M4 | **training set, both clouds:** a large MC sample (gen2 CV and nueCC MC) through step 1 + step 2 with `dl_vtx_dump=true` (and a `cloud_no_exclusion` variant); a note on frame, selection (truth vertex in the FV, candidate = the true interaction's bundle), and the `T_dlvtx_*` → npz export the training reads | truth-frame residual measured on hundreds of events; export reproduces the dumped floats |
+| M4 | **training set, both clouds:** a large MC sample (gen2 CV and nueCC MC) through step 1 + step 2 with `dl_vtx_dump=true` (and a `cloud_no_exclusion` variant); a note on frame, selection (truth vertex in the FV, candidate = the true interaction's bundle), and the `T_dlvtx_*` → npz export the training reads | gen2 CV 1006 events dumped and replayed 960/960 (log e); selection-aware truth eval: 373 training events, raw top-1 median 1.4 cm (prod) / 1.5 cm (off); TODO nueCC sample, npz export |
 | M5 | **model on the exclusion-on cloud:** train on `prod` (and `cloud_no_exclusion`) clouds, evaluate against the current model on `off` clouds with the same labels | vertex accuracy at 1 cm comparable or better |
 | M6 (task 3) | **skip the OFF pass:** run production with the new weights and `dl_vtx_dual_chain=false`; compare with production | identical or better on the hand-scan and MC truth; step 2 ~15 % faster |
 
@@ -172,3 +172,41 @@ Both on the NCpi0-19 step-1 tars, step 2 only, compared with the #32 reference a
 - `ncsb-dlvtx-noexcl-20261005` (dump on + `pr_knobs={dl_vtx_cloud_no_exclusion:true}`): the production cloud is the exclusion-free refit (`cloud_no_exclusion=1`, e.g. 409 vs 399 points in event 114446; the log shows the refits), the replay passes 40/40, and the final output is still identical 19/19: the rerank landed on the same candidate in every event. This variant is NOT part of the current chain (the knob is off in production); it is an option for training only.
 
 Replay totals so far: 240 recorded network calls re-run standalone, 0 mismatches.
+
+### (e) 2026-10-06/07: M4 bulk run -- 1006 gen2 CV MC events through step 1 + step 2 with the dump
+
+Run `$Y/production-prep/mc1k-dlvtx-20261006` (combined job 8907313, `scripts/step12-bulk.pbs`, one debug node): 74 reco1 files (first 74 of `twester/sbnd_gen2_prod1/Gen2_2026/reco1/000000/000000/`, `manifest.tsv` / `inputs.tsv` = the input list as run) -> 1006 events, every file rc=0 in both steps. Toolkit `sbnd-dlvtx-35` (local), larwirecell `dev-v10_14_02_02`, step 1 `wcls-img-clus-matching.fcl`, step 2 `wct-pr.jsonnet --tla-code dl_vtx_dump=true`.
+
+**Resources** (`resources.md`, `resources-pr.md`; one `lar` / `wire-cell` process per file, 74 concurrent, 2 cores each):
+
+| | queue wait | node wall | per process wall median / max | CPU median | max RSS median / max | CPU per event | output per event |
+|---|---|---|---|---|---|---|---|
+| step 1 | 332 s | 790 s (13.2 min) | 583 / 790 s | 402 s | 1531 / 1809 MB | 29.0 s | qlpctree.tar.gz 1.79 MB, mabc.zip 5.24 MB, nugraph.h5 1.27 MB |
+| step 2 + dump | (same job) | 186 s (3.1 min) | 133 / 186 s | 68 s | 1201 / 1481 MB | 4.9 s | tracking-pr.root 0.17 MB, mabc-pr.zip 0.27 MB |
+
+Totals: tars 1.80 GB, step-1 Bee 5.27 GB, h5 1.27 GB, tracking-pr.root 0.17 GB, step-2 Bee 0.27 GB; `du` 8.5 GB. Node-seconds per event 0.79 (step 1) + 0.18 (step 2), so 1000 events cost ~16 node-minutes end to end on one node, dominated by step 1's wall, which is the longest single file (17 events), not CPU. The Bee zips are kept (Haiwang, 2026-10-06).
+
+**Replay** (`dlvtx-replay.txt/.json`): 960 recorded network calls (480 candidates x 2 passes) re-run standalone. In the job (SL7, CPU): 714 bit-identical, 245 equivalent, 1 call at |dscore| 1.19e-6, just over the 1e-6 tolerance -> `SCORE_TOL` raised to 1e-5 (the mismatch class means a different voxel or ranking, a score difference at 1e-6 is float32 process-to-process noise). Re-run on the UAN (`setup-uan-root.sh` now adds torch / sparseconvnet / `SCN_Vertex` to PYTHONPATH, so the replay runs on the login node too, 26 s for 960 calls): 618 bit-identical, 342 equivalent, 0 mismatch, worst |diff| 1.79e-6. The bit-identical fraction depends on the host (74 % in the job, 64 % on the UAN), the voxels and ranking never. Totals: 1200 calls replayed, 0 mismatches.
+
+**Decisions** (`dlvtx-stats.py`, 480 candidates): OFF pass DL accepted 241/480; production DL accepted 463/480, of which 247 `dual_transferred` (the snap to the OFF vertex replaced production's own rerank pick), 238 both. Production's own top-1 voxel is >5 cm from the accepted DL vertex in 188/463 calls: the OFF-pass hint decides in a large share of events. Traditional vertex == accepted DL vertex in 383/459 (<1 cm): the DL step mostly confirms.
+
+**Truth, all candidates** (`dlvtx-stats.txt`, truth = max-edep `truth_nu` row shifted by the TrueFwd SCE map, no selection): final vertex median 0.93 cm, 51 % < 1 cm; raw own top-1 median 9.8 cm (off) / 7.9 cm (prod), 32-33 % < 1 cm. These mix in candidates that are not the neutrino bundle and events with the truth vertex outside the active volume, so they understate the model.
+
+**Truth, training selection** (`dlvtx-truth-eval.py`, `dlvtx-truth-eval.{txt,tsv}`): per event, truth inside |x|,|y| < 200, 0 < z < 500 cm, and the candidate whose production cloud has a point within 3 cm of the truth vertex (= the true interaction's bundle). Of 1006 events: 373 selected (6 with more than one candidate), 82 truth outside, 19 inside but no candidate's cloud contains it, the rest have no DL call (no in-window candidate). On the 373 selected candidates, distance to the SCE-shifted truth vertex (cm):
+
+| vertex | n | median | < 1 cm | < 2 cm | > 5 cm |
+|---|---|---|---|---|---|
+| final (production) | 373 | 0.54 | 65 % | 73 % | 18 % |
+| OFF-pass final (hint) | 373 | 0.55 | 66 % | 75 % | 18 % |
+| off: accepted DL | 225 | 0.55 | 72 % | 83 % | 12 % |
+| off: own top-1 voxel (raw) | 373 | 1.53 | 42 % | 55 % | 41 % |
+| off: traditional | 373 | 0.67 | 59 % | 70 % | 20 % |
+| prod: accepted DL | 360 | 0.66 | 63 % | 74 % | 17 % |
+| prod: own top-1 voxel (raw) | 373 | 1.41 | 42 % | 57 % | 39 % |
+| prod: traditional | 372 | 0.71 | 58 % | 68 % | 20 % |
+
+Reading: (1) the raw network output is at 42 % < 1 cm on BOTH clouds with the current (exclusion-off-trained) weights -- on the exclusion-on production cloud it is no worse than on the exclusion-off cloud it was trained on (median 1.41 vs 1.53 cm, > 5 cm 39 vs 41 %), so the domain shift between the two clouds is small for this model; (2) what lifts 42 % to 65 % is the rerank / snap / traditional-vertex logic around the model, not the model's top-1 (58 events have a raw prod top-1 > 5 cm off but a final vertex < 1 cm; 4 the reverse); (3) the 18 % > 5 cm tail of the final vertex is the target for M5. These are the baseline numbers a model trained on the exclusion-on cloud has to match (M5 gate: raw top-1 and accepted-DL at 1 cm on held-out events).
+
+**Note on the selection counts.** 82/1006 truth-outside and ~530 events without any DL call: the gen2 CV sample is a full-spill mix, so many events have no in-window candidate or the interaction in the dirt / cryostat wall. For the training set only the 373 count; a nueCC-enriched sample (M4, still to run) will have a far higher yield per event.
+
+**Scripts** (ai-helper): `step1-bulk.pbs` / `step2-bulk.pbs` (resource summary argv fix: PBS timestamps contain spaces), `dlvtx-stats.py` (+ truth distances per pass), `dlvtx-truth-eval.py` (new), `dlvtx-replay.py` (tolerance), `setup-uan-root.sh` (torch on the UAN). Toolkit `sbnd-dlvtx-35` unchanged.

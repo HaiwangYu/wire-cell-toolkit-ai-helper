@@ -56,9 +56,9 @@ while IFS=$'\t' read -r i n f; do
   mb() { [ -f "$1" ] && stat -c %s "$1" | awk '{printf "%.1f", $1/1e6}' || echo 0; }
   printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" "$i" "$n" "$(cat $d/rc.txt 2>/dev/null)" "${wall:-}" "${cpu:-}" "${rss:-}" "$ntr" "$trmb" "$(mb $d/mabc-pr.zip)" >> $RUN/resources-pr.tsv
 done < $RUN/inputs.tsv
-python3 - $RUN $QT $ST $(( $(date +%s) - T_START )) <<'PY' | tee $RUN/resources-pr.md
+python3 - $RUN "$QT" "$ST" $(( $(date +%s) - T_START )) <<'PY' | tee $RUN/resources-pr.md
 import sys, csv, datetime
-R, qt, st, job_s = sys.argv[1], ' '.join(sys.argv[2:5]), ' '.join(sys.argv[5:8]), int(sys.argv[8])
+R, qt, st, job_s = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 rows = list(csv.DictReader(open(R + '/resources-pr.tsv'), delimiter='\t'))
 ok = [r for r in rows if r['rc'] == '0']
 f = lambda k: [float(r[k]) for r in ok if r[k] not in ('', None)]

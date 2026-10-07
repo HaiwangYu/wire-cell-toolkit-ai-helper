@@ -16,6 +16,10 @@ ROOT.gErrorIgnoreLevel = ROOT.kError
 
 cnt = collections.defaultdict(collections.Counter)
 d_top1_final, d_top1_dl, d_trad_dl = [], [], []
+# vs MC truth (truth_reco_*, the SCE-shifted truth vertex in the cloud frame), per pass:
+# the model's OWN top-1 voxel (raw prediction, before rerank/snap), the accepted DL vertex,
+# the traditional vertex; and the OFF pass's final vertex (hint) read from the prod row.
+tr = collections.defaultdict(list)
 for fn in sys.argv[1:]:
     f = ROOT.TFile.Open(fn); tc = f.Get('T_dlvtx_call')
     if not tc: continue
@@ -25,6 +29,14 @@ for fn in sys.argv[1:]:
         cnt[p]['accepted_and_transferred'] += (e.accepted and e.dual_transferred)
         cnt[p]['payload_from_off'] += e.payload_from_off
         pl = np.array(list(e.payload), dtype=np.float32)
+        if e.truth_valid:
+            t = (e.truth_reco_x, e.truth_reco_y, e.truth_reco_z)
+            if len(pl) >= 3: tr[p + ': own top-1 voxel'].append(math.dist(pl[:3], t))
+            if e.accepted: tr[p + ': accepted DL vertex'].append(math.dist((e.dl_x, e.dl_y, e.dl_z), t))
+            if e.trad_valid: tr[p + ': traditional vertex'].append(math.dist((e.trad_x, e.trad_y, e.trad_z), t))
+            if p == 'prod':
+                if e.final_valid: tr['final vertex'].append(math.dist((e.final_x, e.final_y, e.final_z), t))
+                if getattr(e, 'hint_valid', 0): tr['OFF-pass final vertex (hint)'].append(math.dist((e.hint_x, e.hint_y, e.hint_z), t))
         if p == 'prod' and len(pl) >= 4:
             t1 = pl[:3]
             if e.final_valid: d_top1_final.append(math.dist(t1, (e.final_x, e.final_y, e.final_z)))
@@ -41,3 +53,7 @@ def summ(name, v):
 summ('prod own top-1 voxel -> accepted DL vertex', d_top1_dl)
 summ('prod own top-1 voxel -> final vertex', d_top1_final)
 summ('traditional vertex -> accepted DL vertex', d_trad_dl)
+if tr:
+    print('vs MC truth (SCE-shifted, cm):')
+    for k in sorted(tr):
+        v = np.array(tr[k]); print('   %-32s n=%-4d median %.2f, <1 cm %4d (%.0f%%), <2 cm %4d (%.0f%%), >5 cm %4d' % (k, len(v), np.median(v), (v<1).sum(), 100*(v<1).mean(), (v<2).sum(), 100*(v<2).mean(), (v>5).sum()))

@@ -3,7 +3,7 @@
 # Works because the UPS binaries only need three SL7 system libraries that the UAN lacks
 # (libxxhash.so.0, libcrypto/libssl.so.10, libtinfo.so.5 ...); those were extracted once from
 # the SL7 image with `unsquashfs -o 36864 $Y/images/fnal-dev-sl7.sif 'usr/lib64/...'` into
-# $Y/tools/sl7-libs/x/usr/lib64; only the 4 ROOT needs are linked in sl7-libs/min (the full set
+# $Y/tools/sl7-libs/x/usr/lib64; only the 5 ROOT + PyROOT need (incl. libffi.so.6 for ctypes) are linked in sl7-libs/min (the full set
 # breaks the UAN's own grep/ls).  `root -b -l`, TFile/TTree, Show/Scan/Draw to
 # file all work.  PyROOT works too with the UPS python 3.9 (its _sysconfigdata reads three UPS
 # variables, set below) and numpy from the scn venv's site-packages (same python).  `ups setup`
@@ -17,4 +17,7 @@ export PYTHON_ROOT=$L/python/v3_9_15/Linux64bit+3.10-2.17
 export PYTHON_DIR=$PYTHON_ROOT
 export SQLITE_FQ_DIR=$L/sqlite/v3_40_01_00/Linux64bit+3.10-2.17
 export PATH=$PYTHON_ROOT/bin:$PATH
-export PYTHONPATH=$ROOTSYS/lib:/lus/flare/projects/neutrinoGPU/yuhw/products/scn/v01_00_00/Linux64bit+3.10-2.17/venv/lib/python3.9/site-packages${PYTHONPATH:+:$PYTHONPATH}
+SCN_SP=/lus/flare/projects/neutrinoGPU/yuhw/products/scn/v01_00_00/Linux64bit+3.10-2.17/venv/lib/python3.9/site-packages
+# + torch / sparseconvnet (the scn venv) and SCN_Vertex.py (installed by wcb into $OPT/python): the
+# DL-vertex replay (issue 35 dlvtx-replay.py) runs on the UAN too, CPU.
+export PYTHONPATH=$ROOTSYS/lib:$SCN_SP:$SCN_SP/sparseconvnet-0.2-py3.9-linux-x86_64.egg:/lus/flare/projects/neutrinoGPU/yuhw/opt/python${PYTHONPATH:+:$PYTHONPATH}
