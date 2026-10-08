@@ -11,7 +11,8 @@
 #   * EVERY process runs under `taskset -c $CPUSET` (default 32-63, 32 cores), so even thread-happy
 #     libraries (torch in the DL vertex) cannot use more than half the cores in total;
 #   * at most MAXPAR units at once (default 28), and no new unit starts while the RSS summed over
-#     this user's lar/wire-cell processes exceeds MEM_GUARD_GB (default 50).
+#     this user's lar/wire-cell processes exceeds MEM_GUARD_GB (default 50), nor while the machine's
+#     MemAvailable is below SYS_MIN_AVAIL_GB (default 15).
 #   OMP/MKL/torch thread counts are set to 1 per process.
 #
 # Layout:  <run>/<unit>/ql/{qlpctree.tar.gz, mabc.zip, nugraph.h5, lar.log.gz, time.txt, rc}
@@ -22,7 +23,7 @@
 # Kerberos ticket (klist -s), so a lapsed ticket pauses the run instead of failing it.
 set -u
 UNITS=${1:?units.tsv}; RUN=${2:?run dir}; REALITY=${3:?sim|data}; MAXPAR=${4:-28}
-CPUSET=${CPUSET:-32-63}; MEM_GUARD_GB=${MEM_GUARD_GB:-50}; WCT_TLAS=${WCT_TLAS:---tla-code dl_vtx_dump=true}
+CPUSET=${CPUSET:-32-63}; MEM_GUARD_GB=${MEM_GUARD_GB:-50}; SYS_MIN_AVAIL_GB=${SYS_MIN_AVAIL_GB:-15}; WCT_TLAS=${WCT_TLAS:---tla-code dl_vtx_dump=true}
 case $REALITY in sim) FCL=wcls-img-clus-matching.fcl ;; data) FCL=wcls-img-clus-matching-data.fcl ;; *) echo "reality sim|data"; exit 2 ;; esac
 SBND=/exp/sbnd/app/users/yuhw/wcp-porting-img/sbnd
 WRAP=/exp/sbnd/app/users/yuhw/claude-utilities/in-gpvm-sl7.sh
@@ -35,7 +36,7 @@ WCT=/exp/sbnd/app/users/yuhw/wire-cell-toolkit; LWC=/exp/sbnd/app/users/yuhw/lar
   echo "larwirecell $(git -C $LWC rev-parse --short HEAD) ($(git -C $LWC branch --show-current))"
   echo "wcp        $(git -C $SBND rev-parse --short HEAD) ($(git -C $SBND branch --show-current)); sbnd changes: $(git -C $SBND status --short . | wc -l)"
   echo "wire-cell-data $(git -C /exp/sbnd/app/users/yuhw/wire-cell-data rev-parse --short HEAD)"
-  echo "units      $(wc -l < $UNITS); MAXPAR $MAXPAR; CPUSET $CPUSET; MEM_GUARD_GB $MEM_GUARD_GB"
+  echo "units      $(wc -l < $UNITS); MAXPAR $MAXPAR; CPUSET $CPUSET; MEM_GUARD_GB $MEM_GUARD_GB; SYS_MIN_AVAIL_GB $SYS_MIN_AVAIL_GB"
 } >> $RUN/RUN-RECORD.txt
 
 # one unit, executed INSIDE SL7 with setup-ap.sh sourced
@@ -68,6 +69,7 @@ gzip -f wct.log
 EOF
 chmod +x $RUN/unit.sh
 
+sys_avail_gb() { awk '/MemAvailable/ {printf "%d", $2/1048576}' /proc/meminfo; }
 ourmem_gb() { ps -u $USER -o rss=,comm= | awk '$2 ~ /^(lar|wire-cell)$/ {s+=$1} END {printf "%d", s/1048576}'; }
 
 krb_wait() {
@@ -90,6 +92,9 @@ run_pass() {   # run_pass <pass number>: every unit whose pr/rc is not 0
     [ $pass -gt 1 ] && [ -d $RUN/$u/pr ] && mv $RUN/$u/pr $RUN/$u/pr-try$((pass-1))
     while [ $nrun -ge $MAXPAR ]; do wait -n; nrun=$((nrun-1)); done
     while [ "$(ourmem_gb)" -ge $MEM_GUARD_GB ]; do /usr/bin/sleep 20; done
+    # machine-wide guard (sbndbuild03 went down 2026-10-07 ~16:00 with MemAvailable at 2 GB while we held
+    # 34 GB): no new unit while the whole machine has less than SYS_MIN_AVAIL_GB available
+    while [ "$(sys_avail_gb)" -lt $SYS_MIN_AVAIL_GB ]; do /usr/bin/sleep 30; done
     krb_wait
     # setup-dlvtx.sh: the uBooNE scn product (torch, sparseconvnet) + opt/python (SCN_Vertex.py).  WITHOUT
     # IT THE DL VERTEX FAILS SILENTLY ("DL vertex failed: ... No module named 'SCN_Vertex'"), the job still
