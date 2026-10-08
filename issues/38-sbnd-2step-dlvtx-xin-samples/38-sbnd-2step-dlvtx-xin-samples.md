@@ -244,3 +244,25 @@ Milestones M0–M5 done.
   - nueCC 90055, 239794, 131357 and 433451 keep small discrete differences. These are systematic on our side (our two runs agree), consistent with cross-machine effects.
   - nueCC chunk `c2` crashes intermittently in step 2 at varying sites, with heap-corruption symptoms. It is the same family as the crash of logs (b)–(c).
 - **Run r7:** started 2026-10-07 22:23 in `production-prep/r7-r26-master-b7bd2a1a/`, with the same harness, cap and Kerberos cache. The `f0686` side units are in `mc-cv-fix/`.
+
+### (e) 2026-10-08: run r7 complete
+
+All four #26 samples ran on master `b7bd2a1a` with `dl_vtx_dump=true`: **41,989 / 41,990 events**, 2026-10-07 22:23 → 2026-10-08 14:14, 233 GB in `production-prep/r7-r26-master-b7bd2a1a/`. The full record is [`docs/sbnd-r7-dlvtx-campaign.md`](../../docs/sbnd-r7-dlvtx-campaign.md).
+
+| sample | events | candidates | DL calls (prod + off) | first-pass step-2 crashes (all recovered) |
+|---|---|---|---|---|
+| MC BNB CV | 13,112 / 13,113 (run 471 / 18 / 33 lost, as in round 3) | 6,155 | 12,280 | 1 |
+| MC nueCC | 8,877 / 8,877 | 8,426 | 17,460 | 16 |
+| beam-on | 10,000 / 10,000 | 4,604 | 9,042 | 4 |
+| beam-off | 10,000 / 10,000 | 971 | 1,202 | 0 |
+
+- 0 `DL vertex failed` in any unit. Standalone replay on 100 units or 2 chunks per sample: 4,940 calls, 0 mismatch.
+- **MC truth frame:** on 2,385 selected nueCC candidates, the final vertex lies a median 0.60 cm from `truth_reco_*` (SCE-shifted) against 1.28 cm from the raw truth. `truth_reco_*` is the training target (campaign doc §6).
+- **From 09:18 on 10-08:** 14 jobs in the day (08:00–20:00) and 28 at night, at Haiwang's request.
+- **Open, for us to fix later:**
+  - the intermittent step-2 crash (runaway allocation signature, much more frequent on nueCC; campaign doc §9);
+  - the 4 nueCC events that differ from Xin's d133pr (§8);
+  - the deterministic run 471 / 18 / 33 step-1 crash.
+- **Housekeeping, Haiwang's call:**
+  - `r5-dlvtx-xin-samples` (40 GB, the #30 run) is still on disk;
+  - the staged data chunks `r3-data-stage-2026-09-09` (86 GB) are no longer needed by r7.
