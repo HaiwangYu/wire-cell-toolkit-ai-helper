@@ -3,7 +3,7 @@
 The record of production run **r7**: what ran, with which software, on which inputs, where the outputs are, how to read and check the DL-vertex dump, and what went wrong. **Kept current while the run lasts:** status in §1, change log in §11.
 
 - Tracking issue: [ai-helper #38](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/38), logs (d) onward ([doc](../issues/38-sbnd-2step-dlvtx-xin-samples/38-sbnd-2step-dlvtx-xin-samples.md)).
-- Machine: `sbndbuild03.fnal.gov`, at most half of it (cores 32–63, ≤ 28 jobs, ≤ 50 GB of our RSS).
+- Machine: `sbndbuild03.fnal.gov`, at most half of it (cores 32–63, ≤ 50 GB of our RSS). **Jobs: ≤ 14 in the day (08:00–20:00 local), ≤ 28 at night**, since 2026-10-08 09:18.
 - Output: `/exp/sbnd/data/users/yuhw/production-prep/r7-r26-master-b7bd2a1a/`.
 
 ## 1. Status (2026-10-08 07:51 CDT)
@@ -13,7 +13,7 @@ The record of production run **r7**: what ran, with which software, on which inp
 | MC BNB CV | 13,113 | 990 files + 2 side units | **done** 2026-10-08 02:22 (4.0 h) | **13,112**; only run 471 / subrun 18 / event 33 missing (§9) | 106 GB |
 | MC nueCC | 8,877 | 999 files | **done** 2026-10-08 06:58 (4.6 h) | **8,877** | 84 GB |
 | beam-on | 10,000 | 502 slices of ≤ 20 | running since 06:58; 183 / 502 units, all clean | – | 17 GB so far |
-| beam-off | 10,000 | 508 slices of ≤ 20 | queued; expected done ~12:00 | – | – |
+| beam-off | 10,000 | 508 slices of ≤ 20 | queued; at the daytime limit expected done ~15:00–16:00 | – | – |
 
 Every finished unit has both steps at rc 0, 0 `DL vertex failed`, and no stub files. The intermittent step-2 crash (§9) was recovered by retries in every case so far.
 
@@ -72,7 +72,8 @@ The pool:
 - refuses step 2 unless `SCN_Vertex`, `torch` and `sparseconvnet` import;
 - records `dl_fail` per unit;
 - retries every failed unit once;
-- waits while there is no Kerberos ticket or the machine has < 15 GB available.
+- waits while there is no Kerberos ticket or the machine has < 15 GB available;
+- **limits concurrency by time of day**: `DAY_MAXPAR` (default half of `MAXPAR`, here 14) from `DAY_START` to `DAY_END` (default 08–20 local time, every day), `MAXPAR` (28) otherwise. The limit is re-read before every launch; running units are never killed, so a drop takes effect as units finish. A number written to `<sample>/maxpar.override` overrides both, live (delete the file to return to the schedule). Each change is logged in `pool.log` as `concurrency limit now N`.
 
 ## 4. Inputs
 
@@ -261,6 +262,8 @@ SL7_SETUP=$SBND/setup-ap.sh /exp/sbnd/app/users/yuhw/claude-utilities/in-gpvm-sl
 | **r7** | **master `b7bd2a1a`** | the #26 samples | this document |
 
 ## 11. Change log
+
+- 2026-10-08 09:18 — **daytime limit:** at most 14 jobs from 08:00 to 20:00, 28 at night, at Haiwang's request (people use the node in the day). The beam-on pool was stopped at 09:10, its 27 running units were allowed to finish, and beam-on resumed at 09:18 (411 / 502 units done) with the new `run-2step-pool.sh`.
 
 - 2026-10-08 07:51 — document rewritten for r7 (was `sbnd-r6-dlvtx-campaign.md`, now a pointer here). beam-on at 183 / 502 units, all clean.
 - 2026-10-08 07:30 — MC nueCC done: 8,877 / 8,877 events. 16 first-pass step-2 crashes, all recovered. Replay of `f0000`–`f0099`: 1,758 calls, 0 mismatch. beam-on started 06:58.

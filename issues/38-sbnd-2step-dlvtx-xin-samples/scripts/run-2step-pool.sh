@@ -10,7 +10,11 @@
 # Half-machine cap (owner's rule: <= half of the 64 cores / 125 GB):
 #   * EVERY process runs under `taskset -c $CPUSET` (default 32-63, 32 cores), so even thread-happy
 #     libraries (torch in the DL vertex) cannot use more than half the cores in total;
-#   * at most MAXPAR units at once (default 28), and no new unit starts while the RSS summed over
+#   * at most MAXPAR units at once (default 28) at night, DAY_MAXPAR (default MAXPAR/2) between
+#     DAY_START and DAY_END local time (default 08-20, every day: people use the node in the day);
+#     a file $RUN/maxpar.override holding a number overrides both, live (delete it to go back);
+#     the limit is re-read before every launch, and running units are never killed;
+#   * no new unit starts while the RSS summed over
 #     this user's lar/wire-cell processes exceeds MEM_GUARD_GB (default 50), nor while the machine's
 #     MemAvailable is below SYS_MIN_AVAIL_GB (default 15).
 #   OMP/MKL/torch thread counts are set to 1 per process.
@@ -23,6 +27,7 @@
 # Kerberos ticket (klist -s), so a lapsed ticket pauses the run instead of failing it.
 set -u
 UNITS=${1:?units.tsv}; RUN=${2:?run dir}; REALITY=${3:?sim|data}; MAXPAR=${4:-28}
+DAY_MAXPAR=${DAY_MAXPAR:-$((MAXPAR/2))}; DAY_START=${DAY_START:-8}; DAY_END=${DAY_END:-20}
 CPUSET=${CPUSET:-32-63}; MEM_GUARD_GB=${MEM_GUARD_GB:-50}; SYS_MIN_AVAIL_GB=${SYS_MIN_AVAIL_GB:-15}; WCT_TLAS=${WCT_TLAS:---tla-code dl_vtx_dump=true}
 case $REALITY in sim) FCL=wcls-img-clus-matching.fcl ;; data) FCL=wcls-img-clus-matching-data.fcl ;; *) echo "reality sim|data"; exit 2 ;; esac
 SBND=/exp/sbnd/app/users/yuhw/wcp-porting-img/sbnd
@@ -36,7 +41,7 @@ WCT=/exp/sbnd/app/users/yuhw/wire-cell-toolkit; LWC=/exp/sbnd/app/users/yuhw/lar
   echo "larwirecell $(git -C $LWC rev-parse --short HEAD) ($(git -C $LWC branch --show-current))"
   echo "wcp        $(git -C $SBND rev-parse --short HEAD) ($(git -C $SBND branch --show-current)); sbnd changes: $(git -C $SBND status --short . | wc -l)"
   echo "wire-cell-data $(git -C /exp/sbnd/app/users/yuhw/wire-cell-data rev-parse --short HEAD)"
-  echo "units      $(wc -l < $UNITS); MAXPAR $MAXPAR; CPUSET $CPUSET; MEM_GUARD_GB $MEM_GUARD_GB; SYS_MIN_AVAIL_GB $SYS_MIN_AVAIL_GB"
+  echo "units      $(wc -l < $UNITS); MAXPAR $MAXPAR (day $DAY_MAXPAR, ${DAY_START}:00-${DAY_END}:00); CPUSET $CPUSET; MEM_GUARD_GB $MEM_GUARD_GB; SYS_MIN_AVAIL_GB $SYS_MIN_AVAIL_GB"
 } >> $RUN/RUN-RECORD.txt
 
 # one unit, executed INSIDE SL7 with setup-ap.sh sourced
@@ -70,6 +75,13 @@ EOF
 chmod +x $RUN/unit.sh
 
 sys_avail_gb() { awk '/MemAvailable/ {printf "%d", $2/1048576}' /proc/meminfo; }
+cur_maxpar() {   # the concurrency limit now: override file, else day / night
+  local o h
+  o=$(cat $RUN/maxpar.override 2>/dev/null)
+  if [[ $o =~ ^[0-9]+$ ]] && [ $o -gt 0 ]; then echo $o; return; fi
+  h=$((10#$(/bin/date +%H)))
+  if [ $h -ge $DAY_START ] && [ $h -lt $DAY_END ]; then echo $DAY_MAXPAR; else echo $MAXPAR; fi
+}
 ourmem_gb() { ps -u $USER -o rss=,comm= | awk '$2 ~ /^(lar|wire-cell)$/ {s+=$1} END {printf "%d", s/1048576}'; }
 
 krb_wait() {
@@ -90,7 +102,9 @@ run_pass() {   # run_pass <pass number>: every unit whose pr/rc is not 0
     [ "$(cat $RUN/$u/pr/rc 2>/dev/null)" = 0 ] && continue
     # a retried unit keeps its failed step-2 output as pr-try<pass-1> (step 1 is re-run only if its rc != 0)
     [ $pass -gt 1 ] && [ -d $RUN/$u/pr ] && mv $RUN/$u/pr $RUN/$u/pr-try$((pass-1))
-    while [ $nrun -ge $MAXPAR ]; do wait -n; nrun=$((nrun-1)); done
+    lim=$(cur_maxpar)
+    if [ "$lim" != "${last_lim:-}" ]; then echo "$(/bin/date '+%F %T') concurrency limit now $lim" >> $RUN/pool.log; last_lim=$lim; fi
+    while [ $nrun -ge $lim ]; do wait -n; nrun=$((nrun-1)); lim=$(cur_maxpar); done
     while [ "$(ourmem_gb)" -ge $MEM_GUARD_GB ]; do /usr/bin/sleep 20; done
     # machine-wide guard (sbndbuild03 went down 2026-10-07 ~16:00 with MemAvailable at 2 GB while we held
     # 34 GB): no new unit while the whole machine has less than SYS_MIN_AVAIL_GB available
