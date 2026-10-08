@@ -226,3 +226,21 @@ Milestones M0–M5 done.
 - Same cap as before: at most 28 units on cores 32–63, and a 50 GB RSS guard.
 - Expected wall time is about 13 h, which is past the ticket's end.
 - Estimated disk is about 290 GB in `production-prep/r6-dlvtx-r26-samples/`, from about 8.9 MB/event on MC and 4.5 MB/event on data.
+
+### (d) 2026-10-07: restart on master `b7bd2a1a` (Xin's `match_isFC`), validated against Xin's d133pr references
+
+**Haiwang's request (2026-10-07 evening):** stop the r6 run, delete its outputs, validate the NCpi0 and nueCC samples against Xin's `work-{ncpi0,nuecc48}-d133pr`, and, if OK, re-run the four #26 samples.
+
+- **Stopped and deleted:** r6 had finished MC CV and 125 of 999 nueCC units. Its outputs, ~119 GB in `r6-dlvtx-r26-samples/{mc-cv,mc-nuecc,smoke,validation}`, were deleted. Lists, logs and the config proof are kept.
+  - The #30 run `r5-dlvtx-xin-samples` (40 GB) is kept until Haiwang confirms.
+  - Trap met while stopping: `pgrep -f run-2step-pool.sh` matched the stopping shell's own command line and killed it. Use `pkill -x <comm>`.
+- **Toolkit:** master `b7bd2a1a`, which contains PR 536. New for SBND: `0bb05b3c` books `T_tagger.match_isFC`; the rest is default-off or for other detectors.
+  - Incremental rebuild `BUILD_RC=0`; RPATH stripped (6 files); gates pass.
+  - larwirecell not rebuilt: none of its headers changed.
+  - Config proof: all 43 checks pass, and all 8 jobs are byte-identical to `0319ea67`.
+- **Validation:** the record is in [`docs/sbnd-r6-dlvtx-campaign.md`](../../docs/sbnd-r6-dlvtx-campaign.md) §8.
+  - With the old flash rule in our step 1, NCpi0 is 19/19 identical to Xin up to float noise, and nueCC 42/46.
+  - With production step 1, the flash-timing differences are master's new prompt-time rule, as expected.
+  - nueCC 90055, 239794, 131357 and 433451 keep small discrete differences. These are systematic on our side (our two runs agree), consistent with cross-machine effects.
+  - nueCC chunk `c2` crashes intermittently in step 2 at varying sites, with heap-corruption symptoms. It is the same family as the crash of logs (b)–(c).
+- **Run r7:** started 2026-10-07 22:23 in `production-prep/r7-r26-master-b7bd2a1a/`, with the same harness, cap and Kerberos cache. The `f0686` side units are in `mc-cv-fix/`.

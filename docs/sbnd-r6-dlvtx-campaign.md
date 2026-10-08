@@ -1,28 +1,29 @@
-# SBND 2-step chain with the DL-vertex dump: the four #26 samples (campaign r6)
+# SBND 2-step chain with the DL-vertex dump: the four #26 samples (campaign r7, on master `b7bd2a1a`)
 
-What was run, with which software, on which inputs, where the outputs are, and how to read and check the DL-vertex dump. **This document is updated as each sample finishes** (status in §1, change log in §8).
+What was run, with which software, on which inputs, where the outputs are, and how to read and check the DL-vertex dump. **This document is updated as each sample finishes** (status in §1, change log in §9).
 
-Tracking issue: [ai-helper #38](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/38), log (c) onward ([doc](../issues/38-sbnd-2step-dlvtx-xin-samples/38-sbnd-2step-dlvtx-xin-samples.md)). Machine: `sbndbuild03.fnal.gov`.
+Tracking issue: [ai-helper #38](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/38), log (d) onward ([doc](../issues/38-sbnd-2step-dlvtx-xin-samples/38-sbnd-2step-dlvtx-xin-samples.md)). Machine: `sbndbuild03.fnal.gov`.
 
 ## 1. Status
 
+Run r7 started 2026-10-07 22:23 CDT on toolkit master `b7bd2a1a`. It replaces run r6 (`sbnd-dlvtx-35` `21562551`), which was stopped and whose outputs were deleted, at Haiwang's request, once Xin's `match_isFC` update reached master (§8).
+
 | sample | events in | units | status | events with `tracking-pr.root` |
 |---|---|---|---|---|
-| MC BNB CV | 13,113 | 990 files + 2 side units | **done** 2026-10-07 20:58 | see §1 note |
-| MC nueCC | 8,877 | 999 files | running since 2026-10-07 20:58 | – |
+| MC BNB CV | 13,113 | 990 files + 2 side units (`mc-cv-fix/`) | running since 22:23 | – |
+| MC nueCC | 8,877 | 999 files | queued | – |
 | beam-on | 10,000 | 502 chunks of ≤ 20 | queued | – |
 | beam-off | 10,000 | 508 chunks of ≤ 20 | queued | – |
 
-MC BNB CV notes:
-- 13,112 of 13,113 events ran. All 991 regular units have both steps at rc 0, with 0 `DL vertex failed`.
-- One file, `f0686`, holds run 471 / subrun 18 / event 33, the known deterministic step-1 crash (#26 §5a). Its other 13 events ran as the side units `f0686a` / `f0686b`. Event 33 is lost, as in round 3.
-- One step-2 segfault (`f0587`) re-ran cleanly. This is the intermittent crash in `TrackFitting::update_association` (#38 log (b)).
+Known before the start:
+- MC CV `f0686` holds run 471 / subrun 18 / event 33, the deterministic step-1 crash (#26 §5a). Its other 13 events run as the side units `f0686a` / `f0686b` in `mc-cv-fix/`. Event 33 is lost, as in round 3.
+- An intermittent step-2 crash (`TrackFitting::update_association`, `SteinerGrapher`) hits a few units. The pool retries every failed unit once; details in §8.
 
 ## 2. Software
 
 | component | version | where |
 |---|---|---|
-| wire-cell-toolkit | branch `sbnd-dlvtx-35`, **`21562551`** (master `0319ea67` + the DL dump, WireCell PR 536 with its review fixes) | `github.com/HaiwangYu/wire-cell-toolkit`; checkout `/exp/sbnd/app/users/yuhw/wire-cell-toolkit`, installed to `/exp/sbnd/app/users/yuhw/opt` |
+| wire-cell-toolkit | **master `b7bd2a1a`** (2026-10-07: includes PR 536, the DL dump, merged; Xin's `match_isFC` in `T_tagger`, `0bb05b3c`; and his note `cfg/pgrapher/experiment/sbnd/docs/match-isfc-in-tagger-tree.md`) | `github.com/HaiwangYu/wire-cell-toolkit`; checkout `/exp/sbnd/app/users/yuhw/wire-cell-toolkit`, installed to `/exp/sbnd/app/users/yuhw/opt` |
 | larwirecell | branch `dev-v10_14_02_02`, **`189ad26`** (adds `wclsOpHitSource`, `wclsTruthInformationAttacher`, the labeler RNG re-seed) | `github.com/HaiwangYu/larwirecell`; MRB tree `/exp/sbnd/app/users/yuhw/larsoft-wct036/v10_14_02/srcs/larwirecell`, libs in `opt/larwirecell/v10_01_28/slf7.x86_64.e26.prof/lib` |
 | wcp-porting-validation | `main`, **`072505ce`** (the step-1 fcls `sbnd/wcls-img-clus-matching{,-data}.fcl`) | `github.com/WireCell/wcp-porting-validation`; `/exp/sbnd/app/users/yuhw/wcp-porting-img` |
 | wire-cell-data | `9e2f4b8` + `uboone/weights/XGB_nue_seed2_0923.xml` (md5 `2bdb5cec…`) | `/exp/sbnd/app/users/yuhw/wire-cell-data` |
@@ -30,9 +31,12 @@ MC BNB CV notes:
 | DL runtime | uBooNE UPS `scn v01_00_00` (torch, sparseconvnet; python 3.9.15) + toolkit `pyutil/python/SCN_Vertex.py` installed in `opt/python` | `sbnd/setup-dlvtx.sh` |
 | LArSoft environment | `sbndcode v10_14_02_03 -q e26:prof`, in the SL7 apptainer | `sbnd/setup-ap.sh` |
 
-The compiled configs were proven before the run (#38 log (c), `scripts/cfg-proof.py`, all 43 checks):
-- With the dump off, all 8 SBND jobs are byte-identical to master `0319ea67`.
+The compiled configs were proven before the run (`r7-r26-master-b7bd2a1a/cfg-proof/report.txt`, all 43 checks):
+- All 8 SBND jobs compile byte-identically to master `0319ea67` and to `21562551`; Xin's changes are C++ or default-off.
 - The dump adds only `SCEFieldTH3:sbnd_dualmap_fwd` and the `dl_vtx_dump` / `sce_field` keys.
+- larwirecell was not rebuilt, because none of the headers it includes changed.
+
+New in `tracking-pr.root` with this toolkit: `T_tagger.match_isFC` (Float_t 0/1, per neutrino candidate). It is the containment flag the numu and nue BDTs read; previously it was computed but never written.
 
 ## 3. The chain
 
@@ -55,12 +59,12 @@ Exactly #26's events, from its per-event manifests (`<file> <nskip> <run> <subru
 
 | sample | SAM definition | #26 manifest (sbndbuild03) | unit list for this run |
 |---|---|---|---|
-| MC BNB CV | `aurora_SBND2026A_gen2_BNBLight_prodgenie_corsika_proton_rockbox0p1_sbnd_CV_v10_14_02_03_reco1_sbnd` | `/exp/sbnd/data/users/yuhw/production-prep/r3-mc-cv-2026-09-09/lists/mc.manifest` (1,000 files on `/pnfs/sbn/data_add/sbn_nd/aurora/mc/v10_14_02_03/…/Gen2_2026/CV/reco1/`) | `r6-dlvtx-r26-samples/lists/mc-cv.units.tsv` (990), `mc-cv.fix-471-18-33.tsv` (2) |
+| MC BNB CV | `aurora_SBND2026A_gen2_BNBLight_prodgenie_corsika_proton_rockbox0p1_sbnd_CV_v10_14_02_03_reco1_sbnd` | `/exp/sbnd/data/users/yuhw/production-prep/r3-mc-cv-2026-09-09/lists/mc.manifest` (1,000 files on `/pnfs/sbn/data_add/sbn_nd/aurora/mc/v10_14_02_03/…/Gen2_2026/CV/reco1/`) | `r7-r26-master-b7bd2a1a/lists/mc-cv.units.tsv` (990), `mc-cv.fix-471-18-33.tsv` (2) |
 | MC nueCC | `aurora_SBND2026A_gen2_BNBLight_prodgenie_corsika_proton_rockbox0p1_sbnd_EX_nuecc_v10_14_02_05_reco1_sbnd` | `/exp/sbnd/data/users/yuhw/production-prep/r3-nuecc-2026-09-10/lists/nuecc.manifest` (999 files, `…/v10_14_02_05/…/Gen2_Exclusive_2026/nuecc/reco1/`) | `lists/mc-nuecc.units.tsv` |
 | beam-on | `data_MCP2025C_Fall25-Run1_BNB_FixedDev_bnblight_v10_14_02_reco1_sbnd` (runs 18255, 18259) | `/exp/sbnd/data/users/yuhw/production-prep/r3-beam-on-2026-09-10/lists/beam-on.manifest`; files staged, merged and **frameshifted** in `r3-data-stage-2026-09-09/beam-on/chunk*.root` | `lists/beam-on.units.tsv` |
 | beam-off | `data_SBND2026A_gen2_InTime-Run1_v10_14_02_02_reco1_sbnd` | `/exp/sbnd/data/users/yuhw/production-prep/r3-beam-off-2026-09-11/lists/beam-off.manifest`; staged and frameshifted in `r3-data-stage-2026-09-09/beam-off/chunk*.root` | `lists/beam-off.units.tsv` |
 
-- `lists/` is `/exp/sbnd/data/users/yuhw/production-prep/r6-dlvtx-r26-samples/lists/`. Each `*.units.tsv` row is `unit  file  nskip  nevents`.
+- `lists/` is `/exp/sbnd/data/users/yuhw/production-prep/r7-r26-master-b7bd2a1a/lists/`. Each `*.units.tsv` row is `unit  file  nskip  nevents`.
 - MC: one unit per reco1 file, with the event count #26 used. Data: 20-event slices of the staged chunks in art FileIndex order.
 - **10 MC CV files (104 events) of #26 no longer exist** on `/pnfs`, and SAM no longer knows them. They are listed in `lists/mc-cv.missing.txt`. MC CV is therefore 13,113 events, not 13,217.
 - The SBND2026A `gen2_BNB-Run1` set is blinded and is not used.
@@ -68,7 +72,7 @@ Exactly #26's events, from its per-event manifests (`<file> <nskip> <run> <subru
 ## 5. Outputs
 
 ```
-/exp/sbnd/data/users/yuhw/production-prep/r6-dlvtx-r26-samples/
+/exp/sbnd/data/users/yuhw/production-prep/r7-r26-master-b7bd2a1a/
   <sample>/<unit>/ql/qlpctree.tar.gz          step-1 tar, every event of the unit (MC: truth_nu / truth_pf tables)
                     ql/mabc.zip                step-1 Bee (imaging, clustering, op; MC: sed-* truth deposits)
                     ql/nugraph.h5              labeler HDF5
@@ -82,8 +86,9 @@ Exactly #26's events, from its per-event manifests (`<file> <nskip> <run> <subru
   <sample>/summary.md       counts, resources, sizes
   <sample>/dlvtx-stats.txt  DL decision statistics (issue 35 dlvtx-stats.py)
   <sample>/pool.log         one line per unit: ql_rc, pr_rc, dl_fail
+  mc-cv-fix/                the two f0686 side units (events 1-30, 34-50 of that file)
   cfg-proof/                compiled configs and report of the config proof
-  validation/               standalone-inference replays (§7)
+  validation/               the comparison with Xin's references (§8) and standalone-inference replays (§7)
 ```
 `<sample>` is `mc-cv`, `mc-nuecc`, `beam-on` or `beam-off`. A `tracking-pr.root` without a `Trun` tree is a stub left by a crashed step 2, and `summarize.py` reports it. `tracking-pr.root` holds the usual trees: `Trun`, `T_kine`, `T_tagger`, `T_cluster`, `T_rec_charge`, `T_bad_ch`, `T_proj`, `T_proj_data`, `T_bundle`, `T_flash`, `T_segment`, plus `T_truth_nu` / `T_truth_pf` on MC. It also holds the two trees below.
 
@@ -172,8 +177,36 @@ SL7_SETUP=$SBND/setup-ap.sh /exp/sbnd/app/users/yuhw/claude-utilities/in-gpvm-sl
 |---|---|---|---|---|
 | #35, Aurora: MC-9, NCpi0-19, nueCC-48, gen2 CV 1006, PR 536 review build | > 2,000 | – | – | 0 |
 | #38 smoke on sbndbuild03 (#30 MC CV, nueCC, beam-off; build `78f81c64`) | 34 | 20 | 14 (worst 7.2e-7) | 0 |
-| **this campaign**, MC CV units `f0000`–`f0099`, 1,212 events (build `21562551`; `validation/replay-mccv-f0000-f0099.{txt,json}`) | 1,172 (586 prod + 586 off) | 697 | 475 (worst 2.7e-6) | **0** |
+| run r6 (deleted), MC CV units `f0000`–`f0099`, 1,212 events (build `21562551`) | 1,172 (586 prod + 586 off) | 697 | 475 (worst 2.7e-6) | **0** |
+| run r7: to be run on the new outputs | | | | |
 
-## 8. Change log
+## 8. Validation against Xin's references (before the r7 start)
 
-- 2026-10-07 21:10 — created. MC CV done; MC nueCC running; beam-on/off queued. Replay of MC CV `f0000`–`f0099`: 1,172 calls, 0 mismatch.
+**References** (Xin, toolkit `469ae3be`, the same code as `b7bd2a1a`, on wcgpu1): `/nashome/y/yuhw/sbnd-data/sbnd_xin/work-{ncpi0,nuecc48}-d133pr/pr_evt<E>/tracking-pr.root`, 19 NCpi0 + 48 nueCC data events. They are his PR stage only, run on his existing 2026-09-25 (`m0925`) charge-light matching products.
+
+**Ours:** the full 2-step chain at production settings (dump on) on the same events, from Lynn's frameshifted files. Output is in `r7-r26-master-b7bd2a1a/validation/`. Every branch of every tree is compared per event (`evt-branch-diff.py`, NaN = NaN). Branches whose largest relative difference is ≤ 1e-6 count as float noise.
+
+| comparison | NCpi0 (19) | nueCC (48) |
+|---|---|---|
+| ours (production step 1) vs Xin | 9 float noise only, 10 also flash timing | 30 float noise only, 12 also flash timing, 6 with physics differences |
+| ours with the **old flash rule** in step 1 vs Xin | **19 float noise only** | **42 float noise only**, 4 with physics differences (2 events not compared: crashed chunk) |
+| ours production vs ours old-flash (same machine) | – | 30 bit-identical, 13 flash timing only, 3 changed by the flash rule |
+
+- **Float noise:** `T_rec_charge` `q`, `reduced_chi2` and fit points at ~1e-13 relative. This is the cross-machine residual recorded in `docs/sbnd-1step-build-run-validate.md` §7.
+- **Flash timing** (`T_flash.time_us`, `T_cluster.cluster_t0_us` / `flash_time_us`): master's new `SBNDOpFlashFinder` prompt-time rule (`4afd5cac`, deploy note change 1) is in our step 1. Xin's products predate it.
+  - With the old rule (`prompt_min_* = 0`, deploy note §3.3) all of it vanishes.
+  - Events 81597 and 350186, whose candidate cluster changed, then also match Xin. 131357 changes with the rule too.
+- **Still different from Xin with the old rule:** nueCC 90055 (`ssm_offvtx_energy`, 3e-4 rel), 239794 (`hol_2_ncount` 2 → 1), 131357 (Enu 1e-4 rel, one segment) and 433451 (vertex moved ~mm, Enu 3 %).
+  - Our two runs give the same result for 90055, 239794 and 433451, so the difference is systematic, not run-to-run.
+  - It is consistent with cross-machine float differences (wcgpu1 vs sbndbuild03, including the DL network's float path) seeding discrete choices.
+  - It cannot be pinned further without Xin's `m0925` step-1 products on this machine.
+- **Intermittent step-2 crash:** nueCC chunk `c2` (events 269774 … 444187) crashed in 3 of 4 step-2 runs, at varying events.
+  - The crash site moved: `TrackFitting::update_association` the first time, `Steiner::Grapher::find_peak_point_indices` (`SteinerGrapher.cxx:1027`) the second.
+  - Once, before the crash, the DL network call failed with `Python function call failed: unknown parameter type`.
+  - This points to heap corruption earlier in the PR. The runs that finished agree bit-for-bit.
+  - Reproducer: `validation/oldflash/nuecc48/c2/ql/qlpctree.tar.gz` with production step 2. To fix ourselves later.
+
+## 9. Change log
+
+- 2026-10-07 22:23 — **r7 started on master `b7bd2a1a`** (§1), after the validation of §8. Run r6 was stopped (MC CV done; nueCC 125 of 999 units in), and its outputs (~119 GB, `r6-dlvtx-r26-samples/{mc-cv,mc-nuecc,smoke,validation}`) were deleted at Haiwang's request. The r6 lists, logs and config proof are kept. Toolkit rebuilt; RPATH stripped; build and config-proof gates pass.
+- 2026-10-07 21:10 — created (run r6). MC CV done; MC nueCC running; beam-on/off queued. Replay of MC CV `f0000`–`f0099`: 1,172 calls, 0 mismatch.
