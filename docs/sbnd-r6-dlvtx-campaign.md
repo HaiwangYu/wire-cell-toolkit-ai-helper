@@ -10,13 +10,20 @@ Run r7 started 2026-10-07 22:23 CDT on toolkit master `b7bd2a1a`. It replaces ru
 
 | sample | events in | units | status | events with `tracking-pr.root` |
 |---|---|---|---|---|
-| MC BNB CV | 13,113 | 990 files + 2 side units (`mc-cv-fix/`) | running since 22:23 | – |
-| MC nueCC | 8,877 | 999 files | queued | – |
+| MC BNB CV | 13,113 | 990 files + 2 side units (`mc-cv-fix/`) | **done** 2026-10-08 02:22 (4.0 h) | **13,112** (13,099 + 13 side); only run 471 / subrun 18 / event 33 missing |
+| MC nueCC | 8,877 | 999 files | running since 2026-10-08 02:22 | – |
 | beam-on | 10,000 | 502 chunks of ≤ 20 | queued | – |
 | beam-off | 10,000 | 508 chunks of ≤ 20 | queued | – |
 
 Known before the start:
 - MC CV `f0686` holds run 471 / subrun 18 / event 33, the deterministic step-1 crash (#26 §5a). Its other 13 events run as the side units `f0686a` / `f0686b` in `mc-cv-fix/`. Event 33 is lost, as in round 3.
+MC BNB CV result (`mc-cv/summary.md`, `mc-cv/dlvtx-stats.txt`):
+- 989 of 990 regular units have both steps at rc 0, plus both side units. Every unit has 0 `DL vertex failed`, and no stub files remain.
+- One step-2 crash (`f0068`, `TrackFitting.cxx:1028`, peak RSS 4.4 GB) was recovered by the retry pass.
+- 6,155 neutrino candidates (47.0 %). DL calls: 6,140 production + 6,140 OFF pass. DL accepted: 5,909 production, 3,323 OFF pass.
+- Final vertex vs the SCE-shifted truth, over all candidates: median 0.84 cm, 52 % < 1 cm.
+- Per event: step 1 24.0 s CPU, step 2 3.5 s CPU. 106 GB on disk.
+
 - An intermittent step-2 crash (`TrackFitting::update_association`, `SteinerGrapher`) hits a few units. The pool retries every failed unit once; details in §8.
 
 ## 2. Software
@@ -178,7 +185,7 @@ SL7_SETUP=$SBND/setup-ap.sh /exp/sbnd/app/users/yuhw/claude-utilities/in-gpvm-sl
 | #35, Aurora: MC-9, NCpi0-19, nueCC-48, gen2 CV 1006, PR 536 review build | > 2,000 | – | – | 0 |
 | #38 smoke on sbndbuild03 (#30 MC CV, nueCC, beam-off; build `78f81c64`) | 34 | 20 | 14 (worst 7.2e-7) | 0 |
 | run r6 (deleted), MC CV units `f0000`–`f0099`, 1,212 events (build `21562551`) | 1,172 (586 prod + 586 off) | 697 | 475 (worst 2.7e-6) | **0** |
-| run r7: to be run on the new outputs | | | | |
+| **run r7**, MC CV units `f0000`–`f0099`, 1,212 events (master `b7bd2a1a`; `validation/replay/mccv-f0000-f0099.{txt,json}`) | 1,172 | 697 | 475 (worst 2.7e-6) | **0** |
 
 ## 8. Validation against Xin's references (before the r7 start)
 
@@ -207,6 +214,8 @@ SL7_SETUP=$SBND/setup-ap.sh /exp/sbnd/app/users/yuhw/claude-utilities/in-gpvm-sl
   - Reproducer: `validation/oldflash/nuecc48/c2/ql/qlpctree.tar.gz` with production step 2. To fix ourselves later.
 
 ## 9. Change log
+
+- 2026-10-08 02:22 — MC BNB CV done: 13,112 / 13,113 events. Replay of `f0000`–`f0099`: 1,172 calls, 0 mismatch. MC nueCC started.
 
 - 2026-10-07 22:23 — **r7 started on master `b7bd2a1a`** (§1), after the validation of §8. Run r6 was stopped (MC CV done; nueCC 125 of 999 units in), and its outputs (~119 GB, `r6-dlvtx-r26-samples/{mc-cv,mc-nuecc,smoke,validation}`) were deleted at Haiwang's request. The r6 lists, logs and config proof are kept. Toolkit rebuilt; RPATH stripped; build and config-proof gates pass.
 - 2026-10-07 21:10 — created (run r6). MC CV done; MC nueCC running; beam-on/off queued. Replay of MC CV `f0000`–`f0099`: 1,172 calls, 0 mismatch.
