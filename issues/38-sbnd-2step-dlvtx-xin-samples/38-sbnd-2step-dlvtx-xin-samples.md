@@ -2,7 +2,7 @@
 
 GitHub: https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/38.
 
-**Campaign record (software, inputs, outputs, the dump trees, the replay check), kept current:** [`docs/sbnd-r6-dlvtx-campaign.md`](../../docs/sbnd-r6-dlvtx-campaign.md).
+**Campaign record (software, inputs, outputs, the dump trees, the replay check), kept current:** [`docs/sbnd-r7-dlvtx-campaign.md`](../../docs/sbnd-r7-dlvtx-campaign.md).
 
 Builds on:
 - #33: **our** larwirecell 2-step chain. Step 1 is `lar -c wcls-img-clus-matching{,-data}.fcl`, which writes `qlpctree.tar.gz`. Step 2 is standalone `wire-cell -c pgrapher/experiment/sbnd/wct-pr.jsonnet` on that tar. This is not Xin's sbnd-reco1 2-step chain.
@@ -238,7 +238,7 @@ Milestones M0–M5 done.
   - Incremental rebuild `BUILD_RC=0`; RPATH stripped (6 files); gates pass.
   - larwirecell not rebuilt: none of its headers changed.
   - Config proof: all 43 checks pass, and all 8 jobs are byte-identical to `0319ea67`.
-- **Validation:** the record is in [`docs/sbnd-r6-dlvtx-campaign.md`](../../docs/sbnd-r6-dlvtx-campaign.md) §8.
+- **Validation:** the record is in [`docs/sbnd-r7-dlvtx-campaign.md`](../../docs/sbnd-r7-dlvtx-campaign.md) §8.
   - With the old flash rule in our step 1, NCpi0 is 19/19 identical to Xin up to float noise, and nueCC 42/46.
   - With production step 1, the flash-timing differences are master's new prompt-time rule, as expected.
   - nueCC 90055, 239794, 131357 and 433451 keep small discrete differences. These are systematic on our side (our two runs agree), consistent with cross-machine effects.
