@@ -6,27 +6,27 @@ The record of production run **r7**: what ran, with which software, on which inp
 - Machine: `sbndbuild03.fnal.gov`, at most half of it (cores 32–63, ≤ 50 GB of our RSS). **Jobs: ≤ 14 in the day (08:00–20:00 local), ≤ 28 at night**, since 2026-10-08 09:18.
 - Output: `/exp/sbnd/data/users/yuhw/production-prep/r7-r26-master-b7bd2a1a/`.
 
-## 1. Status (2026-10-08 07:51 CDT)
+## 1. Status (2026-10-08 10:40 CDT)
 
 | sample | events in | units | status | events with `tracking-pr.root` | disk |
 |---|---|---|---|---|---|
 | MC BNB CV | 13,113 | 990 files + 2 side units | **done** 2026-10-08 02:22 (4.0 h) | **13,112**; only run 471 / subrun 18 / event 33 missing (§9) | 106 GB |
 | MC nueCC | 8,877 | 999 files | **done** 2026-10-08 06:58 (4.6 h) | **8,877** | 84 GB |
-| beam-on | 10,000 | 502 slices of ≤ 20 | running since 06:58; 183 / 502 units, all clean | – | 17 GB so far |
-| beam-off | 10,000 | 508 slices of ≤ 20 | queued; at the daytime limit expected done ~15:00–16:00 | – | – |
+| beam-on | 10,000 | 502 slices of ≤ 20 | **done** 2026-10-08 10:10 (3.2 h, 14 jobs from 09:18) | **10,000 / 10,000** | 43 GB |
+| beam-off | 10,000 | 508 slices of ≤ 20 | running since 2026-10-08 10:10 (14 jobs in the day); expected ~15:00–16:00 | – | – |
 
 Every finished unit has both steps at rc 0, 0 `DL vertex failed`, and no stub files. The intermittent step-2 crash (§9) was recovered by retries in every case so far.
 
-| result (all candidates) | MC BNB CV | MC nueCC |
-|---|---|---|
-| neutrino candidates (`T_kine` present) | 6,155 (47.0 %) | 8,426 (94.9 %) |
-| DL calls: production / OFF pass | 6,140 / 6,140 | 8,730 / 8,730 |
-| DL accepted: production / OFF pass | 5,909 / 3,323 | 8,525 / 6,913 |
-| production pick replaced by the OFF-pass hint (`dual_transferred`) | 3,054 | 2,982 |
-| final vertex vs SCE-shifted truth: median, < 1 cm | 0.84 cm, 52 % | 0.75 cm, 55 % |
-| events with `T_truth_nu` | 13,112 | 8,877 |
-| step 1 / step 2 CPU per event | 24.0 s / 3.5 s | 27.6 s / 19.1 s |
-| max RSS, step 1 / step 2 | 2.8 GB / 2.7 GB | 3.1 GB / 3.0 GB |
+| result (all candidates) | MC BNB CV | MC nueCC | beam-on |
+|---|---|---|---|
+| neutrino candidates (`T_kine` present) | 6,155 (47.0 %) | 8,426 (94.9 %) | 4,604 (46.0 %) |
+| DL calls: production / OFF pass | 6,140 / 6,140 | 8,730 / 8,730 | 4,521 / 4,521 |
+| DL accepted: production / OFF pass | 5,909 / 3,323 | 8,525 / 6,913 | 4,340 / 2,170 |
+| production pick replaced by the OFF-pass hint (`dual_transferred`) | 3,054 | 2,982 | 2,457 |
+| final vertex vs SCE-shifted truth: median, < 1 cm | 0.84 cm, 52 % | 0.75 cm, 55 % | – (data) |
+| events with `T_truth_nu` | 13,112 | 8,877 | 0 (data) |
+| step 1 / step 2 CPU per event | 24.0 s / 3.5 s | 27.6 s / 19.1 s | 18.9 s / 3.6 s |
+| max RSS, step 1 / step 2 | 2.8 GB / 2.7 GB | 3.1 GB / 3.0 GB | 2.9 GB / 2.4 GB |
 
 Per-sample details: `<sample>/summary.md` (counts, resources, sizes), `<sample>/dlvtx-stats.txt` (DL decisions), `<sample>/events.tsv` (one row per event).
 
@@ -204,6 +204,7 @@ SL7_SETUP=$SBND/setup-ap.sh /exp/sbnd/app/users/yuhw/claude-utilities/in-gpvm-sl
 |---|---|---|---|---|
 | MC CV units `f0000`–`f0099`, 1,212 events (`validation/replay/mccv-f0000-f0099.{txt,json}`) | 1,172 | 697 | 475 (worst 2.7e-6) | **0** |
 | MC nueCC units `f0000`–`f0099` (`validation/replay/nuecc-f0000-f0099.{txt,json}`) | 1,758 | 724 | 1,034 (worst 6.1e-6) | **0** |
+| beam-on units `k00_*`, `k01_*` (`validation/replay/beamon-k00-k01.{txt,json}`) | 1,790 | 1,181 | 609 (worst 1.5e-6) | **0** |
 | for reference: #35 on Aurora (MC-9, NCpi0-19, nueCC-48, gen2 CV 1006) | > 2,000 | – | – | 0 |
 
 ## 8. Validation against Xin's references
@@ -239,7 +240,8 @@ SL7_SETUP=$SBND/setup-ap.sh /exp/sbnd/app/users/yuhw/claude-utilities/in-gpvm-sl
 |---|---|---|---|
 | MC BNB CV | 1 (`f0068`) | 1 | 1 per 13,000 events |
 | MC nueCC | 16 (14 × SIGSEGV, 1 × rc 11, 1 × abort) | 15 + 1 on a third attempt (`f0882`) | 1 per 550 events |
-| beam-on / beam-off | so far 0 | – | – |
+| beam-on | 4 (`k05_030`, `k05_042`, `k06_046`, `k07_006`; all SIGSEGV) | 4 (`k06_046` on the third run) | 1 per 2,500 events |
+| beam-off | running | – | – |
 
 - **Crash sites move:** `TrackFitting::update_association` (`TrackFitting.cxx:3702`, `:3734`), `TrackFitting.cxx:1028`, and `Steiner::Grapher::find_peak_point_indices` (`SteinerGrapher.cxx:1027`).
 - **Common signature:**
@@ -262,6 +264,8 @@ SL7_SETUP=$SBND/setup-ap.sh /exp/sbnd/app/users/yuhw/claude-utilities/in-gpvm-sl
 | **r7** | **master `b7bd2a1a`** | the #26 samples | this document |
 
 ## 11. Change log
+
+- 2026-10-08 10:40 — beam-on done: 10,000 / 10,000 events, 4,604 candidates (46.0 %); 4 first-pass step-2 crashes, all recovered. Replay `k00`–`k01`: 1,790 calls, 0 mismatch. beam-off running.
 
 - 2026-10-08 09:18 — **daytime limit:** at most 14 jobs from 08:00 to 20:00, 28 at night, at Haiwang's request (people use the node in the day). The beam-on pool was stopped at 09:10, its 27 running units were allowed to finish, and beam-on resumed at 09:18 (411 / 502 units done) with the new `run-2step-pool.sh`.
 
