@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/38.
 
+**Campaign record (software, inputs, outputs, the dump trees, the replay check), kept current:** [`docs/sbnd-r6-dlvtx-campaign.md`](../../docs/sbnd-r6-dlvtx-campaign.md).
+
 Builds on:
 - #33: **our** larwirecell 2-step chain. Step 1 is `lar -c wcls-img-clus-matching{,-data}.fcl`, which writes `qlpctree.tar.gz`. Step 2 is standalone `wire-cell -c pgrapher/experiment/sbnd/wct-pr.jsonnet` on that tar. This is not Xin's sbnd-reco1 2-step chain.
 - #35: the DL-vertex dump. `dl_vtx_dump=true` adds `T_dlvtx_call` / `T_dlvtx_cloud` to `tracking-pr.root` and changes nothing else.
