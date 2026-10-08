@@ -170,6 +170,31 @@ pts = {}
 for p in f.T_dlvtx_cloud:
     pts.setdefault((p.nu_index, p.call_index), []).append((p.x, p.y, p.z, p.q))
 ```
+### Which vertex is the training target
+
+`T_dlvtx_call` carries several vertices. Only the `truth_*` ones are labels; the others are reconstruction outputs at different stages of the decision:
+
+| vertex | what it is |
+|---|---|
+| `payload` (top-K voxels) | the network's raw output for this call |
+| `trad_*` | the traditional (non-DL) main vertex before the DL step |
+| `rerank_*` | this call's own pick after the rerank and score gate, before the dual-chain snap |
+| `hint_*` | production rows only: the OFF pass's final vertex, handed over as the snap hint |
+| `dl_*` | the DL vertex actually accepted, after snap and veto (if `accepted`) |
+| `final_*` | the candidate's final main vertex after the refit; what ends up in the PR output |
+| `truth_*` | MC: the true neutrino interaction vertex (GENIE `MCTruth` `Nu()` start), **no SCE** |
+| `truth_reco_*` | MC: the same vertex moved by the SBND TrueFwd SCE map (`SCEoffsets_SBND_E500_dualmap_CV_voxelTH3.root`, sbnd_data v01_42_00): **true + SCE displacement**, i.e. where the charge of that point appears in the reconstruction |
+| `truth_all_*` | MC: every interaction of the event, raw and SCE-shifted (`truth_all_reco_*`) |
+
+**Use `truth_reco_x/y/z` as the target** (requires `truth_valid == 1` and `truth_sce_applied == 1`). The network input (`T_dlvtx_cloud`) is in the reconstructed frame, which includes SCE, so the label must be in that frame too. Measured on r7 nueCC (2,680 events, 2,385 candidates selected as below): the final vertex lies a median **0.60 cm** from `truth_reco_*` (61 % < 1 cm) but 1.28 cm from the raw `truth_*` (42 % < 1 cm). The median signed offset to `truth_reco_*` is (−0.01, −0.00, +0.06) cm, so there is no residual frame shift (the cluster t0 correction puts x on the truth).
+
+**Match the truth to the candidate.** `truth_*` / `truth_reco_*` are the event's **max-edep** interaction, the same for every candidate of the event. Events often hold more than one interaction (rockbox / dirt neutrinos; in the r7 nueCC check, most selected rows had `truth_n > 1`), and an event can have several candidates. So:
+- keep a candidate only if the label belongs to it, e.g. its production cloud has a point within ~3 cm of `truth_reco_*` (what `dlvtx-truth-eval.py` does);
+- or choose, per candidate, the `truth_all_reco_*` entry closest to its cloud, with `truth_all_edep > 0`;
+- and require the raw vertex inside the active volume (|x| < 200, |y| < 200, 0 < z < 500 cm).
+
+Both clouds of a candidate (`pass` 0, exclusion on; `pass` 1, exclusion off) take the same label. Data files have no truth.
+
 To select training data, #35 log (e) uses: the truth vertex in the active volume, the candidate whose production cloud contains it, and `pass` 0 or 1 for the two clouds (`issues/35-*/scripts/dlvtx-truth-eval.py`).
 
 ## 7. Validating the dump: WCT-integrated vs standalone inference
@@ -264,6 +289,8 @@ SL7_SETUP=$SBND/setup-ap.sh /exp/sbnd/app/users/yuhw/claude-utilities/in-gpvm-sl
 | **r7** | **master `b7bd2a1a`** | the #26 samples | this document |
 
 ## 11. Change log
+
+- 2026-10-08 — §6: which vertex to use as the training target (`truth_reco_*`, SCE-shifted), with the r7 nueCC frame check.
 
 - 2026-10-08 10:40 — beam-on done: 10,000 / 10,000 events, 4,604 candidates (46.0 %); 4 first-pass step-2 crashes, all recovered. Replay `k00`–`k01`: 1,790 calls, 0 mismatch. beam-off running.
 
