@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/39.
 
+**Status (2026-10-08): validated on FNAL sbndbuild03** on 5 gen2 CV pairs: `recTreeWireCell` in every merged CAF is identical to its `tracking-pr.root` (68 / 68 events, 1.06 M values), and the cost of each step is recorded (log (b)). Not yet run on Aurora (needs the owner's login); `sbnd-wirecell-production/aurora/AGENTS.md` has the deployment steps.
+
 **Ask (Haiwang, 2026-10-08).** For large-scale production, put the Wire-Cell standalone output (`tracking-pr.root`) into the commonly used flat CAF as a new tree, `recTreeWireCell`.
 - **Task 1:** analyse an existing flat CAF: how `recTree` handles jagged content, and how it maps to `GenieEvtRecTree`.
 - **Task 2:** make every `tracking-pr.root` tree per event, and carry metadata (the input artROOT path) from step 1 through `qlpctree.tar.gz`.
@@ -138,3 +140,45 @@ There are only eight value types in all: Int_t, Float_t, Double_t, string, vecto
 - The 2-event merge into the 15-event `f33e` CAF passes validation: 31,506 values in 1,023 rows of 30 trees exact, 13 entries empty with `valid = 0`, and all original CAF keys unchanged.
 - **Negative tests, both caught:** a row tree deleted from a `tracking-pr.root`; a single integer changed by +1 (`T_bad_ch.chid`, row 0), found as "`wc.T_bad_ch.chid` differs".
 - `find-pairs.py` finds the 5 test pairs by path, and in SAM mode the first 3 pairs of the CV definitions with their `/pnfs` locations and event counts.
+
+### (b) 2026-10-08: validation on 5 pairs, and the cost of each step
+
+`bin/run-pairs.sh site/fnal-sbndbuild03.sh pairs-path.tsv run5` ran the 5 test pairs through steps 1–3 plus validation. Work dir: `production-prep/caf-merge-dev/run5/`.
+- **Software:** toolkit `sbnd-wc-flatcaf` `f6fd2209`, larwirecell `sbnd-wc-flatcaf` `3b54651`, wcp-porting-validation `main`, schema md5 `c845fe94fbe5`.
+- **Outcome:** all 5 pairs `OK`; no step-2 retry was needed.
+
+| pair | CAF events | merged events | rows compared | values compared | validation |
+|---|---|---|---|---|---|
+| `0045-7b83-3292-4b82` | 11 | 11 | 4,761 | 132,947 | PASS |
+| `00a3-5b88-5b98-db94` | 16 | 16 | 7,342 | 209,415 | PASS |
+| `00d8-4843-8a75-5672` | 17 | 17 | 13,505 | 476,417 | PASS |
+| `0100-7286-fc4e-3030` | 9 | 9 | 2,871 | 66,858 | PASS |
+| `f33e-e536-780d-5a11` | 15 | 15 | 6,265 | 176,526 | PASS |
+| **total** | **68** | **68** | **34,744** | **1,062,163** | **0 problems** |
+
+What "PASS" checks (`validate-merge.py`):
+- **(A)** Every key of the original CAF is in the merged file with the same name, cycle, class, object length and compressed size, so the original data is untouched. The new keys are exactly `recTreeWireCell` and `recTreeWireCell_info`.
+- **(B)** `recTreeWireCell` has one entry per `recTree` entry, with the same run / subrun / event, in order.
+- **(C)** For each event, every row tree of `tracking-pr.root` is reproduced: the row count, and every value of every branch of every row. That covers scalars with their type, vectors and strings through `..idx` / `..length`, and `vector<vector>` through `.v`; NaN = NaN.
+- **(D)** Events without Wire-Cell output have `valid = 0` and 0 rows.
+- **Negative tests:** a deleted row tree, and one integer changed by +1, both make it FAIL (log (a)).
+
+**Usability:** `uproot` reads the merged CAF directly. `recTreeWireCell` and `recTree` align event by event, and e.g. `wc.T_kine.kine_reco_Enu` and `wc.T_dlvtx_call.truth_reco_x` come out as jagged arrays per candidate / call.
+
+**Cost** (`run5/cost-summary.md` and per pair `cost.tsv`; one process per pair and step, pinned to cores 32–63, sbndbuild03):
+
+| step | what | wall / event | CPU / event | max RSS (median / max) | output / event |
+|---|---|---|---|---|---|
+| 1 | reco1 → `qlpctree.tar.gz` (`lar`, imaging to all-APA clustering) | 24.0 s | 23.6 s | 1.66 / 1.69 GB | 8.9 MB (tar 1.8, Bee 5.2, nugraph.h5 1.3, …) |
+| 2 | tar → `tracking-pr.root` + `recTreeWireCell` (PR, DL vertex with the dump) | 3.5 s | 3.0 s | 1.41 / 1.52 GB | 0.66 MB (incl. step-2 Bee) |
+| 3 | merge into the flat CAF | 0.18 s | 0.16 s | 0.58 GB | +51.5 kB to the CAF (53.9 → 57.4 MB, +6.5 %) |
+| check | validation | 0.42 s | 0.41 s | 0.72 / 0.80 GB | – |
+
+- Per pair (one reco1 file, 9–17 events): step 1 takes 3.5–7 min, step 2 25–85 s, step 3 2–3 s.
+- Step 2 here is BNB CV. nueCC is ~6× more CPU per event in step 2 (19 s, #38).
+- **Inside `tracking-pr.root`, the one-entry `recTreeWireCell` takes 75 kB / event against 46 kB for the row trees,** because each of its 2,283 branches has its own basket. In the merged CAF, with entries in one tree, it is 51.5 kB / event. The visitor's `drop_row_trees: true` would drop the duplication, at the cost of the row trees the existing tools read.
+
+**Next:**
+- run on Aurora (`AGENTS.md`, "Deploying on Aurora"): build the two `sbnd-wc-flatcaf` branches there, then the 5-pair smoke via `pbs/run-pairs.pbs`;
+- upstream the `T_proj_data` type fix;
+- the owner's call on `drop_row_trees` for production.
