@@ -98,6 +98,65 @@ There are only eight value types in all: Int_t, Float_t, Double_t, string, vecto
   - An event without Wire-Cell output (crashed or not run) gets an empty entry with `wc.valid = 0`.
   - Pairs are found by SAM definition (`samweb`, the CAF's parent is the reco1) or by path, from the name mapping `reco1-X.root` ↔ `reco2-reco1-X.{flat.,}caf.root`.
 
+## Workflow
+
+Scripts in `HaiwangYu/sbnd-wirecell-production`, folder `aurora/bin/`.
+- `run-pairs.sh` drives the whole chain: one `run-pair.sh` per pair, up to the site's concurrency limit.
+- Each step runs inside the SL7 container and is timed into `<pair>/cost.tsv`.
+
+```mermaid
+flowchart TB
+    subgraph find["Finding pairs: find-pairs.py"]
+        direction TB
+        samdef["SAM mode<br/>--reco1-samdef + --caf-samdef<br/>CAF = the reco1's child in the flatcaf definition"]
+        paths["Path mode<br/>--reco1-dir or --reco1-list + --caf-dir<br/>name rule: reco1-X.root ↔ reco2-reco1-X.flat.caf.root or .caf.root"]
+        pairs[("pairs.tsv<br/>id, reality, reco1, caf")]
+        samdef --> pairs
+        paths --> pairs
+    end
+
+    subgraph s1["Step 1: step1.sh, lar with wcls-img-clus-matching.fcl or -data.fcl"]
+        direction TB
+        reco1[("reco1 artROOT<br/>data: frameshifted")]
+        lar["imaging → clustering → Q/L matching<br/>→ all-APA clustering → truth tables<br/>+ set metadata: RSE, input_file"]
+        tar[("ql/qlpctree.tar.gz<br/>+ mabc.zip, nugraph.h5")]
+        reco1 --> lar --> tar
+    end
+
+    subgraph s2["Step 2: step2.sh, wire-cell wct-pr.jsonnet, flat_tree=true, dl_vtx_dump=true"]
+        direction TB
+        pr["PR: taggers, track/shower, fits, vertexing incl. DL,<br/>PID, energy, BDT scores"]
+        rows["row trees: Trun incl. input_file,<br/>T_kine, T_tagger, T_cluster, T_rec_charge,<br/>T_dlvtx_call, T_dlvtx_cloud, ..."]
+        flat["RootFlatTreeVisitor, last in the pipeline:<br/>recTreeWireCell, 1 entry per event,<br/>..length / ..idx / ..totarraysize"]
+        trk[("pr/pr_evt&lt;E&gt;/tracking-pr.root<br/>+ mabc-pr.zip")]
+        pr --> rows --> flat --> trk
+        retry{{"crash? rerun the whole tar once,<br/>keep pr-try1/"}}
+        pr -.-> retry -.-> pr
+    end
+
+    subgraph s3["Step 3: merge-caf.py"]
+        direction TB
+        caf[("existing flat CAF<br/>recTree, GenieEvtRecTree, ...")]
+        schema[("schema/recTreeWireCell.schema.json<br/>2,283 branches, 15 trees")]
+        merge["copy the CAF byte for byte,<br/>add recTreeWireCell: 1 entry per recTree entry,<br/>matched by run/subrun/event;<br/>no Wire-Cell output → wc.valid = 0"]
+        merged[("merged/&lt;name&gt;.wc.flat.caf.root<br/>+ recTreeWireCell_info")]
+        caf --> merge
+        schema --> merge
+        merge --> merged
+    end
+
+    val["validate-merge.py<br/>original keys untouched; RSE alignment;<br/>every value of every row tree, exact"]
+    out[("validate.json, cost.tsv, status")]
+
+    pairs -- reco1 --> reco1
+    pairs -- caf --> caf
+    tar --> pr
+    trk --> merge
+    merged --> val
+    trk --> val
+    val --> out
+```
+
 ## Log
 
 - 2026-10-08: scope; Task 1 analysis (above); 5 test pairs staged; issue #39 opened.
