@@ -99,3 +99,42 @@ There are only eight value types in all: Int_t, Float_t, Double_t, string, vecto
 ## Log
 
 - 2026-10-08: scope; Task 1 analysis (above); 5 test pairs staged; issue #39 opened.
+
+### (a) 2026-10-08: M1–M3 implemented
+
+**M1, larwirecell** (`HaiwangYu/larwirecell` branch `sbnd-wc-flatcaf`, `3b54651` from `189ad26`; pushed):
+- `IArtEventVisitor` and `MainTool` gain `respond_to_open_input_file(filename)`, a no-op by default.
+- The WCT art module overrides `SharedProducer::respondToOpenInputFile(FileBlock)`, and the `WCLS` tool forwards `FileBlock::fileName()` to every inputer and outputer.
+- `wclsTruthInformationAttacher` stamps it as set metadata `input_file` (key `file_key`; `""` disables it) next to the RSE. So `qlpctree.tar.gz` carries it, with no fcl or driver change.
+- **Build:** `MAKE_RC=0`. Four libs changed and were deployed: the module, the tool, `libWireCellLarsoft`, and `libWireCellAIML` (whose labeler implements the changed interface). Backup in `lib-backup-189ad26-20261008`.
+- **Check:** a 2-event step 1 on `f33e`: each event's set metadata has `input_file` = the reco1 path.
+
+**M2, toolkit** (`HaiwangYu/wire-cell-toolkit` branch `sbnd-wc-flatcaf` from master `b7bd2a1a`; local commits `c062d017`, `f6fd2209`):
+- `Facade::Ensemble::input_metadata()`: the input set metadata, published by `MultiAlgBlobClustering` for its visitors.
+- `SbndPrMagnifyTrackingVisitor` writes `Trun.input_file` (string) when the input carries it. It is absent otherwise, so older inputs keep the schema.
+- **New `RootFlatTreeVisitor`** (`root/`): runs last in the PR pipeline, reopens the per-event `tracking-pr.root`, and appends `recTreeWireCell` with ONE entry.
+  - It holds every tree in the flat-CAF layout: `wc.<T>..length` rows; scalars as `[wc.<T>..length]`; vectors and strings as `..length`/`..idx`/`..totarraysize` plus a flat array; `vector<vector>` with a `.v` level. Types are kept, and an unsupported type is an error.
+  - Doctest `doctest_root_flat_tree`: 54 / 54 (scalars, a string, `vector<float>` with an empty row, `vector<vector<int>>`, a 0-row tree). `wcdoctest-root` 12 / 12.
+- **cfg:** `pr()` entry `flat_tree`; `sbnd-pr-stage` `flat_tree=false`; `wct-pr.jsonnet` TLA `flat_tree=false`.
+  - Config proof (`cfg-proof.py`): all 43 checks pass. With the knob off, all 8 SBND jobs are byte-identical to master.
+  - With `flat_tree=true`, step 2 (sim and data) gains exactly `RootFlatTreeVisitor:pr`, last in the `clus_pr` pipeline after `UbooneTaggerOutputVisitor:pr`.
+- **Bug fixed on the way:** `write_empty_proj_data` (events without projection data) booked `T_proj_data.charge/charge_err/charge_pred` as `vector<vector<double>>`, while a normal event has `vector<vector<int>>`. One tree had two types depending on the event, which a fixed schema cannot hold. Now `int`, as the normal path. (Worth upstreaming.)
+- **Build:** incremental `wcb install`, `BUILD_RC=0`, RPATH re-stripped.
+
+**M3, the workflow** (`HaiwangYu/sbnd-wirecell-production`, folder `aurora/`):
+
+| file | role |
+|---|---|
+| `bin/find-pairs.py` | pairs by SAM (`--reco1-samdef` + `--caf-samdef`: the CAF is the reco1's child; a reco1 has several CAF-like children, so the flatcaf definition is required) or by path (name rule `reco1-X.root` ↔ `reco2-reco1-X.{flat.,}caf.root`); `--path-map` rewrites `/pnfs` to a mirror |
+| `bin/step1.sh`, `bin/step2.sh` | the two Wire-Cell steps, inside SL7; step 2 refuses to run without the DL modules and fails if `dl_fail` > 0 or a flat tree is missing |
+| `bin/merge-caf.py` | step 3 (PyROOT only): copy the CAF, add `recTreeWireCell` aligned with `recTree` by RSE, fixed schema, `valid=0` entries for events without Wire-Cell output, hard errors on schema mismatch |
+| `bin/validate-merge.py` | original CAF keys untouched; alignment; every value of every row tree reproduced exactly; empty entries empty |
+| `bin/make-schema.py`, `schema/recTreeWireCell.schema.json` | the fixed schema: 2,283 branches, 15 trees, built from an MC event with a candidate (2 events of `f33e`) and 20 beam-on events; data adds no branch |
+| `bin/run-pair.sh`, `bin/run-pairs.sh`, `bin/cost-summary.py` | the driver: per pair, steps 1–3 and validation with `/usr/bin/time -v` cost; a pool with the day/night limit, memory guards and a Kerberos wait; step 2 retried once |
+| `site/{fnal-sbndbuild03,aurora}.sh`, `env/{fnal,aurora}/`, `pbs/run-pairs.pbs` | sites; the Aurora environment is a copy of #29's scripts |
+| `README.md`, `AGENTS.md` | for people and for agents (rules, gates G1–G5, traps) |
+
+**Checks so far:**
+- The 2-event merge into the 15-event `f33e` CAF passes validation: 31,506 values in 1,023 rows of 30 trees exact, 13 entries empty with `valid = 0`, and all original CAF keys unchanged.
+- **Negative tests, both caught:** a row tree deleted from a `tracking-pr.root`; a single integer changed by +1 (`T_bad_ch.chid`, row 0), found as "`wc.T_bad_ch.chid` differs".
+- `find-pairs.py` finds the 5 test pairs by path, and in SAM mode the first 3 pairs of the CV definitions with their `/pnfs` locations and event counts.
