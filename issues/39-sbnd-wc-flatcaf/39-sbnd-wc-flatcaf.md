@@ -101,8 +101,9 @@ There are only eight value types in all: Int_t, Float_t, Double_t, string, vecto
 ## Workflow
 
 Scripts in `HaiwangYu/sbnd-wirecell-production`, folder `aurora/bin/`.
-- `run-pairs.sh` drives the whole chain: one `run-pair.sh` per pair, up to the site's concurrency limit.
-- Each step runs inside the SL7 container and is timed into `<pair>/cost.tsv`.
+- `run-pairs.sh` drives the whole chain: one `run_pair.py` per pair, up to the site's concurrency limit.
+- Each step runs inside the SL7 container under `timeout -k 60`, and is timed into `<pair>/cost.tsv`.
+- The hexagons and dashed arrows are the exception handling of log (c).
 
 ```mermaid
 flowchart TB
@@ -115,12 +116,17 @@ flowchart TB
         paths --> pairs
     end
 
+    pre{{"precheck: reco1 and CAF exist,<br/>non-empty, dCache ONLINE?"}}
+    prefail["FAIL precheck<br/>no compute spent"]
+
     subgraph s1["Step 1: step1.sh, lar with wcls-img-clus-matching.fcl or -data.fcl"]
         direction TB
         reco1[("reco1 artROOT<br/>data: frameshifted")]
         lar["imaging → clustering → Q/L matching<br/>→ all-APA clustering → truth tables<br/>+ set metadata: RSE, input_file"]
         tar[("ql/qlpctree.tar.gz<br/>+ mabc.zip, nugraph.h5")]
         reco1 --> lar --> tar
+        slice{{"lar failed or timed out?<br/>failing event from the log,<br/>skip it, rerun the two slices<br/>(up to 3 skipped per file)"}}
+        lar -.-> slice -.-> lar
     end
 
     subgraph s2["Step 2: step2.sh, wire-cell wct-pr.jsonnet, flat_tree=true, dl_vtx_dump=true"]
@@ -130,7 +136,7 @@ flowchart TB
         flat["RootFlatTreeVisitor, last in the pipeline:<br/>recTreeWireCell, 1 entry per event,<br/>..length / ..idx / ..totarraysize"]
         trk[("pr/pr_evt&lt;E&gt;/tracking-pr.root<br/>+ mabc-pr.zip")]
         pr --> rows --> flat --> trk
-        retry{{"crash? rerun the whole tar once,<br/>keep pr-try1/"}}
+        retry{{"crash, timeout, DL or flat-tree failure?<br/>retry once; every failed try kept<br/>in attempts/"}}
         pr -.-> retry -.-> pr
     end
 
@@ -138,7 +144,9 @@ flowchart TB
         direction TB
         caf[("existing flat CAF<br/>recTree, GenieEvtRecTree, ...")]
         schema[("schema/recTreeWireCell.schema.json<br/>2,283 branches, 15 trees")]
+        good["collect-good.py: the complete events<br/>of the final AND failed tries"]
         merge["copy the CAF byte for byte,<br/>add recTreeWireCell: 1 entry per recTree entry,<br/>matched by run/subrun/event;<br/>no Wire-Cell output → wc.valid = 0"]
+        good --> merge
         merged[("merged/&lt;name&gt;.wc.flat.caf.root<br/>+ recTreeWireCell_info")]
         caf --> merge
         schema --> merge
@@ -146,12 +154,14 @@ flowchart TB
     end
 
     val["validate-merge.py<br/>original keys untouched; RSE alignment;<br/>every value of every row tree, exact"]
-    out[("validate.json, cost.tsv, status")]
+    out[("validate.json, cost.tsv, events.json,<br/>status OK / PARTIAL / FAIL")]
 
-    pairs -- reco1 --> reco1
-    pairs -- caf --> caf
+    pairs --> pre
+    pre -- no --> prefail
+    pre -- "yes: reco1" --> reco1
+    pre -- "yes: caf" --> caf
     tar --> pr
-    trk --> merge
+    trk --> good
     merged --> val
     trk --> val
     val --> out
@@ -241,3 +251,54 @@ What "PASS" checks (`validate-merge.py`):
 - run on Aurora (`AGENTS.md`, "Deploying on Aurora"): build the two `sbnd-wc-flatcaf` branches there, then the 5-pair smoke via `pbs/run-pairs.pbs`;
 - upstream the `T_proj_data` type fix;
 - the owner's call on `drop_row_trees` for production.
+
+### (c) 2026-10-09: exception handling, and the 5-pair validation rerun
+
+**Haiwang's request:** implement the five fixes for missing CAFs, missing step-1 output and crashed jobs, then rerun the validation; use up to 60 % of sbndbuild03, which is idle.
+
+**New per-pair driver:** `bin/run_pair.py` replaces `run-pair.sh`. It is a host-side Python script; every step still runs in the container.
+
+| fix | what it does |
+|---|---|
+| 1. CAF precheck | before any compute, the reco1 and the CAF must exist and be non-empty, and a `/pnfs` file must be `ONLINE` / `ONLINE_AND_NEARLINE` (dCache locality; a tape-only file would block a copy indefinitely, #26). Otherwise `FAIL precheck <what> <why>` |
+| 2. timeouts | every step runs under `timeout -k 60`: step 1 `900 + 300 × events` s, step 2 `600 + 300 × events` s, merge 1800 s, validation 3600 s (`WC_TIMEOUT_*`) |
+| 3. partial merge | if a tar's step 2 fails every try, `collect-good.py` gathers the complete per-event files of the final AND failed tries and those are merged; the other CAF events get `wc.valid = 0`. A file counts as complete when it has a one-entry `recTreeWireCell`, written last, so crash stubs never pass |
+| 4. step-1 slicing | when `lar` fails or times out, the event it was on is found from the last `<OpHitSource:tpc0> run R subrun S event E` line of `lar.log` (art's "Begin processing" message is off in our fcl). That event is skipped and the slice rerun as two (`--nskip` / `-n`), recursively, up to `WC_STEP1_MAX_BAD` = 3 per file; each slice then has its own step 2 |
+| 5. failed tries kept | every failed try moves to `<pair>/attempts/<step>-<tag>-try<k>/`, numbered across reruns, never deleted; `cost.tsv` has one row per try; `cost-summary.md` lists them separately |
+
+- **Status:** `OK` (every CAF event has Wire-Cell output), `PARTIAL` (merged and validated, some events without Wire-Cell output; `events.json` says which and why), or `FAIL <stage> <why>`.
+- **Resume:** reruns skip `OK` / `PARTIAL` pairs (`WC_RETRY_PARTIAL=1` reruns `PARTIAL`), and a pair reuses every step-1 slice and step-2 tar with a `DONE` marker.
+
+**Validation rerun** (`caf-merge-dev/run6/`, cores 26–63 and up to 75 GB, 60 % of the node): the 5 pairs plus a sixth read straight from `/pnfs` (`0000-0eb3-c6ab-90e8`, from the SAM pair list, so the locality check runs on real dCache files).
+
+| pair | status | CAF / merged events | rows | values | validation |
+|---|---|---|---|---|---|
+| `0000-0eb3-c6ab-90e8` (`/pnfs`) | OK | 14 / 14 | 11,885 | 419,524 | PASS |
+| `0045-7b83-3292-4b82` | OK | 11 / 11 | 4,761 | 132,947 | PASS |
+| `00a3-5b88-5b98-db94` | OK | 16 / 16 | 7,342 | 209,415 | PASS |
+| `00d8-4843-8a75-5672` | OK | 17 / 17 | 13,505 | 476,417 | PASS |
+| `0100-7286-fc4e-3030` | OK | 9 / 9 | 2,871 | 66,858 | PASS |
+| `f33e-e536-780d-5a11` | OK | 15 / 15 | 6,265 | 176,526 | PASS |
+| **total** | **6 OK** | **82 / 82** | **46,629** | **1,481,687** | **0 problems** |
+
+The five original pairs give the same row and value counts as log (b).
+
+| step | wall / event | CPU / event | max RSS (median / max) | output / event |
+|---|---|---|---|---|
+| 1 | 26.7 s | 24.2 s | 1.67 / 1.68 GB | 8.7 MB |
+| 2 | 3.9 s | 3.2 s | 1.42 / 1.53 GB | 0.71 MB |
+| 3 (merge) | 0.21 s | 0.16 s | 0.57 GB | +55 kB to the CAF |
+| validation | 0.48 s | 0.47 s | 0.75 / 0.85 GB | – |
+
+**Exception tests:** each fix exercised by a real failure; work dirs `caf-merge-dev/exc/`, `exc-timeout/`.
+
+| test | what was done | result |
+|---|---|---|
+| T1 missing CAF | a pair whose CAF path does not exist | `FAIL precheck caf missing or empty: …`, in under a second, no compute |
+| T2 step-1 crash | the file with the deterministic crash, run 471 / subrun 18 / event 33 (`reco1-…-67a3-4e42-52e3-19f7`, 14 events, from `/pnfs`) | `lar` rc 139 after 228 s. The failing event was found as index 7 = (471, 18, 33), the same position #26 recorded. It was skipped and slices `s0-7` and `s8-14` ran cleanly. Merged **13 / 14** with event 33 at `valid = 0`, validation PASS (214,382 values), status **PARTIAL**, `events.json` records the skip; the crashed try is kept in `attempts/step1-all-try1` |
+| T3 step-2 crash, as a timeout | `f33e` with step-2 time limit 30 s (needs ~47 s) | both tries killed (rc 124), both kept (`attempts/step2-all-try1`, `-try2`). Each had 8 complete events plus 1 stub, which was correctly excluded. Merged **8 / 15**, the rest `valid = 0`, validation PASS (97,100 values), status **PARTIAL** |
+| T3 resume | rerun with normal limits and `WC_RETRY_PARTIAL=1` | step 1 reused (no new step-1 row), step 2 succeeded, **OK 15 / 15**, validation PASS (176,526 values); the two failed tries are still there |
+
+**Limitation found:** a try killed by its timeout reports ~0 CPU and ~10 MB RSS in `cost.tsv`. The killed `wire-cell` or `lar` is a grandchild that is never reaped, so `/usr/bin/time` cannot see it. Its wall time is right; successful runs are unaffected.
+
+**Commits:** `sbnd-wirecell-production` `5f66e46` (`run_pair.py`, `collect-good.py`, `count-events.py`, `run-pairs.sh`, `cost-summary.py`, README / AGENTS); this doc, with the diagram updated for the precheck, slicing and partial merge.
