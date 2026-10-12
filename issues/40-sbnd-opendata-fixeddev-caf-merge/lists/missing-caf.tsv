@@ -1,0 +1,4 @@
+#reco1 (in the reco1 def, no gen2 FixedDev Respin flat-CAF child)	run	events	MCP2025C flat CAF sibling (same raw parent; not used)
+data_filtered_decoded_reco1-2fe8de1b-7e5b-69c4-e71c-5c5a1ee54aa8.root	18255	50	reco2_data_EventBuilder6_p2_art1_run18255_9_strmBNBLight_20250217T005543.flat.caf-491d1381-8d14-ef41-c467-f28fbf6e51e2.flat.caf.root
+data_filtered_decoded_reco1-c7910425-1185-2f46-8358-26470c8360d9.root	18255	50	reco2_data_EventBuilder3_p2_art2_run18255_38_strmBNBLight_20250217T184905.flat.caf-64ad1928-494b-a5c1-7c58-5d8335dd5222.flat.caf.root
+data_filtered_decoded_reco1-d1ebf69b-e2c9-9d44-2f31-48d7f55f034b.root	18259	50	reco2_data_EventBuilder3_p2_art1_run18259_13_strmBNBLight_20250219T073005.flat.caf-c9d8b69d-1a58-6c0e-5328-8cb879bb970e.flat.caf.root
