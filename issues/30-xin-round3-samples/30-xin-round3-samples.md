@@ -6,6 +6,8 @@ Owner request 2026-09-19 (Xin's message): reco1 files for three species so he ca
 
 FNAL: `/exp/sbnd/data/users/yuhw/production-prep/xin-round3-samples/`  →  wcgpu1: `/nfs/data/1/yuhw/2025-fall-prod-sample/xin-round3-samples/`
 
+**FNAL copies trimmed 2026-10-09:** the MC reco1 files that are still on `/pnfs` (MC CV 147 of 154, all 225 nueCC) were deleted from `mc-cv/reco1/` and `mc-nuecc/reco1/`; fetch them again from `lists/reco1-files.lst` (+ `MD5SUMS.txt`). The 7 MC CV files no longer on `/pnfs` stay, as do `beam-off/` (frameshifted) and `truth/`. The wcgpu1 copy is untouched.
+
 ```
 mc-cv/      reco1/*.root  lists/{SAMDEF.txt,reco1-files.lst,skipped-not-online.lst}  truth/mc-cv-truth.tsv      MD5SUMS.txt  README.md
 mc-nuecc/   reco1/*.root  lists/...                                                  truth/mc-nuecc-truth.tsv   MD5SUMS.txt  README.md

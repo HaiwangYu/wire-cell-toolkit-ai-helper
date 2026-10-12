@@ -232,7 +232,7 @@ Milestones M0–M5 done.
 **Haiwang's request (2026-10-07 evening):** stop the r6 run, delete its outputs, validate the NCpi0 and nueCC samples against Xin's `work-{ncpi0,nuecc48}-d133pr`, and, if OK, re-run the four #26 samples.
 
 - **Stopped and deleted:** r6 had finished MC CV and 125 of 999 nueCC units. Its outputs, ~119 GB in `r6-dlvtx-r26-samples/{mc-cv,mc-nuecc,smoke,validation}`, were deleted. Lists, logs and the config proof are kept.
-  - The #30 run `r5-dlvtx-xin-samples` (40 GB) is kept until Haiwang confirms.
+  - The #30 run `r5-dlvtx-xin-samples` (40 GB) was kept until Haiwang confirmed, then deleted on 2026-10-09 (production-prep cleanup); its lists, logs and config proof went with it.
   - Trap met while stopping: `pgrep -f run-2step-pool.sh` matched the stopping shell's own command line and killed it. Use `pkill -x <comm>`.
 - **Toolkit:** master `b7bd2a1a`, which contains PR 536. New for SBND: `0bb05b3c` books `T_tagger.match_isFC`; the rest is default-off or for other detectors.
   - Incremental rebuild `BUILD_RC=0`; RPATH stripped (6 files); gates pass.
@@ -264,5 +264,5 @@ All four #26 samples ran on master `b7bd2a1a` with `dl_vtx_dump=true`: **41,989 
   - the 4 nueCC events that differ from Xin's d133pr (§8);
   - the deterministic run 471 / 18 / 33 step-1 crash.
 - **Housekeeping, Haiwang's call:**
-  - `r5-dlvtx-xin-samples` (40 GB, the #30 run) is still on disk;
+  - `r5-dlvtx-xin-samples` (40 GB, the #30 run): deleted 2026-10-09;
   - the staged data chunks `r3-data-stage-2026-09-09` (86 GB) are no longer needed by r7.

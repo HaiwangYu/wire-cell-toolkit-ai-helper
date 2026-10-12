@@ -17,7 +17,7 @@ Builds on #33 (our 2-step chain), #35 (the DL dump) and #38 (production run r7 a
 
 Five reco1 / flat-CAF pairs from the gen2 CV production, `aurora_SBND2026A_gen2_BNBLight_prodgenie_corsika_proton_rockbox0p1_sbnd_CV_v10_14_02_03_{reco1,flatcaf}_sbnd`.
 - The FNAL copies are under `/pnfs/sbn/data_add/sbn_nd/aurora/mc/v10_14_02_03/prodgenie_corsika_proton_rockbox0p1_sbnd/Gen2_2026/CV/{reco1,caf}/000000/000000/`. Aurora's `Gen2_2026/` holds the same production; there the CAFs are named `*.caf.root` rather than `*.flat.caf.root`.
-- Staged on sbndbuild03 in `production-prep/caf-merge-dev/inputs/{reco1,caf}/`.
+- Staged on sbndbuild03 in `production-prep/caf-merge-dev/inputs/{reco1,caf}/`. These copies were deleted on 2026-10-09 because they can be fetched again: `cp` the ten files from the `/pnfs` directory above (the sizes matched before the deletion).
 
 | id | reco1 | flat CAF | events |
 |---|---|---|---|

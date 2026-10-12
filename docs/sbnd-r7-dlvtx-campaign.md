@@ -286,7 +286,7 @@ SL7_SETUP=$SBND/setup-ap.sh /exp/sbnd/app/users/yuhw/claude-utilities/in-gpvm-sl
 
 | run | toolkit | samples | outcome |
 |---|---|---|---|
-| r5 | `sbnd-dlvtx-35` `78f81c64` | the #30 samples (MC CV 2,017, nueCC 2,001, beam-off 1,000), by mistake | done 5,018 / 5,018; kept in `r5-dlvtx-xin-samples/` (40 GB) pending a decision |
+| r5 | `sbnd-dlvtx-35` `78f81c64` | the #30 samples (MC CV 2,017, nueCC 2,001, beam-off 1,000), by mistake | done 5,018 / 5,018; deleted 2026-10-09 (`r5-dlvtx-xin-samples/`, 40 GB) |
 | r6 | `sbnd-dlvtx-35` `21562551` (PR 536 review fixes) | the #26 samples | stopped 2026-10-07 after MC CV and 125 nueCC units, when Xin's update reached master. Outputs deleted (~119 GB); lists, logs and config proof kept in `r6-dlvtx-r26-samples/` |
 | **r7** | **master `b7bd2a1a`** | the #26 samples | this document |
 
