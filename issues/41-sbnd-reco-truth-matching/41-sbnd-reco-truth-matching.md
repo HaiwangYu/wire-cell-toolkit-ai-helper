@@ -20,6 +20,33 @@ Requirements:
 - **Flexibility:** keep enough information that users can judge match quality and cut on it.
 - **Size:** do not store the full set of Bee points.
 
+## 0.5 Definitions and ids (agreed vocabulary, 2026-10-12)
+
+| term | meaning | reco id in tracking-pr.root | truth id |
+|---|---|---|---|
+| **flash bundle** | one optical flash and the charge clusters Q/L-matched to it | `gid` (`T_flash`, `T_bundle`, `T_cluster.flash_id`, `T_kine.matched_flash_gid`) | — |
+| **neutrino interaction / candidate** | one reconstructed interaction: one in-window flash bundle on which the neutrino PR ran | **`nu_index`** (`T_kine`, `T_tagger`, `T_segment`, `T_bundle`, `T_rec_charge`, `T_dlvtx_*`) | `T_truth_nu.nu_idx` (0-based); `T_truth_pf.nu_row` |
+| **cluster** | one 3D charge cluster (connected blobs). **Neither an interaction nor a particle.** An interaction is a main cluster + companion clusters; one cluster usually holds several prongs of the interaction | `T_cluster.cluster_id` (final PR ids 1..N) | — |
+| **segment** | one edge of the PR graph between two vertices: the finest reco unit with an id | `segment_id` = cluster_id·1000 + graph index (`T_segment`, `T_rec_charge.sub_cluster_id`) | — |
+| **particle (prong)** | one reco particle with PID and energy: a track (one segment) or a shower (its segments) | (`nu_index`, row of the `T_kine` vectors); named by `kine_particle_id` (the track's or shower start's segment id) | `T_truth_pf.trackid` (a G4 particle) |
+| **particle flow** | the mother–daughter tree of an interaction's particles, with PID and energy | **not in ROOT.** Built only for the Bee display (`fill_bee_pf_tree`, `MultiAlgBlobClustering.cxx:1422`, parent links :1635–1690; node id = 20000000 + segment_id). `T_kine` has PID and energy but no mother; `T_segment` has only start/end vertex ids | `T_truth_pf.mother_trackid` / `parent_trackid` (beam ν particles > 10 MeV only) |
+
+**Two particle lists for one interaction.** `T_kine` is filled by the energy walk (`NeutrinoKinematics`; `T_segment.in_enu`). The particle-flow tree is built by a separate walk with different gates. Measured on Matteo's r7 tables:
+- the two energy sums agree within 1 % for 34 % (CV) and 51 % (nueCC) of candidates;
+- they differ by more than 10 % for 16 % of candidates in both samples.
+
+**Candidates per event.**
+- **By design:** one per in-window (0.2–2.2 µs) flash bundle that survives the cosmic vetoes (`nu_per_bundle`), with no hard cap.
+- **In practice,** flashes are found per TPC, so mostly at most one per TPC.
+
+| sample | events | 0 | 1 | 2 | 3 | true matchable ν ≥ 2 |
+|---|---|---|---|---|---|---|
+| open data (#40), real candidates (Enu > 0) | 89,921 | 55.3 % | 44.2 % | 0.52 % | 3 events | — |
+| r7 MC CV (Matteo's table) | 13,112 | 54.0 % | 45.3 % | 0.71 % | 0 | 1.7 % |
+| r7 MC nueCC | 8,877 | 5.2 % | 91.2 % | 3.5 % | 2 events | 6.9 % |
+
+- Two candidates are usually two neutrinos, one per TPC. But one interaction near the cathode can make a flash in each TPC and so become two candidates (Matteo: 13 of 72 two-candidate events were nearest the same true interaction).
+
 ## 1. The current tracking-pr.root
 
 Example: `production-prep/r7-r26-master-b7bd2a1a/mc-cv/f0000/pr/pr_evt2/tracking-pr.root`.
@@ -196,6 +223,20 @@ Code: `work/truthmatch.py` (195 lines) and `work/wcreco.py`. Docs: `docs/point_l
 2. the per-point reco and truth labels, which can be aggregated in step 2 (no per-point storage needed);
 3. the PF-tree candidate definition, which can be flagged in step 2;
 4. the Michel merge convention, available if the labeler exports it.
+
+### 2.3 Matteo's limits, and the goal here (Haiwang, 2026-10-12)
+
+Reproducing Matteo is not the goal. The goal is the **best reco–truth match**, for evaluation and for particle-level ML training. Where his method has a limit that can be lifted, it is lifted, and the difference from him is stated.
+
+| Matteo | limit | here |
+|---|---|---|
+| truth objects: whole neutrino interactions + one per cosmic G4 track | **no particle-level truth** | adds reco particle ↔ true particle (prong), with the truth hierarchy |
+| reco object: the PF-tree segments of a candidate | one of two particle lists, not the one `kine_reco_Enu` uses; the PF tree is not in ROOT | both lists flagged; the particle-flow tree written to ROOT (new tree, mother index per particle) |
+| one dominant G4 track per blob | shared blobs (vertex region, overlaps) go to one track | dominant + second track and purity per blob; cuts possible |
+| point counts as the weight | sampling-density bias | charge too (reco charge ↔ true electrons), both stored |
+| \|t\| = labeled reco points of the object | reco inefficiency invisible | true charge in the readout and in blobs per track: completeness |
+| cosmic = one G4 track | a cosmic's delta rays and Michel are separate objects | grouped by ancestor too |
+| Bee joins on rounded coordinates | lossy | identity joins in memory |
 
 ## 3. Design (Step 3)
 
