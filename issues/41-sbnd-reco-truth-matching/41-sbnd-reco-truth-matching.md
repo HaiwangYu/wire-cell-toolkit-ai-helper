@@ -1,6 +1,6 @@
 # 41 — SBND reco–truth matching at blob, cluster and particle level, in tracking-pr.root and the merged CAF
 
-**Status: plan, for discussion with Haiwang. Nothing is implemented yet.**
+**Status (2026-10-13): implemented and validated on 113 r7 MC CV events + 50 data events. Pushed: toolkit `HaiwangYu/wire-cell-toolkit` `sbnd-wc-flatcaf` `229b7aab`, larwirecell `sbnd-wc-flatcaf` `73c79bc`, workflow `sbnd-wirecell-production` `31a079d`. Results in §7.** Decisions (Haiwang, 2026-10-12): change step 1; default interaction = the `T_kine` particles (PF tree flagged too); particle level and a particle-flow tree in ROOT; per-blob table off by default; pushes to the forks allowed.
 
 The goal is a reco→truth match, and a truth→reco match, for SBND MC. It lives in `tracking-pr.root` (and so in the flat CAF's `recTreeWireCell`) and is computed inside the Wire-Cell chain. A user can then reproduce Matteo Vicenzi's bee-based matching from the ROOT file alone, and choose their own quality cuts without rerunning the chain.
 
@@ -355,5 +355,64 @@ For truth objects, `nu_idx` groups a neutrino's tracks; non-beam tracks are grou
 - **A blob carries one dominant label**, as today. Points of a blob shared by two particles all go to the dominant one; `trackid2` and purity expose it, but the IoU stays blob-granular.
 - **Data:** no truth, no new trees.
 
+## 7. Implementation and validation (2026-10-13)
+
+### 7.1 What was built
+
+| where | change |
+|---|---|
+| larwirecell `TensorSetLabeler` (`73c79bc`) | config `truth_detail` (default false): per-blob `truth_q`, `truth_q_dom`, `trackid2`, `truth_q2`; per-event tensor `truth_track` (datapath `truthtrack/<ident>`): `trackid, nu_idx, bee_trackid, ancestor_trackid, prong_trackid, pdg, mother_trackid, mother_pdg, process, q_readout, e_readout, q_in_blobs, n_blobs_dom, q_dom_blobs, start_*/end_*`. A prong folds an EM daughter of an EM particle, a delta electron (`eIoni/muIoni/hIoni/ionIoni`) and a muon's radiative e/γ (`muPairProd/muBrems`) into its mother; a Michel stays its own prong |
+| toolkit `clus/TruthMatch.h` (+ doctest, 3 cases / 22 assertions) | the SPINE rule on shared reco points: IoU in points and charge, both directions, top-k, ties by charge IoU then lower index, `mutual` |
+| toolkit `MultiAlgBlobClustering` | publishes every candidate's Bee particle-flow tree on the Ensemble (aux tensor `pf_tree:mc`, metadata only, Bee output unchanged); `aux_datatypes` += `truth_track` |
+| toolkit `SbndPrMagnifyTrackingVisitor` (`root/src/SbndPrTruthMatch.cxx`) | knob `truth_match` (+ `blob_truth`, `truth_match_topk` 3, `pure_blob_min` 0.5): `T_truth_track`, `T_overlap`, `T_match`, `T_pf` (+ `T_blob_truth`); nothing without a `truth_track` table (data) |
+| cfg | `wct-pr.jsonnet` TLAs `truth_match`, `blob_truth` (default false); step-1 `labeler_truth` `truth_detail: true` |
+| workflow `aurora/` (`31a079d`) | `step2.sh` turns `truth_match` on for sim (`WC_TRUTH_MATCH=0` off); schema 2,401 branches / 20 trees, md5 `d4396a3490ea` (the #39 schema kept as `...v1-c845fe94fbe5.json`) |
+
+**The trees** (one file per event; MC only):
+- `T_truth_track`: the labeler table as is. Mean 354 rows per event.
+- `T_overlap`: one row per (reco piece × `trackid`) with `n_points`, `q` (the Bee per-point charge, mean over live planes), and `n_pure`/`q_pure` (blobs of purity ≥ 0.5). Mean 81 rows per event.
+  - A piece is (`nu_index`, `cluster_id`, `segment_id`, `particle_id`, `kine_index`, `in_enu`, `in_pf`).
+  - The rest of a cluster has `nu_index = segment_id = −1`.
+  - `trackid` −1 marks unlabeled points; `nu_idx` −2 then.
+  - Point → segment uses `associate_points`, the same as the Bee `shower_track` layer. A point claimed by two candidates goes to the first.
+- `T_match`: one row per object, `level` 0–3 × `side`. Mean 444 rows per event.
+  - Columns: `size_n/q`, `n_unlabeled/q_unlabeled` (reco), `truth_q_readout/truth_q_in_blobs` (truth), up to 3 partners (`match_obj`, `match_iou_n`, `match_iou_q`, `match_shared_n/q`), `mutual`.
+  - Truth objects not from a neutrino and holding no reco point are not written (they were 65 % of the rows); `obj` keeps the full-list index.
+- `T_pf`: one row per node of each candidate's reco particle-flow tree, with `parent_id` (−1 = attached to the neutrino vertex), `depth`, `name`, `pdg`, `ke_mev`, `is_pseudo` (a γ, n or π0 carrier with no reco segment), `kine_index`, start and end.
+
+**How to read a match.**
+- A candidate's best true interaction: `T_match` rows with `level==2`, `side==0`, `nu_index==i`; `match_obj[0]` is the `obj` of a `level==2`, `side==1` row, whose `truth_nu_idx` is the `T_truth_nu.nu_idx` (−1 and `truth_trackid` = the Michel-merged id for a cosmic).
+- The same for particles with `level==1`: reco `kine_index` is the `T_kine` vector element, truth `truth_trackid` is the prong's G4 track.
+- Any other choice can be recomputed from `T_overlap` + `T_truth_track`.
+
+### 7.2 Validation
+
+Sample: r7 MC CV units f0000, f0011–f0016 (7 reco1 files, 113 events) with their CV flat CAFs. Rerun through all three steps with the new builds (`production-prep/truthmatch-41/run/`, everything kept). Data: one open-data pair of #40 (50 events, `run-data/`). Script: `scripts/val41.py`.
+
+| # | check | result |
+|---|---|---|
+| V1 | every tree of r7's `tracking-pr.root`, every value | **identical** in 113/113 events: 1,312,718 values, 0 differences. Only new branch `Trun.input_file` (#39) |
+| V1b | step-1 `qlpctree.tar.gz` vs r7, keyed by datapath | **0 changed arrays**; new tensors are exactly `truth_q`, `truth_q_dom`, `trackid2`, `truth_q2`, `truthtrack` per event; set metadata gains only `input_file` (#39) |
+| G3 | compiled config vs the committed cfg | step 2 byte-identical with the knobs off (sim and data); step 1: of 196 nodes only `labeler_truth.truth_detail` differs (sim and data) |
+| V2 | data pair vs its #40 production | step-1 arrays unchanged, 0 new tensors; no truth-match tree in any of 50 events; 114,150 Wire-Cell values in the merged CAF identical apart from `Trun.input_file` (the work-dir path of the FrameShift copy, see 7.3) |
+| V3 | `T_overlap` vs the step-1 Bee truth layers | 113/113 events: total points = `truth_trackid_labeled` + `truth_unlabeled`; labeled points equal; points per Michel-merged track equal |
+| V4 | Matteo's r7 table (`work/out/r7/bnb/reco_candidates_20261009_183434.csv`, `ct_*`) vs `T_match` level 3 | 63 candidates: **same matched truth 63/63**, same size and IoU 62/63, IoU within 0.01 63/63. The one difference (719/45/17 nu0: 2,196 vs 2,198 points, IoU 0.8896 vs 0.8905) is an event his own check flags: "particle-flow segments [11011] hold no imaging points" -- his coordinate join lost them; the new trees take them from the segment's point indices |
+| V5 | Matteo's `truthmatch.iou_matrix` + `spine_match` (unchanged, imported) on `T_overlap` vs `T_match` | 63/63 identical (truth label, IoU to float precision) |
+| V6 | merged CAF (new schema) | 7/7 pairs `OK`, `validate.json` PASS |
+| V7 | cost | step 2 +1 % CPU, +70 MB RSS (same tar, truth match off/on, twice each); new trees 45.6 kB/event in `tracking-pr.root` (mean file 638 kB, ≈ +7 %: `T_truth_track` 28.6, `T_match` 13.1, `T_overlap` 3.0, `T_pf` 1.0); merged CAF `recTreeWireCell` 98 kB/event next to `recTree` 678 kB/event. Step 1: the labeler's extra work is O(depos + blobs), not separately measured |
+
+**An example** (r7 719/1/2, two candidates):
+- Candidate-level IoU: 0.985 (`nu_index` 0 → ν 1) and 0.878 (`nu_index` 1 → ν 0), both mutual.
+- Particle level: 10 of 12 `T_kine` particles have a mutual best prong. The best IoU ranges from 0.009 (a 14-point particle) to 1.0.
+- Candidate 1's particle flow in `T_pf`: two shower electrons hang under the μ⁻; a π⁺ carries a pseudo-neutron, with a μ⁻ track below it.
+
+### 7.3 Left over
+
+- **The `input_file` of data CAFs (#40, found here):** step 1 reads the FrameShift copy, so `Trun.input_file` is the copy's local path (`<work>/<id>/fs/<reco1 stem>_frameshift.root`), not the /pnfs reco1. The reco1 is still identifiable (the name, and `pairs.tsv`). Fix options: give the attacher an override (larwirecell), or rewrite the value at merge time.
+- **Step-1 cost** of `truth_detail` is not isolated (it runs inside the one art module).
+- **A blob carries one dominant label**: purity and the runner-up are stored, but the IoU stays blob-granular.
+- **Particle level vs Matteo:** he has no particle level, so V4/V5 cover the interaction level only. Particle level is validated by construction (the same `T_overlap`) and by V3, not against an independent reference.
+
 ## Log
+- 2026-10-13: implemented (larwirecell `73c79bc`, toolkit `229b7aab`, workflow `31a079d`) and validated (§7): V1–V7 pass; Matteo's candidate match reproduced 63/63 from `tracking-pr.root` alone.
 - 2026-10-12: issue opened. Current `tracking-pr.root` mapped (stages, trees, ids; joins measured on 1,460 r7 events). Matteo's matching and his toolkit proposal read. Blob `trackid` found already inside `qlpctree.tar.gz`. Plan written, waiting for discussion.
