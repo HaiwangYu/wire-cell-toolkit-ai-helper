@@ -413,6 +413,198 @@ Sample: r7 MC CV units f0000, f0011–f0016 (7 reco1 files, 113 events) with the
 - **A blob carries one dominant label**: purity and the runner-up are stored, but the IoU stays blob-granular.
 - **Particle level vs Matteo:** he has no particle level, so V4/V5 cover the interaction level only. Particle level is validated by construction (the same `T_overlap`) and by V3, not against an independent reference.
 
+## 8. Reference: the new trees
+
+### 8.1 `T_truth_pf` and `T_truth_track`
+
+They are two different truth tables, made by two different step-1 modules.
+
+| | `T_truth_pf` | `T_truth_track` |
+|---|---|---|
+| made by | larwirecell `wclsTruthInformationAttacher` (#33) | larwirecell `wclsTensorSetLabeler`, `truth_detail` (#41) |
+| purpose | the **generator-side particle flow**: what each beam-neutrino interaction produced | the **truth inventory of the charge**: every particle that left charge where Wire-Cell could see it, the truth side of every match |
+| rows | G4 particles **from a beam neutrino** with **KE > 10 MeV**, whether or not they deposit charge | G4 particles **of any origin** (beam neutrino, cosmic, anything) with charge **inside the readout window** after the pseudo-simulation, or dominating a blob |
+| cosmics | none | yes (`nu_idx` −1) |
+| low-energy particles | none below 10 MeV | all |
+| neutrino key | `nu_row` = row of `T_truth_nu` | `nu_idx` = `T_truth_nu.nu_idx` |
+| content | kinematics: `E`, `KE`, start and end position and time, start momentum, `parent_trackid` (nearest kept ancestor), `mother_trackid`, `process` | charge: `q_readout`, `e_readout`, `q_in_blobs`, `n_blobs_dom`, `q_dom_blobs`; the grouping ids `bee_trackid`, `ancestor_trackid`, `prong_trackid`; start and end, `start_E` |
+| per event (113 r7 CV events) | 21 rows | 354 rows (123 from neutrinos, 231 not) |
+
+- **The same `trackid`** (G4 `MCParticle::TrackId`) in both. 3.6 rows per event are in both, and those 412 tracks agree on the interaction 412/412.
+- **They carry the same charge**: the tracks in both hold **94 %** of the neutrino charge in the readout window.
+- **Most `T_truth_pf` rows (17.6 of 21) have no charge in the readout.** The rockbox events carry several neutrino interactions, most outside the detector, and a neutron deposits nothing itself.
+- **Most neutrino rows of `T_truth_track` (119 of 123) are not in `T_truth_pf`.** They are below 10 MeV (Compton electrons, nuclear fragments, delta rays). They matter for matching: 5.8 per event dominate at least one blob.
+- The 125 interactions with `edep > 0` in `T_truth_nu` are exactly the 125 with charge in `T_truth_track`.
+
+Use `T_truth_pf` for what was produced (kinematics), `T_truth_track` for what Wire-Cell saw (matching, completeness).
+
+### 8.2 Branches
+
+Every tree starts with `runNo`, `subRunNo`, `eventNo`. Units:
+- positions cm, times ns, `start_E` GeV;
+- `e_readout` and `ke_mev` MeV;
+- **true charge in electrons** (`SimEnergyDeposit::NumElectrons`, the labeling weight; `Energy()` in MeV for a deposit with 0 electrons);
+- **reco charge in electrons** (the imaging charge).
+
+**`T_truth_track`**: one row per G4 track with charge inside the readout window or dominating a blob.
+
+| branch | type | definition |
+|---|---|---|
+| `trackid` | I | G4 track id = \|SED `TrackID`\|. larg4 gives an unsaved descendant's deposits (delta rays, shower electrons) the negative of its saved ancestor's id, so they count under that ancestor |
+| `nu_idx` | I | the beam-neutrino interaction it comes from, = `T_truth_nu.nu_idx` (the generator MCTruth index); −1 not from a beam neutrino (cosmic, ...) |
+| `bee_trackid` | I | a Michel electron's mother muon, else `trackid`. The id the Bee truth layers show, and Matteo's cosmic objects |
+| `ancestor_trackid` | I | the topmost stored ancestor (following `Mother()` while the mother is a stored MCParticle): the generator particle or the cosmic primary |
+| `prong_trackid` | I | the particle a reco particle is compared with. Folded into the mother: an e±/γ whose mother is e±/γ (a shower is one prong); an ionization electron (`eIoni`, `muIoni`, `hIoni`, `ionIoni`); a muon's `muPairProd`/`muBrems` e/γ. A Michel electron is its own prong |
+| `pdg` | I | PDG code |
+| `mother_trackid` | I | `MCParticle::Mother()` (0 or the generator offset for a primary) |
+| `mother_pdg` | I | the mother's PDG, 0 if not stored |
+| `process` | I | G4 creation process, `aiml/G4ProcessCode.h`: 0 primary, 1 Decay, 2 eIoni, 3 muIoni, 4 eBrem, 5 compt, 6 phot, 7 conv, 8 hIoni, 9 nCapture, 10 muPairProd, 12 muBrems, …, 10001 Michel |
+| `q_readout` | D | electrons of its deposits inside the **readout window**: SCE true→reco shift, drift with the deposit's own time, readout cut on the drift time, as for the `sed-*` Bee sets |
+| `e_readout` | D | the same deposits in energy, MeV |
+| `q_in_blobs` | D | electrons of its deposits **accepted by at least one blob**: within (1 wire, 2 ticks) + 3σ of diffusion and SP smearing of the blob's wire and tick bounds. `q_in_blobs/q_readout` is the true particle's imaging completeness |
+| `n_blobs_dom` | I | blobs of which it is the dominant track (the blob `trackid`) |
+| `q_dom_blobs` | D | its accepted electrons summed over those blobs |
+| `start_x/y/z`, `start_t` | D | true start of the trajectory (no SCE) |
+| `start_E` | D | total energy at start, GeV |
+| `end_x/y/z` | D | true end of the trajectory |
+
+**`T_overlap`**: one row per (reco piece, true track) that share imaging points. Together they cover every imaging point of the event (Σ `n_points` = Σ `T_cluster.npoints`).
+
+| branch | type | definition |
+|---|---|---|
+| `nu_index` | I | the candidate (`T_kine`/`T_tagger` row) whose PR graph claims the points; −1 = no candidate (the rest of the cluster) |
+| `cluster_id` | I | the `T_cluster.cluster_id` holding the points |
+| `segment_id` | I | `cluster_id·1000 + graph index` of the claiming segment, = `T_segment.segment_id` = `T_rec_charge.sub_cluster_id`; −1 for the rest |
+| `particle_id` | I | the particle-flow id of the segment's particle: the shower's start segment for a shower member, else the segment itself. = `T_kine.kine_particle_id` = `T_pf.node_id` = Bee `shower_track` id; −1 for the rest |
+| `kine_index` | I | the `T_kine` vector element (reco particle) the segment belongs to; −1 if its energy is not in `kine_reco_Enu`, or for the rest |
+| `in_enu` | I | 1 if the segment is in `kine_reco_Enu` (= `T_segment.in_enu`, `kine_index ≥ 0`) |
+| `in_pf` | I | 1 if its particle is a node of the candidate's particle-flow tree (`T_pf`, Bee `mc`) |
+| `trackid` | I | the dominant true track of the blob the points belong to (`T_truth_track.trackid`); **−1 = unlabeled** (ghost, or a labeler miss) |
+| `nu_idx` | I | that track's interaction (`T_truth_track.nu_idx`); −1 not from a neutrino, −2 unlabeled |
+| `n_points` | F | imaging points: the cluster's default-scope points = the blobs' sampling points = the Bee `img` points |
+| `q` | F | their reco charge: per point, the mean of its wire charges over the non-dead planes (the Bee per-point charge) |
+| `n_pure`, `q_pure` | F | the part from blobs of purity ≥ `pure_blob_min` (0.5): `truth_q_dom/truth_q` of the blob |
+
+Segment → points is the segment's `associate_points` (what the Bee `shower_track` layer draws). A point claimed by two candidates goes to the first `nu_index`.
+
+**`T_match`**: one row per reco or truth object at one level, with up to 3 partners.
+
+| branch | type | definition |
+|---|---|---|
+| `level` | I | 0 **cluster**: reco = a `T_cluster` cluster, truth = an interaction or a non-neutrino object. 1 **particle**: reco = a `T_kine` vector element (the rest of each cluster is one object), truth = a prong (`prong_trackid`). 2 **candidate**: reco = a candidate's `in_enu` segments (the `T_kine` particles; the rest per cluster), truth = interaction or non-neutrino object. 3 **candidate (PF)**: as 2 with the particle-flow tree's segments (`in_pf`), Matteo's definition |
+| `side` | I | 0 reco object, 1 truth object |
+| `obj` | I | the object's index within (`event`, `level`, `side`); partners name it |
+| `nu_index` | I | reco: the candidate (levels 1–3); −1 for a cluster object; truth: −1 |
+| `cluster_id` | I | reco: the cluster of a cluster or rest-of-cluster object; else −1 |
+| `kine_index` | I | reco, level 1: the `T_kine` vector element; else −1 |
+| `truth_nu_idx` | I | truth: the interaction (`T_truth_nu.nu_idx`), also for a prong (from its member tracks); −1 for a non-neutrino object; reco: −1 |
+| `truth_trackid` | I | truth, levels 0/2/3: −1 for an interaction, the `bee_trackid` of a non-neutrino object. Level 1: the `prong_trackid`. Reco: −1 |
+| `size_n`, `size_q` | F | the object's points and charge. A reco object counts its unlabeled points; a truth object its labeled reco points |
+| `n_unlabeled`, `q_unlabeled` | F | reco: its unlabeled points and charge (the ghosts); truth: 0 |
+| `truth_q_readout`, `truth_q_in_blobs` | F | truth: Σ of the member tracks' `q_readout` / `q_in_blobs` (all members, also those with no reco point); reco: 0 |
+| `nmatch` | I | partners stored (≤ 3, each sharing ≥ 1 point) |
+| `match_obj` | vector<int> | the partners' `obj` on the other side of the same level, by decreasing `match_iou_n` (ties: `match_iou_q`, then lower `obj`) |
+| `match_iou_n`, `match_iou_q` | vector<float> | IoU in points and in charge: \|r∩t\| / (\|r\|+\|t\|−\|r∩t\|) |
+| `match_shared_n`, `match_shared_q` | vector<float> | \|r∩t\| in points and in charge |
+| `mutual` | I | 1 if the best partner's best partner is this object |
+
+Truth objects not from a neutrino and holding no reco point are not written (they can match nothing; their charge is in `T_truth_track`). Interactions and neutrino prongs without points are written: they are the missed ones.
+
+**`T_pf`**: one row per node of a candidate's reconstructed particle-flow tree (the reco half of the Bee `mc` tree).
+
+| branch | type | definition |
+|---|---|---|
+| `nu_index` | I | the candidate |
+| `node_id` | I | the node id: for a reco particle its `particle_id` (cluster·1000 + segment id; a shower's start segment); for a pseudo-particle a counter, or ≥ 1000000 when Bee re-issued a clashing id |
+| `parent_id` | I | the parent's `node_id`; −1 = attached to the neutrino vertex |
+| `depth` | I | 0 for a particle at the vertex, +1 per generation |
+| `n_children` | I | number of daughters |
+| `name` | string | the Bee name (`mu-`, `e-`, `gamma`, `proton`, `neutron`, `pi+`, `pi0`, …) |
+| `pdg` | I | PDG code from `name` |
+| `is_pseudo` | I | 1: no reco segment or shower behind the node. A γ, n or π0 the reco inserts between a parent and a daughter displaced from it |
+| `kine_index` | I | the `T_kine` vector element of this particle; −1 if none (a pseudo node, or a particle not in the energy sum) |
+| `ke_mev` | F | kinetic energy as Bee shows it (integer MeV) |
+| `start_x/y/z`, `end_x/y/z` | F | the drawn start and end, cm (reco frame) |
+
+**`T_blob_truth`** (only with `blob_truth=true`): one row per blob.
+
+| branch | type | definition |
+|---|---|---|
+| `cluster_id` | I | its `T_cluster.cluster_id` |
+| `npoints`, `charge` | I, F | its sampling points; its imaging charge |
+| `trackid`, `truth_q`, `truth_q_dom` | I, F, F | dominant track; electrons of all accepted deposits; of the dominant track |
+| `trackid2`, `truth_q2` | I, F | the runner-up track and its electrons (−1, 0 if none) |
+
+### 8.3 How the trees join, and how to match
+
+```mermaid
+flowchart LR
+  subgraph RECO["reco"]
+    K["T_kine row = candidate<br/>(nu_index)<br/>vector element = particle<br/>(kine_particle_id)"]
+    S["T_segment<br/>(nu_index, segment_id)"]
+    C["T_cluster<br/>(cluster_id)"]
+    P["T_pf node<br/>(nu_index, node_id, parent_id)"]
+  end
+  subgraph MATCH["match"]
+    O["T_overlap row<br/>(reco piece x trackid)"]
+    M["T_match row<br/>(level, side, obj)"]
+  end
+  subgraph TRUTH["truth"]
+    TT["T_truth_track<br/>(trackid)"]
+    TN["T_truth_nu<br/>(nu_idx)"]
+    TP["T_truth_pf<br/>(trackid, nu_row)"]
+  end
+  O -- "nu_index, kine_index" --> K
+  O -- "nu_index, segment_id" --> S
+  O -- "cluster_id" --> C
+  O -- "nu_index, particle_id = node_id" --> P
+  O -- "trackid" --> TT
+  P -- "nu_index, kine_index" --> K
+  P -- "parent_id = node_id" --> P
+  M -- "side 0: nu_index (+kine_index at level 1)" --> K
+  M -- "side 0, cluster object: cluster_id" --> C
+  M -- "match_obj = obj (other side)" --> M
+  M -- "side 1: truth_nu_idx" --> TN
+  M -- "side 1: truth_trackid = bee / prong id" --> TT
+  TT -- "nu_idx" --> TN
+  TT -- "trackid" --> TP
+  TP -- "nu_row (row)" --> TN
+```
+
+**Recipes**
+
+```mermaid
+flowchart TD
+  Q1{"what do I want?"}
+  Q1 -->|"the true neutrino of candidate i"| A1["T_match: level 2, side 0, nu_index == i<br/>(level 3 for Matteo's PF-tree candidate)"]
+  A1 --> A2["match_obj[0] → the row with level 2, side 1, obj == match_obj[0]"]
+  A2 --> A3["truth_nu_idx ≥ 0 → T_truth_nu row with that nu_idx<br/>truth_nu_idx == −1 → a cosmic: truth_trackid → T_truth_track.bee_trackid"]
+  A3 --> A4["quality: match_iou_n[0], mutual, n_unlabeled/size_n (ghosts),<br/>truth row: size_n vs truth_q_in_blobs, truth_q_readout (completeness)"]
+  Q1 -->|"the true particle of reco particle k of candidate i"| B1["T_match: level 1, side 0, nu_index == i, kine_index == k"]
+  B1 --> B2["match_obj[0] → level 1, side 1 row: truth_trackid = prong_trackid"]
+  B2 --> B3["T_truth_track where trackid == prong_trackid: pdg, start/end, start_E<br/>(its shower members: rows with that prong_trackid)"]
+  B3 --> B4["reco side: T_kine element k (pdg, energy), T_pf node (parent), T_segment rows"]
+  Q1 -->|"the reco of true neutrino n (efficiency)"| C1["T_match: level 2, side 1, truth_nu_idx == n"]
+  C1 --> C2["nmatch == 0 → no reco point: missed<br/>else match_obj[0] → reco row: nu_index ≥ 0 a candidate,<br/>−1 a cluster no candidate holds"]
+  Q1 -->|"my own definition<br/>(charge weight, pure blobs, whole clusters, ancestor grouping)"| D1["T_overlap: map each row to (reco object, truth object) by its keys<br/>(nu_index, cluster_id, kine_index, in_enu, in_pf; trackid → T_truth_track ids)"]
+  D1 --> D2["sizes: reco Σ n_points (or q, n_pure, q_pure) of its rows incl. trackid −1;<br/>truth Σ of its labeled rows; shared Σ of rows in both"]
+  D2 --> D3["IoU = shared / (reco + truth − shared); best partner both ways<br/>(TruthMatch.h, or Matteo's truthmatch.iou_matrix / spine_match)"]
+```
+
+### 8.4 One event, before and after
+
+r7 MC CV 719/1/2 has two candidates. The same reco1 file and event, with the same reco (V1):
+
+| | path |
+|---|---|
+| r7 (no truth match) | `/exp/sbnd/data/users/yuhw/production-prep/r7-r26-master-b7bd2a1a/mc-cv/f0000/pr/pr_evt2/tracking-pr.root` (417 kB, 15 trees) |
+| #41 | `/exp/sbnd/data/users/yuhw/production-prep/truthmatch-41/run/reco1-detsim-g4-gen-Gen2_2026-1934-7698-414f-e6c3/pr/all/pr_evt2/tracking-pr.root` (1.19 MB: 15 trees + `T_truth_track`, `T_overlap`, `T_match`, `T_pf` + `recTreeWireCell`) |
+| #41 merged CAF (17 events) | `/exp/sbnd/data/users/yuhw/production-prep/truthmatch-41/run/reco1-detsim-g4-gen-Gen2_2026-1934-7698-414f-e6c3/merged/reco2-reco1-detsim-g4-gen-Gen2_2026-1934-7698-414f-e6c3.wc.flat.caf.root` |
+| Bee (r7 / #41) | `.../f0000/{ql/mabc.zip, pr/mabc-pr.zip}` / `.../truthmatch-41/run/<id>/{ql/all/mabc.zip, pr/all/mabc-pr.zip}` |
+
+All 17 events of the unit pair the same way (`pr_evt<E>`, E = 1, 2, 17, 19, 21, 23, 24, 30, 32, 34, 37, 41, 43, 44, 45, 46, 49); 7 units in `scripts/validation-pairs.tsv` (r7 unit ids f0000, f0011–f0016).
+
 ## Log
+- 2026-10-13: §8 reference (T_truth_pf vs T_truth_track measured, all branches, join diagram, recipes, example pair); toolkit `4b6853d4`: a truth object's interaction from its member tracks (no output change on the sample).
 - 2026-10-13: implemented (larwirecell `73c79bc`, toolkit `229b7aab`, workflow `31a079d`) and validated (§7): V1–V7 pass; Matteo's candidate match reproduced 63/63 from `tracking-pr.root` alone.
 - 2026-10-12: issue opened. Current `tracking-pr.root` mapped (stages, trees, ids; joins measured on 1,460 r7 events). Matteo's matching and his toolkit proposal read. Blob `trackid` found already inside `qlpctree.tar.gz`. Plan written, waiting for discussion.
