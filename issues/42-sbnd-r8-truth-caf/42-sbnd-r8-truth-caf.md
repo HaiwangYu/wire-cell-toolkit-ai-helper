@@ -85,4 +85,5 @@ Deleted in both modes: the FrameShift copies, `nugraph.h5`, and failed tries' la
 - **Disk:** about 3.5 MB per event kept (qlpctree 2–2.5, `tracking-pr.root` 0.2–0.6, merged CAF 0.25–0.9), so about **110 GB**, plus Bee for the 316 validation events.
 
 ## Log
+- 2026-10-16 11:28: launched (`launch.sh`; ticket `/tmp/krb5cc_53514_r8campaign`, renewable to 10-23, hourly `krb-renew-r8`; the old r6 renewer stopped). Machine busy at launch: other users 29 % CPU, 77 % memory (one user 56 GB) -> 30 % budget, 19 pairs; 41 GB available.
 - 2026-10-15: inputs paired (beam-off recovered from r7's events.tsv; sibling pairing); 55 nueCC files without CAF skipped (owner); qlpctree kept in both modes (owner); workflow `de83d8d`; waiting for a Kerberos ticket to launch.
