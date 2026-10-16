@@ -85,6 +85,11 @@ Deleted in both modes: the FrameShift copies, `nugraph.h5`, and failed tries' la
 - **Disk:** about 3.5 MB per event kept (qlpctree 2–2.5, `tracking-pr.root` 0.2–0.6, merged CAF 0.25–0.9), so about **110 GB**, plus Bee for the 316 validation events.
 
 ## Log
+- 2026-10-16 12:15: **validation done**: 20/20 pairs OK, 20/20 `validate.json` PASS; MC CV 113 events, MC nueCC 103, beam-off 100.
+  - The 9 pairs stopped in the incident were rerun by restarting their pools.
+  - Kept as planned: Bee zips, `tracking-pr.root`, merged CAF, qlpctree.
+  - Truth-match trees in every MC event (216/216) and in no data event (0/100); `T_dlvtx_call` and `recTreeWireCell` in every event.
+  - Size: 983 / 1,090 / 315 MB.
 - 2026-10-16 11:29–11:37: **memory incident.** One user's job grew 56 → 70 GB within a minute; swap full, MemAvailable 8.9 GB with our 19 step-1 jobs (23 GB) still growing.
   - Action: governor paused, cap 10; the 9 newest validation pairs killed (whole process trees: no orphan `lar`). Later the 4 newest pairs too, after the pools refilled; MemAvailable back to 30 GB.
   - Governor fixed (workflow `1350333`, see below): the job cap also respects memory headroom (MemAvailable minus what our running jobs will still grow, minus 20 GB, at 2 GB per job), and it logs ALERT below 10 GB.
