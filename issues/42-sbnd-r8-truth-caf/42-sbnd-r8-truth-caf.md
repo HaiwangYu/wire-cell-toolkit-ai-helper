@@ -85,6 +85,7 @@ Deleted in both modes: the FrameShift copies, `nugraph.h5`, and failed tries' la
 - **Disk:** about 3.5 MB per event kept (qlpctree 2–2.5, `tracking-pr.root` 0.2–0.6, merged CAF 0.25–0.9), so about **110 GB**, plus Bee for the 316 validation events.
 
 ## Log
+- 2026-10-16 13:53: **dCache outage.** 117 input files went `UNAVAILABLE` (MC CV 63, nueCC 47, beam-off 7; all `ONLINE` at pairing): 13 affected pairs were already OK, 3 FAIL precheck so far, 101 not reached yet; they fail the precheck without compute and are rerun (`launch.sh`) once dCache is back. The governor is at 60 % (others 6 % CPU, 13 % memory; 37 pairs).
 - 2026-10-16 12:15: **validation done**: 20/20 pairs OK, 20/20 `validate.json` PASS; MC CV 113 events, MC nueCC 103, beam-off 100.
   - The 9 pairs stopped in the incident were rerun by restarting their pools.
   - Kept as planned: Bee zips, `tracking-pr.root`, merged CAF, qlpctree.
