@@ -85,5 +85,11 @@ Deleted in both modes: the FrameShift copies, `nugraph.h5`, and failed tries' la
 - **Disk:** about 3.5 MB per event kept (qlpctree 2–2.5, `tracking-pr.root` 0.2–0.6, merged CAF 0.25–0.9), so about **110 GB**, plus Bee for the 316 validation events.
 
 ## Log
+- 2026-10-16 11:29–11:37: **memory incident.** One user's job grew 56 → 70 GB within a minute; swap full, MemAvailable 8.9 GB with our 19 step-1 jobs (23 GB) still growing.
+  - Action: governor paused, cap 10; the 9 newest validation pairs killed (whole process trees: no orphan `lar`). Later the 4 newest pairs too, after the pools refilled; MemAvailable back to 30 GB.
+  - Governor fixed (workflow `1350333`, see below): the job cap also respects memory headroom (MemAvailable minus what our running jobs will still grow, minus 20 GB, at 2 GB per job), and it logs ALERT below 10 GB.
+  - Found: three pools can launch at the same instant and overshoot the shared cap by 1–2 (a launch lock in `run-pairs.sh` will fix it; not edited while the pools run).
+  - 11:37: the other user is back at 27 GB; we run 20 pairs (30 GB), 47 GB available.
+  - The killed pairs (13) have no status and are picked up when `launch.sh` is rerun after the pools finish.
 - 2026-10-16 11:28: launched (`launch.sh`; ticket `/tmp/krb5cc_53514_r8campaign`, renewable to 10-23, hourly `krb-renew-r8`; the old r6 renewer stopped). Machine busy at launch: other users 29 % CPU, 77 % memory (one user 56 GB) -> 30 % budget, 19 pairs; 41 GB available.
 - 2026-10-15: inputs paired (beam-off recovered from r7's events.tsv; sibling pairing); 55 nueCC files without CAF skipped (owner); qlpctree kept in both modes (owner); workflow `de83d8d`; waiting for a Kerberos ticket to launch.
