@@ -85,6 +85,23 @@ Deleted in both modes: the FrameShift copies, `nugraph.h5`, and failed tries' la
 - **Disk:** about 3.5 MB per event kept (qlpctree 2–2.5, `tracking-pr.root` 0.2–0.6, merged CAF 0.25–0.9), so about **110 GB**, plus Bee for the 316 validation events.
 
 ## Log
+- 2026-10-16 22:30: **r8 complete.**
+
+  | mode / sample | merged CAFs | CAF events | with Wire-Cell |
+  |---|---|---|---|
+  | validation MC CV | 7 | 113 | 113 |
+  | validation MC nueCC | 11 | 103 | 103 |
+  | validation beam-off | 2 | 100 | 100 |
+  | semiprod MC CV | 990 | 13,113 | 13,112 |
+  | semiprod MC nueCC | 944 | 8,145 | 8,145 |
+  | semiprod beam-off | 212 | 10,048 | 10,048 |
+
+  - MC CV: 989 OK + 1 PARTIAL. The PARTIAL is `67a3-4e42-52e3-19f7`, the deterministic step-1 crash at 471/18/33 (lar rc 139): that event is skipped and the other 13 merged.
+  - MC nueCC 944/944 OK; beam-off 212/212 OK.
+  - All dCache-outage failures and incident-stopped pairs were rerun after recovery.
+  - Beam-off: the 212 reco1 files hold 10,071 events, and their CAFs 10,048. Every CAF event has Wire-Cell output.
+  - Total 98 GB. Governor stopped; the `krb-renew-r8` renewer is kept for the FermiGrid production (sbnd-wirecell-production #1).
+  - The open data (#40) is linked as `semiprod/beam-on-opendata`.
 - 2026-10-16 13:53: **dCache outage.** 117 input files went `UNAVAILABLE` (MC CV 63, nueCC 47, beam-off 7; all `ONLINE` at pairing): 13 affected pairs were already OK, 3 FAIL precheck so far, 101 not reached yet; they fail the precheck without compute and are rerun (`launch.sh`) once dCache is back. The governor is at 60 % (others 6 % CPU, 13 % memory; 37 pairs).
 - 2026-10-16 12:15: **validation done**: 20/20 pairs OK, 20/20 `validate.json` PASS; MC CV 113 events, MC nueCC 103, beam-off 100.
   - The 9 pairs stopped in the incident were rerun by restarting their pools.
