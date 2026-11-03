@@ -65,23 +65,33 @@ All 5 arms × 27 inputs (8 MC CV pairs / 100 events, 10 MC nueCC pairs / 109 eve
 - **Metrics:** identical to `master` (all tables below).
 - **Caveat:** `original` is not the PR's SBND default (`dv2_split_move` is). To keep the uboone model, pass `--tla-str vertex_method=original` (2-step `wct-pr.jsonnet`, per-event `wct-pr-perevt.jsonnet`, or the 1-step lib).
 
-### Q2: standalone vs in-chain inference
+### Q2: standalone vs in-chain inference — identical (228 / 228)
 
 - **What the PR did:** replayed the r7 fold-0 export through the Python function (`validate_r7.py`). It did not compare the in-chain result with standalone Python for the same calls.
-- **Here:** every in-chain DV2 call (229 per DV2 arm) was replayed standalone, from its dumped cloud through `DV2_Vertex.DV2_Vertex` in the same Python environment (`dv2-standalone.py`). Compared with the in-chain record (`DV2_HOOK_LOG`):
-  - 228 calls have an in-chain record. The other is a 2-point cloud: no prediction on either side.
-  - **226 / 228 identical** (< 1e-4 cm; median 4.5e-6 cm, float32 rounding; calibrated score equal to 2e-8).
-  - **2 / 228 differ:** 0.09 cm on a 12-point cloud (score 0 both), and 0.22 cm on a 614-point cloud (calibrated score 0.58 in-chain vs 0.44 standalone). These are the same 2 calls in all three DV2 arms; they are deterministic on both sides, and history-free (a fresh process gives the same).
-- **Why the 614-point call differs:** the ranker's candidate set differs by one CNN mode (in-chain 121 candidates, top-1 from `cand`; standalone 122, top-1 from `cnn`). That is a numerical difference in the torch passes between the embedded and the standalone process.
-  - The input is the same: the same n and n_vertex_rows, and 226 calls are bit-exact.
-  - Ruled out: a different torch (the `wire-cell` process maps the scn product's torch 2.6, not CVMFS libtorch 2.1.1); flush-to-zero (`torch.set_flush_denormal(True)` does not reproduce it); call history; thread counts (all 1).
-  - The `wire-cell` process also maps CVMFS OpenBLAS 0.3.23 and a second libgomp; not resolved further.
-  - The effect is the same kind as the PR's GPU fp16 vs CPU fp32 near-ties (3.2 % of calls > 0.1 cm there; 0.9 % here).
-- **lightgbm:** 4.6.0 here, with the ranker trained and saved by 4.7.0. Every standalone and in-chain call used 4.6.0 and the bundle loaded without warning. The PR's fold-0 parity test (`validate_r7.py`) needs the r7 export (on Eagle) and was not rerun here.
+- **Here:** every in-chain DV2 call (229 per DV2 arm) was replayed standalone, from its dumped inputs through `DV2_Vertex.DV2_Vertex` in the same Python environment (`dv2-standalone.py`):
+  - the cloud is `T_dlvtx_cloud` (x, y, z, q as float32, in `ipoint` order);
+  - `n_vertex_rows`, `q_scale`, `q_offset` and the traditional vertex come from `T_dlvtx_call`.
+- **Result:** compared with the in-chain record (`DV2_HOOK_LOG`), **all 228 calls with a prediction are identical**: max 1.6e-5 cm (float32 rounding; median 4.4e-6 cm), calibrated score equal to 3e-8. The 229th call is a 2-point cloud with no prediction on either side. The same holds in all three DV2 arms.
+- **Correction (2026-11-03):** a first replay reported 2 / 228 calls off by 0.09 and 0.22 cm. That was my replay's bug, not a difference inside `wire-cell`.
+  - When a candidate has no traditional vertex, the chain passes `trad = NaN`, and DV2-MAX then has no `tag_nu`. The dump stores this as `trad_valid = 0` with `trad_x/y/z = 0`.
+  - The first replay passed `(0, 0, 0)`: a fake traditional vertex at the origin. It changed the tag-distance features (`pr_prox`, `cand_desc`, `event_summary`), hence the ranker's candidate set and its pick.
+  - Exactly 2 of the 229 calls have `trad_valid = 0`, and they are the 2.
+  - Found by capturing every intermediate of the call in-chain and standalone, with a `sitecustomize.py` that wraps `Vertexer.run(with_records=True)` (`scripts/dv2-sitecustomize.py`). Inputs, features, pass-1/pass-2 CNN records, ranker rows and scores were compared stage by stage: the first difference was in the features.
+  - With the replay passing NaN when `trad_valid = 0`, every call matches. The pass-1 CNN outputs agree to 1e-7 (float noise, no effect).
+- **Note for the PR:** a replay from the dump must honour `trad_valid`; the dump writes 0, not NaN, for a missing traditional vertex.
+- **lightgbm:** 4.6.0 here, with the ranker trained and saved by 4.7.0. It loads without warnings, and in-chain and standalone use the same 4.6.0. The PR's fold-0 parity test (`validate_r7.py`) needs the r7 export (on Eagle) and was not rerun here.
 
 ### Q3: cost
 
 All runs at 1 thread (`OMP`/`MKL`/`OpenBLAS`/`DV2_THREADS` = 1); one `wire-cell` process per input file, as in production.
+
+**Is the model loaded per event?** No: once per `wire-cell` process. Step 2 runs one process per input file, as in production: the 2-step chain's `wct-pr.jsonnet` reads all events of a qlpctree; the 1-step lar job loads once per job.
+- **Here:** 27 loads for 276 events (one per file, about 10 events and 8.5 DV2 calls per file).
+- **Load breakdown, warm file cache:** about 4.8 s (`import numpy` 0.3 s, `import torch` 2.9 s, `import dv2max_vertexer` 0.4 s, model load and sha256 check 1.3 s).
+- **Cold cache:** when 24 processes started at once and read torch from CVMFS, it took 16–23 s.
+- **Totals (`dv2_split_move`, 27 runs):** loads 193 s, inference 145 s, against 3,234 s of step-2 CPU. That is **6 % for loading, 4.5 % for inference**.
+- **The uboone model also loads once per process:** master's first vertex call takes about 5.2 s (torch import + SCN net), its later calls about 20 ms. So per process the two models cost about the same to load; they differ per call (0.63 s vs 0.02 s).
+- **Per-event mode** (`wct-pr-perevt.jsonnet`, one process per event): both models would pay about 5 s per event, against about 11.7 s (dv2) or 16 s (master) of step-2 CPU per event. That would be a large overhead (+40 %) for either model, and cold-cache stalls would make it worse. For production, keep several events per process (as the 2-step chain does). The PR's README suggests the same.
 
 **Vertex step per call** (`TaggerCheckNeutrino timing: overall main vertex took`):
 
@@ -163,4 +173,4 @@ The statistics are small: ±5 points on ν_e, ±8 on ν_μ.
 - 2026-11-03:
   - Matrix done; the 4 intermittent crashes were rerun.
   - Metrics; Q1 full compare: identical.
-  - Q2 replay: 226/228 exact, 2 near-ties.
+  - Q2 replay: first 226/228 exact. The 2 were traced to the replay passing (0,0,0) for a missing traditional vertex instead of NaN; fixed: 228/228 identical.

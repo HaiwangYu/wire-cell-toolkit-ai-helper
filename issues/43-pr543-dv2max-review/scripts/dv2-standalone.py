@@ -29,7 +29,9 @@ for run in sys.argv[3:]:
             m = (p['nu_index'] == key[0]) & (p['call_index'] == key[1]) & (p['pass'] == key[2])
             o = np.argsort(p['ipoint'][m])
             x, y, z, q = (p[k][m][o].astype(np.float32) for k in ('x', 'y', 'z', 'q'))
-            trad = np.array([c['trad_x'][i], c['trad_y'][i], c['trad_z'][i]], dtype=np.float32)
+            # no traditional vertex: the chain passes NaN (the dump stores trad_valid = 0 with zeros)
+            trad = (np.array([c['trad_x'][i], c['trad_y'][i], c['trad_z'][i]], dtype=np.float32) if c['trad_valid'][i]
+                    else np.full(3, np.nan, dtype=np.float32))
             nv = int(c['n_vertex_rows'][i])
             res = DV.DV2_Vertex(bundle, x.tobytes(), y.tobytes(), z.tobytes(), q.tobytes(), nv, trad.tobytes(),
                                 float(c['q_scale'][i]), float(c['q_offset'][i]))

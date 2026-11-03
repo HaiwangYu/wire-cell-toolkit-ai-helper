@@ -8,17 +8,16 @@ Thanks, @dsnehadri. I validated this on SBND at FNAL, on events DV2-MAX has neve
 
 **1. `original` reproduces master exactly.** The compiled config is byte-identical. All 276 events are identical in every tree and branch of `tracking-pr.root` (920k branch arrays), apart from `Trun.wct_version`. The vertex and selection numbers are identical too.
 
-**2. In-chain vs standalone.** I replayed every in-chain DV2 call (229) standalone, from the dumped `T_dlvtx_cloud` through `DV2_Vertex.DV2_Vertex`, and compared with the `DV2_HOOK_LOG` record:
-- 226 / 228 are identical (< 1e-4 cm; calibrated score equal to 2e-8).
-- 2 differ: by 0.09 cm, and by 0.22 cm with the score 0.58 vs 0.44. In the latter, the ranker sees 121 candidates in-chain and 122 standalone (one CNN mode). So the torch passes are not bit-identical inside `wire-cell`, with the same inputs, the same torch library and 1 thread. These are near-ties like the GPU vs CPU ones in your README, and both sides are deterministic.
-- A suggestion: add an input digest (e.g. sha1 of the x/y/z/q bytes) to the `DV2_HOOK_LOG` record, so a call can always be matched to its standalone replay.
+**2. In-chain vs standalone: identical.** I replayed every in-chain DV2 call (229) standalone, from the dumped `T_dlvtx_cloud` / `T_dlvtx_call` inputs through `DV2_Vertex.DV2_Vertex`, and compared with the `DV2_HOOK_LOG` record:
+- **228 / 228** predictions are identical (max 1.6e-5 cm, float32 rounding; calibrated score equal to 3e-8). The 229th call is a 2-point cloud with no prediction on either side.
+- One trap for replays: when there is no traditional vertex, the chain passes `trad = NaN`, but the dump stores `trad_valid = 0` with `trad_x/y/z = 0`. Replaying `(0, 0, 0)` gives a fake tag at the origin and different picks (2 of my 229 calls until I honoured `trad_valid`). Writing NaN in the dump, or documenting this, would help.
 
 **3. Cost (1 thread):**
 
 | | master / `original` | `dv2_*` |
 |---|---|---|
 | vertex step per call, median | 21 ms (uboone SCN) | 0.63 s |
-| first call of a process | ~5.4 s | ~9 s (imports + model load) |
+| first call of a process (once per `wire-cell` process, not per event) | ~5.2 s (torch import + net) | ~4.8 s warm (torch import 2.9 s, model 1.3 s); 16–23 s from a cold CVMFS cache |
 | whole step 2, CPU, 276 events | 4,442 s | 3,180–3,230 s (−28 %: the `original` chain is skipped) |
 | peak RSS per process | 1.54 GB median | +165 MB |
 
