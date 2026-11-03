@@ -158,7 +158,17 @@ The statistics are small: ±5 points on ν_e, ±8 on ν_μ.
 - **Scores:** `T_tagger` `nue_score` and `numu_score` per event; selections as in the PR (generic ν + `nue_score > 7`; `numu_score > 0.9`). On data, the counts selected per method and the event-by-event changes.
 - **Crashes and fallbacks:** rc, `DL vertex failed`, DV2 WARN fallbacks.
 
+## Missing-dependency test (2026-11-03)
+
+- `dv2_split_move` on the 15-event smoke pair, with lightgbm removed from `PYTHONPATH` and `DV2_STRICT` unset.
+- **Result:** rc 0, all 15 events written, **all 6 DV2 calls failed** (`ModuleNotFoundError: No module named 'lightgbm'`); every candidate silently kept the traditional vertex with the original refinement.
+- The only traces: a WARN line per call and the stderr message.
+- Each call re-tried the import (0.7–18 s), because the vertexer is cached only on success.
+- This is the same trap the SCN net had ("DL vertex failed", rc 0). It goes into the review.
+
 ## Review comment, to post after the validation
+
+The full draft review (body + inline comments) is `pr543-review-draft.md`; `review-comment-draft.md` is the earlier, shorter version.
 
 - The answers to Q1–Q3.
 - Suggest moving the models (`cfg/dv2max/r7_cloud/`: `pass1.pt`, `pass2.pt`, about 80 MB each, plus the ranker and isotonic files) to wire-cell-data `uboone/dsnehadri/`, resolved through `WIRECELL_PATH` like the SCN weights.
