@@ -2,7 +2,7 @@
 
 GitHub: https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/44
 
-**Status (2026-11-04): P1 done, P2 done on BNB CV (G1, G2, G3, G5 pass; §10).** The 136-event sample for Sne is on Flare. Open items: G3 on nueCC and on data, G8 CPU, then P3 (B1). Implementation and tests are to be done on Aurora. The only work so far is read-only surveys and two measurement scripts run on Polaris (`scripts/`).
+**Status (2026-11-04): P1 done, P2 done on BNB CV (G1, G2, G3, G5 pass; §10).** The 136-event sample for Sne is on Flare; v2 (`$Y/production-prep/pr544-review/`, §11) has the Bee event merge fixed (PR #544 review). Open items: G3 on nueCC and on data, G8 CPU, then P3 (B1). Implementation and tests are to be done on Aurora. The only work so far is read-only surveys and two measurement scripts run on Polaris (`scripts/`).
 
 Builds on:
 - #35: the DL dump `T_dlvtx_call` / `T_dlvtx_cloud`.
@@ -330,8 +330,56 @@ The production build does exactly the same (G1 compares those zips member by mem
 - merged CAFs, per-event `tracking-pr.root` and `mabc-pr.zip`;
 - 3 units, 136 events, 409 MB.
 
+## 11. PR #544 review fixes and the v2 sample (Aurora, 2026-11-04)
+
+Xin's review of WireCell PR #544 (comment 6637493975) included the Bee merge of §10.3. Item 1 explains it:
+- MABC started a new event only when the set **ident** (the art event number) changed;
+- in a group run, two consecutive events of different subruns with the same event number were one event to the node.
+
+The owner chose to fix the review once, on `sbnd-wc-flatcaf`, and rebase the #44 branch onto it.
+
+**Commits:** five, on `sbnd-wc-flatcaf` `d06a47d7..d5bd7851`, pushed; PR #544 updated. Reply: PR comment 6642473769.
+
+| Commit | Item | Change |
+|---|---|---|
+| `b789bc80` | 1 | MABC starts a new event on a new ident **or** a new metadata RSE; `ensure_own_sink()` keys on the full RSE |
+| `0156af6b` | 2 | `flatten_file` refuses a missing file; `valid` comes from `Trun`; 2 doctests |
+| `f3ee0c13` | 4 (owner chose option a) | step-1 `truth_detail` is a lib argument, default off; the production job `wcls-img-clus-matching.jsonnet` passes true; a warning when `truth_match` is on without a `truth_track` table |
+| `0d7ce056` | 10 | one `per_event_name` fallback; only the known tokens make a template |
+| `d5bd7851` | 8, 7 | a shared shower segment names the shower of its T_kine row (T_overlap `particle_id`, T_segment `shower_id`); the truth-match summary is logged at info |
+
+**#44 branch:**
+- `sbnd-dlvtx-space-44` rebased (cleanly) to `55177882`, force-pushed with a lease on `a2785870`;
+- rebuilt to `$Y/opt-dlvtx44`;
+- doctests: clus 487/487, root 14/14.
+
+**Checks** (work area `$Y/production-prep/pr544-review/`, jobs 9039841 build and 9039893 test):
+- **Compiled configs:**
+  - `wct-pr.jsonnet` (sim and data) and the production step-1 job are byte-identical to `d06a47d7`;
+  - the obsolete 1-step job loses only `truth_detail: true`.
+- **Step 2, production settings, 3 BNB CV units vs the production build:**
+  - **Bee:** the production build gives 131 Bee events for 136 events, with 5 merged slots (10 events); the new build gives 136 with none merged.
+    - The merged pairs are 2100292/23/6 + 30/6 and 32/3 + 38/3; 2100134/44/9 + 54/9; 2100155/20/7 + 35/7 and 26/1 + 32/1.
+    - Each merged slot's point count is exactly the sum of its two split events.
+    - The other 126 events have identical Bee JSON (compared by RSE with `bee-by-rse.py`).
+    - Correction to §10.3: 10 events, not 5. G3 only saw the merged pairs with DL calls.
+  - **ROOT:** the only change apart from `Trun.wct_version` is item 8's, in 1 event (2100292/20/4: 2 T_overlap rows and 1 T_segment row).
+- **v2 sample** (`$Y/production-prep/pr544-review/`, `README.md` there):
+  - 3/3 units OK, validation PASS;
+  - `T_dlvtx_space` and `T_dlvtx_call` identical to the first sample (272 trees);
+  - the Bee zips have 136 events, none merged.
+- **Answers to Xin's questions:**
+  - `flat_tree=true` in every production step 2;
+  - BNB CV 1M: 627,205 CAF events, 78 without Wire-Cell output.
+
+**Still open:**
+- Items 3 and 5 (`q_blob`, completeness): a follow-up with a new schema.
+- Items 6, 7 and 9: documentation.
+- The #44 feature PR, after #544.
+
 ## Log
 
 - 2026-11-04: survey of Sne's `r7_space` (§1); toolkit read (§2); size measurement on Sne's r7 copy (§3); plan (§4–7); issue opened.
 - 2026-11-04 (Aurora): plan reviewed (§9): feasible; touch test moved to the writer for A; repo state of the toolkit / larwirecell / PR #543; the 100-event BNB CV sample defined. Waiting for the branch decision.
 - 2026-11-04 (Aurora): owner decisions (PR #544; branch `sbnd-dlvtx-space-44`; §8 accepted). P1 implemented (`a2785870`), built to `$Y/opt-dlvtx44`; G1/G2/G3/G5 pass on 136 BNB CV events; the step-2 Bee event-merge defect found (§10.3); the 136-event sample for Sne written (§10.4).
+- 2026-11-04 (Aurora): PR #544 review fixed on `sbnd-wc-flatcaf` (`d5bd7851`, 5 commits; item 1 = the §10.3 Bee merge); #44 rebased to `55177882`; Bee 136/136 events, trees unchanged apart from item 8 in 1 event; v2 sample for Sne (§11).

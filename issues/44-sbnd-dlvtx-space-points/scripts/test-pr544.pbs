@@ -1,0 +1,66 @@
+#!/bin/bash
+#PBS -N wct-pr544-test
+#PBS -A neutrinoGPU
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/pr544-review/logs/test.out
+# WireCell PR 544 review fixes, on the rebased issue-44 build ($Y/opt-dlvtx44, $Y/wct-dlvtx44 =
+# the PR tip + T_dlvtx_space, knob off unless DLVTX_SPACE=true):
+#   cfg      compiled configs, production tree ($Y/wire-cell-toolkit @ d06a47d7) vs new tree
+#   fix-off  step 2 with the production settings on the 3 BNB CV units -> compare with
+#            dlvtx-space-44/arms/off-old (the production build, same input)
+#   sample   the 136-event Sne sample again (DLVTX_SPACE=true, Bee kept, merged CAF)
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+A=$Y/sbnd-wirecell-production/aurora
+D=$Y/production-prep/pr544-review
+O44=$Y/production-prep/dlvtx-space-44
+P=$Y/production-prep/bnb1m/full/A/node0
+source $A/site/aurora.sh
+export SL7_SETUP=$WC_SL7_SETUP WC_EVT_SUBDIR='pr_evt{run}_{subrun}_{event}'
+unset LD_PRELOAD
+module load apptainer >/dev/null 2>&1; module load fuse-overlayfs >/dev/null 2>&1
+echo "=== START $(/bin/date -u) $(hostname); old tree $(git -C $Y/wire-cell-toolkit rev-parse --short HEAD) new tree $(git -C $Y/wct-dlvtx44 rev-parse --short HEAD)"
+NEW="WC_OPT=$Y/opt-dlvtx44 WC_WCT_SRC=$Y/wct-dlvtx44"
+
+# ---- fix-off arm, in the background
+for u in $(cat $D/units.txt); do
+  tar=$P/$u/ql/all/qlpctree.tar.gz
+  out=$D/arms/fix-off/$u; rm -rf $out; mkdir -p $out
+  ( env $NEW /usr/bin/time -v -o $out/time.txt $WC_WRAP $A/bin/step2.sh $tar $out/pr sim > $out/step2.out 2>&1; echo "rc=$?" > $out/rc ) &
+done
+
+# ---- cfg gate, both trees
+for t in old new; do
+  if [ $t = old ]; then envs=""; else envs="$NEW"; fi
+  env $envs SL7_SETUP=$A/env/aurora/setup-aurora-ap.sh $WC_WRAP bash -c '
+    o='$D'/cfg/'$t'; rm -rf $o; mkdir -p $o; cd $o
+    PR="-A input=x.tar.gz -A evt_subdir=pr_evt{run}_{subrun}_{event} --tla-code dl_vtx_dump=true --tla-code flat_tree=true"
+    wcsonnet -A reality=sim $PR --tla-code truth_match=true pgrapher/experiment/sbnd/wct-pr.jsonnet > wct-pr-sim.json 2> wct-pr-sim.err; echo "wct-pr sim rc=$?"
+    wcsonnet -A reality=data $PR --tla-code truth_match=false pgrapher/experiment/sbnd/wct-pr.jsonnet > wct-pr-data.json 2> wct-pr-data.err; echo "wct-pr data rc=$?"
+    EV="-C epoch=\"perfect\" -C lifetime=10.0 -C save_simdigits=false -V signal_output_form=sparse -V raw_input_label=daq -V enable_tracking_root=true \
+        -C recobwire_tags=[\"sptpc2d:gauss\",\"sptpc2d:wiener\"] -C trace_tags=[\"gauss\",\"wiener\"] -C summary_tags=[\"\",\"wiener\"] \
+        -C input_mask_tags=[\"sptpc2d:badmasks\"] -C output_mask_tags=[\"bad\"] -V opflash0_input_label=opflashtpc0 -V opflash1_input_label=opflashtpc1"
+    for r in sim data; do
+      for j in wcls-img-clus-matching obsolete/wcls-img-clus-matching-pr-hits; do
+        n=$(basename $j)-$r
+        eval wcsonnet -V reality=$r $EV pgrapher/experiment/sbnd/$j.jsonnet > $n.json 2> $n.err; echo "$n rc=$?"
+      done
+    done
+  ' 2>&1 | grep -v '^INFO'
+done
+
+# ---- the sample (run-pairs.sh), in parallel with the arm
+(
+  cd $A
+  export WC_OPT=$Y/opt-dlvtx44 WC_WCT_SRC=$Y/wct-dlvtx44 DLVTX_SPACE=true
+  export WC_KEEP=validation WC_MAXPAR=10 WC_RAMP_S=0 WC_LAUNCH_GAP_S=1 WC_TRUST_EVENTS=1
+  bash bin/run-pairs.sh site/aurora.sh $D/sample/pairs.tsv $D/sample/work $O44/recTreeWireCell.schema.json > $D/logs/sample.out 2>&1
+  for u in $(cat $D/units.txt); do echo "sample $u $(cat $D/sample/work/$u/status 2>/dev/null)"; done
+) &
+wait
+for f in $D/arms/*/*/rc; do echo "$f $(cat $f)"; done
+echo "=== END $(/bin/date -u)"
