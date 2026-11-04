@@ -1,0 +1,28 @@
+#!/bin/bash
+#PBS -N dlvtx44-sample
+#PBS -A neutrinoGPU
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/dlvtx-space-44/logs/sample.out
+# ai-helper issue 44: the 136-event BNB CV sample for Sne -- the aurora/ workflow with the feature
+# build, DL dump + T_dlvtx_space, Bee kept (WC_KEEP=validation), the production step-1 tars reused
+# (ql/ copied with its DONE marker), merged CAF against the extended schema.
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+D=$Y/production-prep/dlvtx-space-44
+cd $Y/sbnd-wirecell-production/aurora
+export WC_OPT=$Y/opt-dlvtx44 WC_WCT_SRC=$Y/wct-dlvtx44 DLVTX_SPACE=true
+export WC_KEEP=validation WC_MAXPAR=10 WC_RAMP_S=0 WC_LAUNCH_GAP_S=1 WC_TRUST_EVENTS=1
+unset LD_PRELOAD
+module load apptainer >/dev/null 2>&1; module load fuse-overlayfs >/dev/null 2>&1
+echo "=== START $(/bin/date -u) $(hostname)"
+REFS="/lus/flare/projects/neutrinoGPU/yuhw/production-prep/dlvtx-space-44/arms/on-new/reco2-reco1-detsim-g4-gen-0bbf-855f-1a81-b8df/pr/pr_evt2100155_21_5/tracking-pr.root /lus/flare/projects/neutrinoGPU/yuhw/production-prep/dlvtx-space-44/arms/on-new/reco2-reco1-detsim-g4-gen-0bbf-855f-1a81-b8df/pr/pr_evt2100155_22_3/tracking-pr.root /lus/flare/projects/neutrinoGPU/yuhw/production-prep/dlvtx-space-44/arms/on-new/reco2-reco1-detsim-g4-gen-0bbf-855f-1a81-b8df/pr/pr_evt2100155_25_4/tracking-pr.root /lus/flare/projects/neutrinoGPU/yuhw/production-prep/dlvtx-space-44/arms/on-new/reco2-reco1-detsim-g4-gen-0bbf-855f-1a81-b8df/pr/pr_evt2100155_25_7/tracking-pr.root"
+SL7_SETUP=$PWD/env/aurora/setup-aurora-run.sh env/aurora/in-aurora-sl7.sh bash -c "
+  cd $D && python3 $PWD/bin/make-schema.py -o $D/schema-refs.json --require T_dlvtx_call,T_dlvtx_space,T_dlvtx_cloud $REFS && python3 $D/tools/extend-schema.py $PWD/schema/recTreeWireCell.schema.json $D/schema-refs.json $D/recTreeWireCell.schema.json" 2>&1 | grep -v '^INFO'
+[ -s $D/recTreeWireCell.schema.json ] || { echo "no schema"; exit 1; }
+bash bin/run-pairs.sh site/aurora.sh $D/sample/pairs.tsv $D/sample/work $D/recTreeWireCell.schema.json
+for u in $(cat $D/units.txt); do echo "$u $(cat $D/sample/work/$u/status)"; done
+echo "=== END $(/bin/date -u)"

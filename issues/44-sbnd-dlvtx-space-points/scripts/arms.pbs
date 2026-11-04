@@ -1,0 +1,59 @@
+#!/bin/bash
+#PBS -N dlvtx44-arms
+#PBS -A neutrinoGPU
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/dlvtx-space-44/logs/arms.out
+# ai-helper issue 44, gates G1/G2 (and the input of G3): step 2 on the BNB CV production step-1
+# tars, three arms per unit:
+#   off-old  production install ($Y/opt, $Y/wire-cell-toolkit @ d06a47d7), the production settings
+#   off-new  the feature build ($Y/opt-dlvtx44, $Y/wct-dlvtx44), knob off
+#   on-new   the feature build, DLVTX_SPACE=true
+# plus the config compile gate (wct-pr.jsonnet, old vs new tree).
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+A=$Y/sbnd-wirecell-production/aurora
+D=$Y/production-prep/dlvtx-space-44
+P=$Y/production-prep/bnb1m/full/A/node0
+source $A/site/aurora.sh
+export SL7_SETUP=$WC_SL7_SETUP WC_EVT_SUBDIR='pr_evt{run}_{subrun}_{event}'
+unset LD_PRELOAD
+module load apptainer >/dev/null 2>&1; module load fuse-overlayfs >/dev/null 2>&1
+echo "=== START $(/bin/date -u) $(hostname); old tree $(git -C $Y/wire-cell-toolkit rev-parse --short HEAD) new tree $(git -C $Y/wct-dlvtx44 rev-parse --short HEAD)"
+NEW="WC_OPT=$Y/opt-dlvtx44 WC_WCT_SRC=$Y/wct-dlvtx44"
+for u in $(cat $D/units.txt); do
+  tar=$P/$u/ql/all/qlpctree.tar.gz
+  for arm in off-old off-new on-new; do
+    out=$D/arms/$arm/$u; rm -rf $out; mkdir -p $out
+    case $arm in
+      off-old) envs="";;
+      off-new) envs="$NEW";;
+      on-new)  envs="$NEW DLVTX_SPACE=true";;
+    esac
+    ( env $envs /usr/bin/time -v -o $out/time.txt $WC_WRAP $A/bin/step2.sh $tar $out/pr sim > $out/step2.out 2>&1; echo "rc=$?" > $out/rc ) &
+  done
+done
+# config compile gate, inside the container, both trees
+for t in old new; do
+  if [ $t = old ]; then envs=""; else envs="$NEW"; fi
+  env $envs SL7_SETUP=$A/env/aurora/setup-aurora-ap.sh $WC_WRAP bash -c '
+    o='$D'/cfg/'$t'; mkdir -p $o; cd $o
+    for v in "" "--tla-code dl_vtx_dump=true --tla-code flat_tree=true --tla-code truth_match=true"; do
+      n=$(echo "$v" | md5sum | cut -c1-6)
+      wcsonnet -A input=x.tar.gz -A reality=sim -A evt_subdir="pr_evt{run}_{subrun}_{event}" $v pgrapher/experiment/sbnd/wct-pr.jsonnet > wct-pr-$n.json 2> wct-pr-$n.err; echo "$n rc=$? [$v]"
+      wcsonnet -A input=x.tar.gz -A reality=data -A evt_subdir="pr_evt{run}_{subrun}_{event}" $v pgrapher/experiment/sbnd/wct-pr.jsonnet > wct-pr-data-$n.json 2> wct-pr-data-$n.err; echo "data $n rc=$?"
+    done
+    if [ '$t' = new ]; then
+      wcsonnet -A input=x.tar.gz -A reality=sim -A evt_subdir="pr_evt{run}_{subrun}_{event}" --tla-code dl_vtx_dump=true --tla-code flat_tree=true --tla-code truth_match=true --tla-code dl_vtx_dump_space=true pgrapher/experiment/sbnd/wct-pr.jsonnet > wct-pr-space.json 2> wct-pr-space.err; echo "space rc=$?"
+      wcsonnet -A input=x.tar.gz -A reality=data -A evt_subdir="pr_evt{run}_{subrun}_{event}" --tla-code dl_vtx_dump=true --tla-code flat_tree=true --tla-code dl_vtx_dump_space=true pgrapher/experiment/sbnd/wct-pr.jsonnet > wct-pr-data-space.json 2> wct-pr-data-space.err; echo "data space rc=$?"
+      wcsonnet -A input=x.tar.gz -A reality=sim --tla-code dl_vtx_dump_space=true pgrapher/experiment/sbnd/wct-pr.jsonnet > wct-pr-space-nodump.json 2> wct-pr-space-nodump.err; echo "space-without-dump rc=$? (want != 0)"
+    fi
+    echo WIRECELL_PATH=$WIRECELL_PATH | tr : "\n" | head -3
+  ' 2>&1 | grep -v '^INFO'
+done
+wait
+for f in $D/arms/*/*/rc; do echo "$f $(cat $f)"; done
+echo "=== END $(/bin/date -u)"

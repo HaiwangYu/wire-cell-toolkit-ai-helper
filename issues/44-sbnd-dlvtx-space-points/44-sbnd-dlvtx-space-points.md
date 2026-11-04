@@ -2,7 +2,7 @@
 
 GitHub: https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/44
 
-**Status (2026-11-04): plan reviewed on Aurora (§9), feasible; waiting for the owner's branch decision and the §8 answers.** Nothing is implemented. Implementation and tests are to be done on Aurora. The only work so far is read-only surveys and two measurement scripts run on Polaris (`scripts/`).
+**Status (2026-11-04): P1 done, P2 done on BNB CV (G1, G2, G3, G5 pass; §10).** The 136-event sample for Sne is on Flare. Open items: G3 on nueCC and on data, G8 CPU, then P3 (B1). Implementation and tests are to be done on Aurora. The only work so far is read-only surveys and two measurement scripts run on Polaris (`scripts/`).
 
 Builds on:
 - #35: the DL dump `T_dlvtx_call` / `T_dlvtx_cloud`.
@@ -260,7 +260,78 @@ The plan puts the touch test in `determine_overall_main_vertex_DL`. For the data
 - **Run:** the `aurora/` workflow with the new toolkit build, `dl_vtx_dump` + `dl_vtx_dump_space` on, and **Bee kept**. Sne can then compare the in-chain points with his `export_r7_space.py` on the same events (G3).
 - **Deliverable:** per unit `tracking-pr.root` (with `T_dlvtx_space`), the merged CAF (`wc.T_dlvtx_space_*` in `recTreeWireCell`, regenerated schema) and `mabc-pr.zip`, plus a G3 report. Location: to be decided (Flare; Sne works on Eagle, so a copy or a Globus transfer).
 
+## 10. Implementation and results (Aurora, 2026-11-04)
+
+**Owner decisions (2026-11-04):**
+- Branch plan: PR `sbnd-wc-flatcaf` → master (WireCell/wire-cell-toolkit#544), and #44 on the new fork branch `sbnd-dlvtx-space-44`.
+- §8: all proposals accepted.
+- The sample goes to Flare; the owner moves it to Eagle.
+
+### 10.1 Code
+
+**Toolkit**, fork `sbnd-dlvtx-space-44` @ `a2785870`, one commit on `d06a47d7`:
+- `clus/BeeClusterPoints.{h,cxx}`, three free functions:
+  - `bee_cluster_in_scope`: the Bee filter semantics;
+  - `bee_cluster_points`: the scoped-view, blob-by-blob points and the mean live-plane q;
+  - `bee_touching_clusters`: Sne's touch test, on a hash grid with cell = `touch_cm`, distance ≤ `touch_cm`.
+- MABC `fill_bee_points_from_cluster`: the default branch now calls the helper.
+- `SbndPrMagnifyTrackingVisitor::write_dlvtx`:
+  - writes `T_dlvtx_space` and `T_dlvtx_call.space_cluster_id` / `n_space` (§4.1);
+  - the touch test runs here (§9.2), over the in-scope clusters sorted by id;
+  - knobs `dl_vtx_dump_space` (needs `dl_vtx_dump`; a configure error otherwise), `space_touch_cm`, `space_pcname`, `space_coords`, `space_filter`.
+- cfg:
+  - `pr(dl_vtx_dump_space=false, space_touch_cm=1.0)`;
+  - the writer gets `space_coords = common_corr_coords(pos_offset_on)`, which is the PR Bee layer's;
+  - the jsonnet asserts that it needs `dl_vtx_dump`;
+  - `sbnd-pr-stage.node()` and a `wct-pr.jsonnet` TLA.
+
+**Workflow**, `sbnd-wirecell-production` `33f3b7f`, opt-in only:
+- `step2.sh` passes the TLA only when `DLVTX_SPACE=true`;
+- `setup-aurora-opt.sh` takes `WC_OPT` / `WC_WCT_SRC`;
+- `site/aurora.sh` forwards the three variables.
+
+**Build:**
+- worktree `$Y/wct-dlvtx44` → install `$Y/opt-dlvtx44`; the production `$Y/opt` is untouched;
+- SL7's git cannot read a worktree, hence a `version.txt`;
+- doctests: clus 487/487, root 12/12.
+
+### 10.2 Gates
+
+Test input: 3 BNB CV units that were OK in the 1M production (136 events, 106 DL calls). Step 2 ran on their production step-1 tars, in three arms (scripts in `scripts/`).
+
+| gate | result |
+|---|---|
+| G1 config | `wct-pr.jsonnet` compiled old vs new tree, sim and data, default and production TLAs: **byte-identical** (4/4). Knob on: the only change is the writer's 4 keys (`space_coords` `x_t0cor,y,z` sim / `x_t0cor,y_cor,z_cor` data). Knob on without `dl_vtx_dump`: compile error, as intended |
+| G1 output | production build vs new build, knob off: every tree, branch and entry of all 136 `tracking-pr.root` **identical** except `Trun.wct_version`; every Bee member identical (`compare-arms.py`) |
+| G2 | knob off vs on: the only differences are the new tree and the two new branches (and their `recTreeWireCell` columns); Bee identical |
+| G3 (BNB CV) | **pass.** For 102 calls, the in-chain cluster set equals Sne's rule re-implemented on the same run's `clustering-pr-global` (`g3-space-vs-bee.py`); `n_space` equal; points equal within 5.1e-4 cm (Bee JSON rounding); q within 5e-6 relative. The 3 events that look like failures are a Bee defect, below |
+| G5 | the schema is extended, not regenerated: the production 2,401 branches unchanged, then +15 (`wc.T_dlvtx_call.space_cluster_id` + helpers, `n_space`, `wc.T_dlvtx_space.*`). 2,416 branches, md5 `af9c87c8`, built with `scripts/extend-schema.py`. `run_pair.py`: 3/3 OK, validation **PASS** (5.3 M values checked, 0 problems) |
+| size (G8, part) | `tracking-pr.root` +13.9 kB/event (+2.8 %, including its `recTreeWireCell` copy); merged CAF +6.6 kB/event (**+1.0 %**). §3's estimate for CV was 17.6 kB/event in the tree. 82,843 points = 6.0 % of the events' Bee points |
+| G3 nueCC / data, G8 CPU | **open**. The wall time of the 3 arms is the same to within the noise (2:35–2:50 per 45 events). A proper CPU measurement needs more events |
+
+### 10.3 Finding: the step-2 Bee zip merges events (pre-existing)
+
+In a multi-event step-2 run, 2 of 45 events per unit landed on another event's Bee index:
+- **0bbf:** 2100155/26/1 and 32/1 share index 16;
+- **de7a:** 2100292/30/6 and 23/6 share index 0;
+- **ce08:** one pair.
+
+At that index:
+- the tagger sets appear twice, as duplicate zip member names;
+- the clustering layer is **one object with both events' points**, stamped with one of the two RSEs (16,515 points at index 16).
+
+The `T_dlvtx_space` rows of the 3 affected events are all inside that merged object (within 1e-3 cm), so the trees are right and Bee is wrong.
+
+The production build does exactly the same (G1 compares those zips member by member). **Consequence:** an `export_r7_space.py` run on a multi-event step-2 zip would mix two events' points for about 4 % of events. The in-chain tree avoids this. The cause (MABC's `m_bee_event_index` vs the group-mode flush) is not investigated yet.
+
+### 10.4 The sample for Sne
+
+`$Y/production-prep/dlvtx-space-44/` (`README.md` there):
+- merged CAFs, per-event `tracking-pr.root` and `mabc-pr.zip`;
+- 3 units, 136 events, 409 MB.
+
 ## Log
 
 - 2026-11-04: survey of Sne's `r7_space` (§1); toolkit read (§2); size measurement on Sne's r7 copy (§3); plan (§4–7); issue opened.
 - 2026-11-04 (Aurora): plan reviewed (§9): feasible; touch test moved to the writer for A; repo state of the toolkit / larwirecell / PR #543; the 100-event BNB CV sample defined. Waiting for the branch decision.
+- 2026-11-04 (Aurora): owner decisions (PR #544; branch `sbnd-dlvtx-space-44`; §8 accepted). P1 implemented (`a2785870`), built to `$Y/opt-dlvtx44`; G1/G2/G3/G5 pass on 136 BNB CV events; the step-2 Bee event-merge defect found (§10.3); the 136-event sample for Sne written (§10.4).
