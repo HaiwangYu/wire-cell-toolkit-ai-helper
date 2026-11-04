@@ -2,7 +2,7 @@
 
 GitHub: https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/44
 
-**Status (2026-11-04): plan only.** Nothing is implemented. Implementation and tests are to be done on Aurora. The only work so far is read-only surveys and two measurement scripts run on Polaris (`scripts/`).
+**Status (2026-11-04): plan reviewed on Aurora (§9), feasible; waiting for the owner's branch decision and the §8 answers.** Nothing is implemented. Implementation and tests are to be done on Aurora. The only work so far is read-only surveys and two measurement scripts run on Polaris (`scripts/`).
 
 Builds on:
 - #35: the DL dump `T_dlvtx_call` / `T_dlvtx_cloud`.
@@ -224,6 +224,43 @@ B2 depends on PR #543 and its review fixes; A and B1 do not.
 5. **Data frame:** Sne's frame check is MC-only. Add a data check (cloud vs Bee coordinates with position offsets on) to G3?
 6. **Per-point truth:** not now; `blob_index` keeps it open?
 
+## 9. Review on Aurora (2026-11-04)
+
+**Verdict: feasible as written.** One simplification for A, below. The 100-event deliverable needs only P1 + P2.
+
+### 9.1 Repository state
+
+| repo | branch / pin | vs upstream | needed by #44 |
+|---|---|---|---|
+| wire-cell-toolkit | fork `sbnd-wc-flatcaf` = `d06a47d7` (the Aurora production pin) | WireCell `master` = `b7bd2a1a` (2026-10-07, not moved since). The fork branch is **0 behind, 6 ahead** (#39 flat tree + proj-data fix, #41 truth match ×2, per-event names, TensorFileSource dup-ident), 23 files, +1618/−32. It fast-forwards onto master. | yes: A is all toolkit |
+| PR #543 (DV2-MAX) | `feb3ddeb`, based on `b7bd2a1a` | mergeable onto master. **Conflicts with `sbnd-wc-flatcaf` in 2 cfg files** (`sbnd-pr-stage.jsonnet`, `wct-pr.jsonnet`, both add `pr()` knobs); textual, small | only for B2 |
+| larwirecell | fork `sbnd-wc-flatcaf` = `ad5d942` (= `dev-v10_14_02_02` + 3) | 34 commits ahead of its LArSoft `develop` merge base (`58bc3fb`, 2026-01-13); LArSoft `develop` has 48 newer commits (`c144891`, v10_04_07 for larsoft v10_30_00). Last LArSoft PR from the fork: #63 (merged 2026-01-15). Upstreaming needs a rebase on `develop` and a new PR; production runs on UPS larsoft v10_14_02, so it is not blocking. | **no**: step 1 is unchanged; A reads the step-1 tar as it is |
+
+How toolkit work reached master before: through PRs from the fork (#535, #536), not direct pushes.
+
+### 9.2 Simplification for A: do the touch test in the writer
+
+The plan puts the touch test in `determine_overall_main_vertex_DL`. For the data product it fits better in `SbndPrMagnifyTrackingVisitor::write_dlvtx`:
+- The writer already has each call's cloud (`DlVtxCall::x/y/z`) and the final grouping.
+- It runs as an MABC visitor. `MultiAlgBlobClustering.cxx:4266-4278` fills the non-visitor Bee sets (`clustering-pr-global`) **after** the visitor loop, from the same grouping. So the writer sees exactly the clusters Bee writes. That makes G3 hold by construction rather than relying on "no stage after `steiner_refresh` changes membership".
+- `NeutrinoVertexFinder` and `DlVtxCall` stay untouched in A. Knob off then means the writer does nothing new, so G1 is trivial.
+- B2 still needs the test in-chain, so the touch test goes in the same shared helper and B2 calls it from the finder.
+
+`T_dlvtx_call.space_cluster_id` / `n_space` and `T_dlvtx_space` stay as in §4.1.
+
+### 9.3 Other checks
+
+- The Bee recipe (`fill_bee_points_from_cluster`, default branch, `MultiAlgBlobClustering.cxx:3260-3330`) uses only the cluster facade: the scoped view, `get_closest_point_index`, `is_wire_dead` and `charge_value`. It can move to a free function in `clus/` with no MABC state.
+- Data frame (Q5): Bee uses `common_corr_coords(pos_offset_on)` = `x_t0cor, y_cor, z_cor` on data. The helper must take the coords from the same cfg, not hard-code them. Include the data check in G3.
+- Size: on Avinay's BNB CV, +17.6 kB/event (§3) on about 100 kB/event of `recTreeWireCell`. That is acceptable.
+
+### 9.4 The 100-event sample for Sne (after P1 + P2)
+
+- **Input:** 2 units (about 105 events; a unit = one CAF with its ~20 reco1 parents, 52.8 events on average) of Avinay's Gen2 BNB CV (`gen2-wct0319-bnb-1m-*`, `$Y/production-prep/bnb1m/full/pairs-all.tsv`). They are taken from units that PASSED in the 1M campaign, so the knob-off output can be diffed against the production output (G1 on the production sample).
+- **Run:** the `aurora/` workflow with the new toolkit build, `dl_vtx_dump` + `dl_vtx_dump_space` on, and **Bee kept**. Sne can then compare the in-chain points with his `export_r7_space.py` on the same events (G3).
+- **Deliverable:** per unit `tracking-pr.root` (with `T_dlvtx_space`), the merged CAF (`wc.T_dlvtx_space_*` in `recTreeWireCell`, regenerated schema) and `mabc-pr.zip`, plus a G3 report. Location: to be decided (Flare; Sne works on Eagle, so a copy or a Globus transfer).
+
 ## Log
 
 - 2026-11-04: survey of Sne's `r7_space` (§1); toolkit read (§2); size measurement on Sne's r7 copy (§3); plan (§4–7); issue opened.
+- 2026-11-04 (Aurora): plan reviewed (§9): feasible; touch test moved to the writer for A; repo state of the toolkit / larwirecell / PR #543; the 100-event BNB CV sample defined. Waiting for the branch decision.
