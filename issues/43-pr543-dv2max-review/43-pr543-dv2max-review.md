@@ -168,7 +168,7 @@ The statistics are small: ±5 points on ν_e, ±8 on ν_μ.
 
 ## Review comment, to post after the validation
 
-The full draft review (body + inline comments) is `pr543-review-draft.md`; `review-comment-draft.md` is the earlier, shorter version.
+**Posted 2026-11-03 as a "Comment" review** (owner's go-ahead): https://github.com/WireCell/wire-cell-toolkit/pull/543#pullrequestreview-5762479955. Its text is `pr543-review-draft.md`: the body plus 5 inline comments, on `cfg/wscript_build:9`, `clus.jsonnet:1027`, `NeutrinoVertexFinder.cxx:4921`, `DV2_Vertex.py:71` and `dv2max_vertexer/README.md:7`. `review-comment-draft.md` is the earlier, shorter version.
 
 - The answers to Q1–Q3.
 - Suggest moving the models (`cfg/dv2max/r7_cloud/`: `pass1.pt`, `pass2.pt`, about 80 MB each, plus the ranker and isotonic files) to wire-cell-data `uboone/dsnehadri/`, resolved through `WIRECELL_PATH` like the SCN weights.
