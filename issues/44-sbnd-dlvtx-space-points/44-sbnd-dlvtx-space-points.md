@@ -307,7 +307,8 @@ Test input: 3 BNB CV units that were OK in the 1M production (136 events, 106 DL
 | G3 (BNB CV) | **pass.** For 102 calls, the in-chain cluster set equals Sne's rule re-implemented on the same run's `clustering-pr-global` (`g3-space-vs-bee.py`); `n_space` equal; points equal within 5.1e-4 cm (Bee JSON rounding); q within 5e-6 relative. The 3 events that look like failures are a Bee defect, below |
 | G5 | the schema is extended, not regenerated: the production 2,401 branches unchanged, then +15 (`wc.T_dlvtx_call.space_cluster_id` + helpers, `n_space`, `wc.T_dlvtx_space.*`). 2,416 branches, md5 `af9c87c8`, built with `scripts/extend-schema.py`. `run_pair.py`: 3/3 OK, validation **PASS** (5.3 M values checked, 0 problems) |
 | size (G8, part) | `tracking-pr.root` +13.9 kB/event (+2.8 %, including its `recTreeWireCell` copy); merged CAF +6.6 kB/event (**+1.0 %**). §3's estimate for CV was 17.6 kB/event in the tree. 82,843 points = 6.0 % of the events' Bee points |
-| G3 nueCC / data, G8 CPU | **open**. The wall time of the 3 arms is the same to within the noise (2:35–2:50 per 45 events). A proper CPU measurement needs more events |
+| G3 nueCC / NC | **pass** (2026-11-05, pilot of the sbnd-wirecell-production #4 reprocessing, toolkit `55177882`): nueCC 424 events / 842 calls / 2.38 M space rows, NC δ-rad 153 / 264 / 0.20 M, BNB 502 / 462 / 0.44 M; 0 failures, max \|Δxyz\| 5.1e-4 cm, max rel Δq 5e-6 |
+| G3 data, G8 CPU | **open** (step-2 CPU on the same units vs the production build: BNB ×1.15, nueCC ×1.00, NC ×1.07, issue #4 pilot). The wall time of the 3 arms is the same to within the noise (2:35–2:50 per 45 events). A proper CPU measurement needs more events |
 
 ### 10.3 Finding: the step-2 Bee zip merges events (pre-existing)
 
@@ -383,3 +384,4 @@ The owner chose to fix the review once, on `sbnd-wc-flatcaf`, and rebase the #44
 - 2026-11-04 (Aurora): plan reviewed (§9): feasible; touch test moved to the writer for A; repo state of the toolkit / larwirecell / PR #543; the 100-event BNB CV sample defined. Waiting for the branch decision.
 - 2026-11-04 (Aurora): owner decisions (PR #544; branch `sbnd-dlvtx-space-44`; §8 accepted). P1 implemented (`a2785870`), built to `$Y/opt-dlvtx44`; G1/G2/G3/G5 pass on 136 BNB CV events; the step-2 Bee event-merge defect found (§10.3); the 136-event sample for Sne written (§10.4).
 - 2026-11-04 (Aurora): PR #544 review fixed on `sbnd-wc-flatcaf` (`d5bd7851`, 5 commits; item 1 = the §10.3 Bee merge); #44 rebased to `55177882`; Bee 136/136 events, trees unchanged apart from item 8 in 1 event; v2 sample for Sne (§11).
+- 2026-11-05 (Aurora): G3 passes on nueCC and NC δ-rad (pilot of the T_dlvtx_space reprocessing, [sbnd-wirecell-production#4](https://github.com/HaiwangYu/sbnd-wirecell-production/issues/4)); the full BNB / nueCC / NC reprocessing is running.
