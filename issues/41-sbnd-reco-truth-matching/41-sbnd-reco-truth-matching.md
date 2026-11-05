@@ -604,7 +604,46 @@ r7 MC CV 719/1/2 has two candidates. The same reco1 file and event, with the sam
 
 All 17 events of the unit pair the same way (`pr_evt<E>`, E = 1, 2, 17, 19, 21, 23, 24, 30, 32, 34, 37, 41, 43, 44, 45, 46, 49); 7 units in `scripts/validation-pairs.tsv` (r7 unit ids f0000, f0011–f0016).
 
+### 8.5 Truth id conventions
+
+This collects in one place the conventions that §8.2 spreads over its tables. They were asked for in [PR #544](https://github.com/WireCell/wire-cell-toolkit/pull/544) review item 6. The producer is the step-1 labeler, larwirecell [`73c79bc`](https://github.com/HaiwangYu/larwirecell/commit/73c79bc48de7bd631f1d096b96512a41aa161de7) (`wclsTensorSetLabeler` with `truth_detail`). Step 2 (`SbndPrTruthMatch.cxx`) reads its output.
+
+**Blob `trackid`, the dominant track.**
+1. Each SimEnergyDeposit is projected to wires and ticks after SCE, drift with the deposit's own time, diffusion and the SP smearing.
+2. A blob accepts a deposit within its wire and tick bounds plus slop (1 wire, 2 ticks) and 3σ.
+3. The accepted deposits are weighted by `NumElectrons`, or by `Energy()` if that is 0, and summed per track.
+4. The largest sum is the blob's `trackid`, and the runner-up is `trackid2`.
+5. `truth_q`, `truth_q_dom` and `truth_q2` are the total, dominant and runner-up sums.
+
+**Sentinels.**
+- **`trackid = -1`** is the only trackid sentinel: the blob accepted no deposit (a ghost or noise blob), and every blob on data.
+  - Step 2 also maps a `trackid` with no `T_truth_track` row to -1, as a guard. With `truth_detail`, every dominant track has a row.
+  - The points of such blobs are the "unlabeled" ones: `T_overlap.trackid = -1`, `T_match.n_unlabeled`.
+- **`T_overlap.nu_idx`:** -1 = a labeled track not from a beam neutrino, -2 = an unlabeled row (`trackid = -1`).
+- **`T_blob_truth.trackid2`:** -1, with `truth_q2` 0, when the blob has only one track.
+
+**larg4 negative ids, and unsaved particles.**
+- larg4 does not save every particle. A saved particle's deposits carry its own `TrackID`. Deposits of a descendant it did not save carry the **negative** of the saved ancestor's id. Examples are delta rays and EM shower daughters that were not kept.
+- The labeler uses `abs(TrackID)`, so that charge counts under the saved ancestor everywhere: blob `trackid`, `q_readout`, `q_in_blobs`. No negative id reaches the trees.
+- There is no special case by origin. Unsaved EM descended from a neutron (capture γ's and their electrons, for example) folds into its nearest saved ancestor, as any other unsaved descendant does.
+- A saved particle keeps its own row, and its `nu_idx` is the interaction of its MCTruth association.
+
+**`T_truth_track` grouping ids** (one row per track with charge in the readout window, or dominating a blob).
+
+| id | rule |
+|---|---|
+| `nu_idx` | 0-based beam-neutrino MCTruth key = `T_truth_nu.nu_idx`; -1 = not from a beam neutrino (cosmics and the like). The Bee `sed` sets use 1-based (0 = not a neutrino); the trees do not |
+| `bee_trackid` | `trackid`, except that a Michel electron (e±, `Decay`, mother μ±) maps to its mother muon: the Bee truth-layer merge |
+| `ancestor_trackid` | follow `Mother()` while the mother is a stored MCParticle; the generator particle or the cosmic primary |
+| `prong_trackid` | the truth particle a reco particle is compared with. Starting from the track, move to the mother while the track is (a) an e±/γ whose mother is e±/γ (a shower is one prong), (b) an ionization electron (`eIoni`, `muIoni`, `hIoni`, `ionIoni`), or (c) a muon's radiative e±/γ (`muPairProd`, `muBrems`). A Michel electron stops the walk, so it stays its own prong |
+| `process` | the CellTree G4 process code (`aiml/G4ProcessCode.h`), with the synthetic Michel = 10001 and -1 for an unknown process |
+
+**Reco side of a shower** (toolkit `d5bd7851`, PR #544 review item 8):
+- a segment can sit in two `PRShower`s; the first shower that claims it is the one used;
+- when the segment's `T_kine` row is a shower row, its `particle_id` (`T_overlap`) and `shower_id` (`T_segment`) are that row's `kine_particle_id`, so they agree with `kine_index`.
+
 ## Log
+- 2026-11-05: §8.5 truth id conventions (PR #544 review item 6).
 - 2026-10-13: §8 reference (T_truth_pf vs T_truth_track measured, all branches, join diagram, recipes, example pair); toolkit `4b6853d4`: a truth object's interaction from its member tracks (no output change on the sample).
 - 2026-10-13: implemented (larwirecell `73c79bc`, toolkit `229b7aab`, workflow `31a079d`) and validated (§7): V1–V7 pass; Matteo's candidate match reproduced 63/63 from `tracking-pr.root` alone.
 - 2026-10-12: issue opened. Current `tracking-pr.root` mapped (stages, trees, ids; joins measured on 1,460 r7 events). Matteo's matching and his toolkit proposal read. Blob `trackid` found already inside `qlpctree.tar.gz`. Plan written, waiting for discussion.
