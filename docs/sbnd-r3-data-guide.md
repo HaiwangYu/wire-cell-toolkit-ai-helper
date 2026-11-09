@@ -3,19 +3,30 @@
 > **File names renamed 2026-09-30 (issue 33 cleanup).** `wcls-img-clus-matching-xin-lib.jsonnet` is now `wcls-img-clus-matching-pr-lib.jsonnet`; the 1-step jobs `wcls-img-clus-matching-xin{,-hits}.jsonnet` are now `obsolete/wcls-img-clus-matching-pr-{flash,hits}.jsonnet` (the upstream name `wcls-img-clus-matching-xin.jsonnet` stays as a one-line shim); the fcls `wcls-img-clus-matching-xin{,-data,-hits,-data-hits}.fcl` are now `wcls-img-clus-matching-pr-{flash,flash-data,hits,data-hits}.fcl`. Production is the 2-step chain `wcls-img-clus-matching.jsonnet` + `wct-pr.jsonnet`. This document uses the new names.
 
 
+> **⚠ The round-3 outputs and staged inputs no longer exist (checked 2026-11-09).**
+> - The four output directories in §1 (`r3-mc-cv-2026-09-09`, `r3-nuecc-2026-09-10`, `r3-beam-on-2026-09-10`, `r3-beam-off-2026-09-11`) and the staged data chunks `r3-data-stage-2026-09-09/` (§2) are not on disk any more. They were searched for under `/exp/sbnd/{data,app}/users/yuhw` and `/pnfs/sbnd/{persistent,scratch}/users/yuhw`.
+> - The deletion date is not recorded in any issue or doc. Record of the check: [sbnd-wirecell-production #1, comment 2026-11-09](https://github.com/HaiwangYu/sbnd-wirecell-production/issues/1#issuecomment-6732487566).
+> - This guide is kept for the record: inputs, chain, output format and version pins.
+>
+> **The same samples, run again:**
+> - **r7** (ai-helper #38; on disk): `/exp/sbnd/data/users/yuhw/production-prep/r7-r26-master-b7bd2a1a/`. Same four samples and events (MC CV, MC nueCC, beam-on, beam-off; 2-step chain with the DL-vertex dump; per-event `tracking-pr.root`, 275 GB).
+> - **r8** (ai-helper #42; on disk): `production-prep/r8-r26-truth-caf/`. MC CV, nueCC and beam-off from the same files, with the truth match and the merge into the flat CAF.
+> - **fg1** (FermiGrid; [sbnd-wirecell-production #1](https://github.com/HaiwangYu/sbnd-wirecell-production/issues/1)): 650k events, a superset of r8's files.
+> - The catalog of all productions: https://haiwangyu.github.io/sbnd-wirecell-production/
+
 For colleagues who want to *use* the outputs. Tracking issue: [ai-helper #26](https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/26).
 Everything is under `/exp/sbnd/data/users/yuhw/production-prep/` on the SBND data disk (group `sbnd`, read in place — please do not copy 200 GB around). **Validation output, not a production release**: no stability guarantee; the version pins are in §5.
 
-_Last updated 2026-09-11 08:10 CDT — **all four samples done.**_
+_Last updated 2026-11-09: outputs and staged inputs deleted (banner above). Before that, 2026-09-11 08:10 CDT: all four samples done._
 
 ## 1. Status
 
 | sample | events | status | output dir | size |
 |---|---|---|---|---|
-| **MC BNB CV** (BNB ν + cosmics, GENIE CV) | **13,216** / 13,217 | **done** 2026-09-10 | `r3-mc-cv-2026-09-09/run/` | 73 GB |
-| **MC nueCC** (intrinsic νe CC, filtered) | **8,877** / 8,877 | **done** 2026-09-10 19:58 | `r3-nuecc-2026-09-10/run/` | 60 GB |
-| **beam-on data** (BNB light trigger, Run 1, runs 18255/18259) | **10,000** / 10,000 | **done** 2026-09-11 01:19 | `r3-beam-on-2026-09-10/run/` | 15 GB |
-| **beam-off data** (off-beam light trigger, Run 1) | **10,000** / 10,000 | **done** 2026-09-11 07:02 | `r3-beam-off-2026-09-11/run/` | 14 GB |
+| **MC BNB CV** (BNB ν + cosmics, GENIE CV) | **13,216** / 13,217 | **done** 2026-09-10 | ~~`r3-mc-cv-2026-09-09/run/`~~ **deleted** (not on disk 2026-11-09) | 73 GB | |
+| **MC nueCC** (intrinsic νe CC, filtered) | **8,877** / 8,877 | **done** 2026-09-10 19:58 | ~~`r3-nuecc-2026-09-10/run/`~~ **deleted** (not on disk 2026-11-09) | 60 GB | |
+| **beam-on data** (BNB light trigger, Run 1, runs 18255/18259) | **10,000** / 10,000 | **done** 2026-09-11 01:19 | ~~`r3-beam-on-2026-09-10/run/`~~ **deleted** (not on disk 2026-11-09) | 15 GB | |
+| **beam-off data** (off-beam light trigger, Run 1) | **10,000** / 10,000 | **done** 2026-09-11 07:02 | ~~`r3-beam-off-2026-09-11/run/`~~ **deleted** (not on disk 2026-11-09) | 14 GB | |
 
 The one missing MC CV event (run 471 subrun 18 event 33) crashes the clustering deterministically in both this chain and Xin's standalone chain; it is an open toolkit defect (#26 §5a), not a data problem.
 
@@ -28,7 +39,7 @@ The one missing MC CV event (run 471 subrun 18 event 33) crashes the clustering 
 | beam-on | SAM `data_MCP2025C_Fall25-Run1_BNB_FixedDev_bnblight_v10_14_02_reco1_sbnd` (runs 18255, 18259; 1,820 files) | 220 random files (seeded), merged + **FrameShift** added, first 10,000 events in art order — 6,633 from run 18255, 3,367 from 18259 (the 10,937 staged were cut at 10k) |
 | beam-off | SAM `data_SBND2026A_gen2_InTime-Run1_v10_14_02_02_reco1_sbnd` (49,020 files, 2.2 M events, Run 1) | 240 random files (seeded), merged + FrameShift, first 10,000 events — 94 runs |
 
-Data inputs are staged as frameshifted 1,000-event artROOT chunks in `r3-data-stage-2026-09-09/{beam-on,beam-off}/chunkNN.root` (+ `lists/` with the exact file selections and SAM definition names). The `*.manifest` files there list every event: `<file> <nskip> <run> <subrun> <event>`. **Gen2 data must have the `FrameShift` product before Wire-Cell sees it** — the staged chunks do; the raw reco1 files on `/pnfs` do not.
+Data inputs were staged (**deleted since**; see the banner) as frameshifted 1,000-event artROOT chunks in `r3-data-stage-2026-09-09/{beam-on,beam-off}/chunkNN.root` (+ `lists/` with the exact file selections and SAM definition names). The `*.manifest` files there list every event: `<file> <nskip> <run> <subrun> <event>`. **Gen2 data must have the `FrameShift` product before Wire-Cell sees it** — the staged chunks do; the raw reco1 files on `/pnfs` do not.
 
 ## 3. What the chain is
 
