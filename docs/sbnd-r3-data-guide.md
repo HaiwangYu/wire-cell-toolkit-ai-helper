@@ -9,7 +9,7 @@
 > - This guide is kept for the record: inputs, chain, output format and version pins.
 >
 > **The same samples, run again:**
-> - **r7** (ai-helper #38; on disk): `/exp/sbnd/data/users/yuhw/production-prep/r7-r26-master-b7bd2a1a/`. Same four samples and events (MC CV, MC nueCC, beam-on, beam-off; 2-step chain with the DL-vertex dump; per-event `tracking-pr.root`, 275 GB).
+> - **r7** (ai-helper #38; on disk): `/exp/sbnd/data/users/yuhw/production-prep/r7-r26-master-b7bd2a1a/`. The same four samples: MC from the same 1,000-file lists, data from the same staged 10,000-event selections. Events: CV 13,099 (r3: 13,216), nueCC 8,877, beam-on 10,000, beam-off 10,000. 2-step chain with the DL-vertex dump; per-event `tracking-pr.root`, 275 GB.
 > - **r8** (ai-helper #42; on disk): `production-prep/r8-r26-truth-caf/`. MC CV, nueCC and beam-off from the same files, with the truth match and the merge into the flat CAF.
 > - **fg1** (FermiGrid; [sbnd-wirecell-production #1](https://github.com/HaiwangYu/sbnd-wirecell-production/issues/1)): 650k events, a superset of r8's files.
 > - The catalog of all productions: https://haiwangyu.github.io/sbnd-wirecell-production/
