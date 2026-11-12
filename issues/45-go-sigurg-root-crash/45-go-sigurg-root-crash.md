@@ -91,7 +91,26 @@ The owner asked for the same ~100 events in each mode, the hard event included. 
 - **Emulated worker** (`scripts/emulate-crash.sh`, only `/cvmfs` and `/pnfs` mounted), tarball v2: master MC nueCC `2af0` rc 0 (6 events), PR `dv2_split_move` data `ncpi0-s13-19` rc 0 (6 events), its 6 DV2 call records identical to the local v2 run (inputs, predictions, scores; only the timing differs). Tarball v1: master and PR + `asyncpreemptoff` rc 0 (`GODEBUG` reaches the job).
 - **Submitted 2026-11-12 12:33:** cluster `30747544@jobsub04`, 120 jobs, tarball `production-prep/pr543-crash-grid/tar/wccrash-v2.tar.gz` (323 MB), results in `/pnfs/sbnd/scratch/users/yuhw/pr543-crash-study/grid-v2/<mode>/`. Tabulate with `scripts/collect.py`.
 
-Results: below, when the jobs finish.
+### Grid run 1 (cluster 30747544): no crash in any mode — the grid pins jobs to one CPU
+
+All 120 jobs finished (12:33–13:00), 309 events per mode, **0 crashes in every mode**, on every input including `nuecc48-s40-48` (0/12):
+
+| mode | jobs | crashes |
+|---|---|---|
+| master | 30 | 0 |
+| PR `original` | 30 | 0 |
+| PR `dv2_split_move` | 30 | 0 |
+| PR `original` + `asyncpreemptoff` | 30 | 0 |
+
+At the sbndbuild03 rate (~5 % per job; 1–3 in 10 on `nuecc48-s40-48`) about 6 crashes were expected (P(0) ≈ 0.002). The difference: **every grid job saw `nproc` = 1** (HTCondor CPU affinity; the nodes have 40–128 CPUs online), so Go ran with GOMAXPROCS = 1. On sbndbuild03 the jobs saw all 64 CPUs, so Go ran with GOMAXPROCS = 64: up to 16 parallel GC mark workers, the 20–90 Go threads seen in the crash dumps, and far more preemption signals.
+
+- Consequence for production: one-CPU FermiGrid jobs are effectively protected; sbndbuild03 jobs without CPU pinning are exposed.
+- `GOMAXPROCS=1` (or pinning the job to one CPU) is a second candidate fix.
+- This run cannot compare the modes. Grid run 2 forces `GOMAXPROCS=64` in every job (the job script's new optional 4th argument; `CRASH_XENV=GOMAXPROCS=64 submit-crash.sh …`), to recreate Go's sbndbuild03 behaviour on a one-CPU slot.
+
+### Grid run 2 (cluster 30747639, `GOMAXPROCS=64`)
+
+Submitted 2026-11-12 ~13:05, same 120 tasks, results in `grid-v2-gmp64/`. Results: below, when the jobs finish.
 
 ## Fix options
 
@@ -109,3 +128,4 @@ Production uses the same ROOT and go-jsonnet (sbndbuild03 and FermiGrid), so som
   - Repeat test on `nuecc48-s40-48`: master 1/10, PR `original` 2/10, PR `original` + `asyncpreemptoff` 0/10. Master's crash has the Go signature.
   - sbndbuild03 rebooted at 08:51; the 30-run confirmation was lost.
   - Grid test (sbndbuild03 down): tarball, job, 120 tasks; scipy missing on the worker, fixed in tarball v2; emulation OK; submitted cluster 30747544@jobsub04.
+  - Grid run 1: 0/120 crashes, every mode; every job had nproc = 1 (GOMAXPROCS = 1). Grid run 2 with GOMAXPROCS=64: cluster 30747639@jobsub04.

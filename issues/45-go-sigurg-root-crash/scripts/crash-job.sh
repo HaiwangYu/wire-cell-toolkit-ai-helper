@@ -1,13 +1,14 @@
 #!/bin/bash
 # ai-helper #45: one FermiGrid job = one wire-cell step 2 (one qlpctree, one mode, one pass), exactly the
 # command of the local PR #543 review runs (production-prep/pr543-review/v2/run-step2.sh).
-#   crash-job.sh <tasks.txt name> <input base on /pnfs> <output base on /pnfs>
+#   crash-job.sh <tasks.txt name> <input base on /pnfs> <output base on /pnfs> [extra env for every mode, e.g. GOMAXPROCS=64]
+#   (grid slots are pinned to 1 CPU, so Go runs with GOMAXPROCS=1 unless told otherwise; sbndbuild03 jobs saw 64)
 # tasks.txt line (job index + 1):  <mode> <input id> <sim|data> <pass>
 #   mode: master | pr-original | pr-dv2_split_move | pr-original-nopreempt (= pr-original + GODEBUG=asyncpreemptoff=1)
 # Writes <output base>/<mode>/<input id>-p<pass>.<cluster>.<index>.tar.gz: summary.txt, rc, time.txt, wct.log.gz.
 # Exit 0 whenever the result arrived (a wire-cell crash is a RESULT, not a job failure).
 set -u
-TASKS=${1:?tasks}; INBASE=${2:?input base}; OUTBASE=${3:?output base}
+TASKS=${1:?tasks}; INBASE=${2:?input base}; OUTBASE=${3:?output base}; XENV=${4:-}
 if [ -n "${DAGMANJOBID:-}" ] && [ -n "${JOBSUBJOBSECTION:-}" ]; then P=$JOBSUBJOBSECTION; else P=${PROCESS:-0}; fi
 tf=${CONDOR_DIR_INPUT:-.}/$(basename "$TASKS"); [ -f "$tf" ] || tf=$TASKS
 read -r MODE INPUT REAL PASS < <(grep -v '^#' "$tf" | sed -n "$((P + 1))p")
@@ -39,13 +40,14 @@ TM=false; [ "$REAL" = sim ] && TM=true
 cd run
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 DV2_THREADS=1 DV2_HOOK_LOG=$S/run/dv2-hook.jsonl
 [ -n "$ENVX" ] && export "$ENVX"
+[ -n "$XENV" ] && export "$XENV"
 /usr/bin/time -v -o time.txt wire-cell -l stdout -L debug -c pgrapher/experiment/sbnd/wct-pr.jsonnet \
   --tla-str input=$L --tla-str reality=$REAL $VM \
   --tla-code dl_vtx_dump=true --tla-code flat_tree=true --tla-code truth_match=$TM > wct.log 2>&1
 rc=$?; echo $rc > rc
 # the crash signature: Go fatal / jump to 0 / glibc; which thread got the signal; where the main thread was
 sig=$(grep -m1 -oE 'fatal error: [a-z ]+|corrupted [a-z -]+|double free[a-z ]*|0x0000000000000000 in \?\? \(\)' wct.log)
-{ echo "mode $MODE"; echo "input $INPUT"; echo "reality $REAL"; echo "pass $PASS"; echo "env ${ENVX:-none}"; echo "rc $rc"
+{ echo "mode $MODE"; echo "input $INPUT"; echo "reality $REAL"; echo "pass $PASS"; echo "env ${ENVX:-none}"; echo "xenv ${XENV:-none}"; echo "rc $rc"
   echo "signature ${sig:-none}"; echo "host $(hostname)"; echo "nproc $(nproc)"; echo "cpus_online $(getconf _NPROCESSORS_ONLN)"
   echo "cpu $(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2 | sed 's/^ *//')"
   echo "flags_avx512 $(grep -m1 -c avx512f /proc/cpuinfo)"
