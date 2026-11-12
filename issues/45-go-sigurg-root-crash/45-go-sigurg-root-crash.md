@@ -110,7 +110,14 @@ At the sbndbuild03 rate (~5 % per job; 1–3 in 10 on `nuecc48-s40-48`) about 6 
 
 ### Grid run 2 (cluster 30747639, `GOMAXPROCS=64`)
 
-Submitted 2026-11-12 ~13:05, same 120 tasks, results in `grid-v2-gmp64/`. Results: below, when the jobs finish.
+Submitted 2026-11-12 ~13:05, same 120 tasks, results in `grid-v2-gmp64/`.
+
+**Again 0/120 crashes in every mode**, 309 events per mode. `GOMAXPROCS=64` reached all 120 jobs (`xenv` in `summary.txt`), but each still had one CPU (`nproc` = 1, 98 % CPU), so Go's 64 Ps time-share one core instead of running beside the main thread. The sbndbuild03 crashes (89–114 % CPU) apparently need Go threads running truly in parallel with the main thread.
+
+**What the grid runs show (240 jobs, 618 events per mode):**
+- On one-CPU slots no mode crashes: master 0/60, PR `original` 0/60, PR `dv2_split_move` 0/60, PR + `asyncpreemptoff` 0/60. Nothing PR-specific appears.
+- The crash needs real multi-core execution, as on sbndbuild03 (64 CPUs, no pinning).
+- To compare the modes where the bug shows: run the same test on multi-core grid slots (e.g. `--cpu=8`, so Go sees 8 CPUs), or on sbndbuild03 once it is back.
 
 ## Fix options
 
@@ -128,4 +135,4 @@ Production uses the same ROOT and go-jsonnet (sbndbuild03 and FermiGrid), so som
   - Repeat test on `nuecc48-s40-48`: master 1/10, PR `original` 2/10, PR `original` + `asyncpreemptoff` 0/10. Master's crash has the Go signature.
   - sbndbuild03 rebooted at 08:51; the 30-run confirmation was lost.
   - Grid test (sbndbuild03 down): tarball, job, 120 tasks; scipy missing on the worker, fixed in tarball v2; emulation OK; submitted cluster 30747544@jobsub04.
-  - Grid run 1: 0/120 crashes, every mode; every job had nproc = 1 (GOMAXPROCS = 1). Grid run 2 with GOMAXPROCS=64: cluster 30747639@jobsub04.
+  - Grid run 1: 0/120 crashes, every mode; every job had nproc = 1 (GOMAXPROCS = 1). Grid run 2 with GOMAXPROCS=64: cluster 30747639@jobsub04, also 0/120 (still one CPU per job).
