@@ -173,6 +173,48 @@ The statistics are small: ±5 points on ν_e, ±8 on ν_μ.
 - The answers to Q1–Q3.
 - Suggest moving the models (`cfg/dv2max/r7_cloud/`: `pass1.pt`, `pass2.pt`, about 80 MB each, plus the ranker and isotonic files) to wire-cell-data `uboone/dsnehadri/`, resolved through `WIRECELL_PATH` like the SCN weights.
 
+## Re-review of the revised PR (head `f3767016`, 2026-11-11)
+
+Sne answered the review point by point on 2026-11-06 and pushed 11 new commits; the models moved to wire-cell-data PR #7 (merged 2026-11-11) at `dv2max/sbnd/r7_cloud/`. Scripts: `scripts/v2/`. Work area: `/exp/sbnd/data/users/yuhw/production-prep/pr543-review/v2/`.
+
+**Setup.**
+- Local branch `pr543-review2` (`4291a668`) = `sbnd-wc-flatcaf` (`4b6853d4`) + PR head; the same 2 config conflicts, resolved as before with the new bundle path. Built to `opt-pr543v2`; never pushed.
+- wire-cell-data clone at `4b8a50f`: `sha256sum -c SHA256SUMS` OK, and the files are byte-identical to the bundle validated on 2026-11-03.
+- No `.pt` weights remain in the PR's history (`git rev-list --objects origin/master..pr543-v2`); the largest new blob is `dv2max_golden.json` (509 KB).
+
+**Failure tests (`failtests.sh`), all pass.**
+
+| test | expected | result |
+|---|---|---|
+| T1, lightgbm missing | configure error | rc 1, "cannot load DV2-MAX … No module named 'lightgbm'" |
+| T2, `bundle.json` edited | sha256 mismatch | rc 1, "manifest sha256 c5c0… != configured dv2_bundle_sha256 bfb0…" |
+| T3, bundle path wrong | not found | rc 1, "dv2_bundle … not found on WIRECELL_PATH" |
+| T4, injected Python fault, default strict | job fails | rc 134, "DV2-MAX inference failed … failing the job" |
+| T5, injected fault, `DV2_STRICT=0` | fallback | rc 0, 7 events, 1 fallback |
+| T6, `original` without lightgbm | runs | rc 0, 7 events |
+
+**Unit tests:** `wcdoctest-pyutil` 12/12; `wcdoctest-clus` 506 passed, 1 skipped; pytest `test_dv2max.py` 33 passed.
+
+**Output unchanged by the code changes.** The 4 PR arms × 27 inputs were rerun and compared value by value with the 2026-11-03 outputs (`compare-v1-v2.sh`; ignoring `wct_version` and `dl_weights`):
+- 107 / 108 identical.
+- The 1 other (`dv2_split_move`, nueCC `3750`, event 1844): two adjacent `T_rec_charge` points (879, 880) are stored in swapped order; the values are identical. An ordering difference, not a physics change.
+- `pr-original` v2 vs master: 27 / 27 identical.
+
+**Input digest.** For every DV2 call, the inputs rebuilt from the dump (`T_dlvtx_call` / `T_dlvtx_cloud`) hash to an `input_sha1` in the hook log (`digest-check.py`): 229 / 229 per DV2 arm, every hook record matched.
+
+**Intermittent crashes (open).**
+- First pass 102 / 108; the 6 crashes all passed on rerun. One was at configure inside `DV2_Load` (a thread jumped to 0x0 during the Python import; 3/3 reruns passed). One was glibc "corrupted double-linked list" in `Cluster::hough_transform`, i.e. heap corruption. The others were segfaults in `find_proto_vertex`, `form_map_graph`, `recompute_shower_kine_charge_final` and numpy's `_int_malloc` inside the DV2 call.
+- Repeat test, 5 runs each on 2 inputs: master 0/10, PR `original` 2/10, PR `dv2_split_move` 2/10.
+- With `MALLOC_CHECK_=3 MALLOC_PERTURB_=165`: 0/12 crashed (master and PR); inconclusive.
+- Together with the 4/108 of 2026-11-03: PR builds 14 crashes in ~250 runs (~6 %), including `original`; master 0/41. Suggestive (P ≈ 0.08–0.10), not proof. A valgrind/ASan run of a crash-prone input, PR build vs master, is the next step.
+
+**Review items still open.**
+- Declined by Sne: Xin #1 (distance guard), #3 (`improve_vertex`; no proton effect on 314 events), #4 (refit); my fallback count in the output.
+- Deferred: the dump's `trad` NaN convention (PR 536).
+- Needs a team decision: lightgbm as a dependency (Xin #7).
+- The PR description still ends with "Generated with Claude Code"; the project rule (Xin #9) wants a human-written description. Sne offered to rewrite it.
+- Sne will rerun once `pr_kine_skip_nonfinite` is on master.
+
 ## Log
 
 - 2026-11-02:
@@ -184,3 +226,8 @@ The statistics are small: ±5 points on ν_e, ±8 on ν_μ.
   - Matrix done; the 4 intermittent crashes were rerun.
   - Metrics; Q1 full compare: identical.
   - Q2 replay: first 226/228 exact. The 2 were traced to the replay passing (0,0,0) for a missing traditional vertex instead of NaN; fixed: 228/228 identical.
+- 2026-11-11:
+  - Re-review of head `f3767016` (11 new commits; models in wire-cell-data PR #7). Built `opt-pr543v2`; failure tests T1–T6 pass; unit tests pass.
+  - 4 arms × 27 inputs rerun: 107/108 identical to 11-03 (1 point-order swap), `original` = master 27/27; input digests 229/229 per arm.
+  - Intermittent crashes persist in PR builds (~6 %, master 0/41); heap-check runs inconclusive.
+  - sbndbuild03 rebooted at 16:14; only the comparison was interrupted and was rerun.
