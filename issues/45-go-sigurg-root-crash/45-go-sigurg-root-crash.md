@@ -133,6 +133,12 @@ Submitted 2026-11-12 ~13:05, same 120 tasks, results in `grid-v2-gmp64/`.
 - **The fg1 grid step-2 crashes** (`TrackFitting::update_association`, `SteinerGrapher`, RSS runaway to ~4.5 GB; `sbnd-wirecell-production` `aurora/docs/aurora-r8-chain.md` §8) ran on one-CPU slots, so they are most likely a different bug, as are the two saved r7 master crashes (ROOT `TStyle::GetHistLineColor`).
 - **Open:** the mode comparison where the bug fires (multi-core: sbndbuild03 once back, or `--cpu=8` grid slots), and confirmation of `asyncpreemptoff` beyond 0/10.
 
+## Open items (parked 2026-11-12)
+
+1. **Compare the modes where the bug fires.** Rerun the same 4 modes × 3 passes on a multi-core machine: sbndbuild03 once it is back (within the load rule), or grid jobs with `--cpu=8` (`submit-crash.sh` needs a `--cpu` option, ~240 core-hours). This also tests `GODEBUG=asyncpreemptoff=1` beyond 0/10.
+2. **Put the workaround into the sbndbuild03 run setup.** `export GODEBUG=asyncpreemptoff=1` (or `GOMAXPROCS=1`) in `sbnd-wirecell-production` `aurora/env/fnal/setup-fnal-run.sh`, or `taskset` one CPU per `wire-cell` in the pool. Only documented so far (5d9480b).
+3. **Toolkit fix.** After ROOT initializes, drop ROOT's SIGURG handler (`gSystem->ResetSignal(kSigUrgent)`) or restore Go's; longer term, build against the C++ jsonnet library instead of go-jsonnet. Then open a toolkit issue/PR.
+
 ## Fix options
 
 1. **Workaround (no rebuild):** `export GODEBUG=asyncpreemptoff=1` in the job setup (`aurora/env/fnal/setup-fnal-run.sh`), or `GOMAXPROCS=1`, or pin each `wire-cell` to one CPU (`taskset`). `asyncpreemptoff`: 0/10 on the crash-prone input on sbndbuild03 (master 1/10, PR 2/10 in the same test); the grid could not test it (no crash in any mode there). Documented in `sbnd-wirecell-production` (`aurora/AGENTS.md`, `aurora/docs/aurora-r8-chain.md` §8); not yet set in the setup scripts.
@@ -151,3 +157,4 @@ Production uses the same ROOT and go-jsonnet (sbndbuild03 and FermiGrid), so som
   - Grid test (sbndbuild03 down): tarball, job, 120 tasks; scipy missing on the worker, fixed in tarball v2; emulation OK; submitted cluster 30747544@jobsub04.
   - Grid run 1: 0/120 crashes, every mode; every job had nproc = 1 (GOMAXPROCS = 1). Grid run 2 with GOMAXPROCS=64: cluster 30747639@jobsub04, also 0/120 (still one CPU per job).
   - Status section; sbnd-wirecell-production docs updated (trap + known-problems row); WCT PR #543 merged with a pointer to this issue.
+  - Parked; three open items listed.
