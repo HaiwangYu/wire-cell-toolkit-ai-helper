@@ -1,0 +1,8 @@
+# TPC detsim with the toolkit jsonnet pgrapher/experiment/sbnd/wcls-sim-drift-depoflux-nf-sp.jsonnet
+# (ai-helper issue 46).  Only the TPC simulation runs; RawDigits are kept.
+#include "standard_detsim_sbnd.fcl"
+physics.producers.simtpc2d: @local::sbnd_wcls_simsp
+physics.producers.simtpc2d.wcls_main.configs: ["pgrapher/experiment/sbnd/wcls-sim-drift-depoflux-nf-sp.jsonnet"]
+physics.producers.simtpc2d.wcls_main.outputers: ["wclsDepoFluxWriter:postdrift", "wclsFrameSaver:simdigits", "wclsFrameSaver:spsaver"]
+physics.producers.simtpc2d.wcls_main.params.save_simdigits: "true"
+physics.simulate: [rns, simtpc2d]
