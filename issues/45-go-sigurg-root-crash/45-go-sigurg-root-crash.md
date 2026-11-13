@@ -119,9 +119,23 @@ Submitted 2026-11-12 ~13:05, same 120 tasks, results in `grid-v2-gmp64/`.
 - The crash needs real multi-core execution, as on sbndbuild03 (64 CPUs, no pinning).
 - To compare the modes where the bug shows: run the same test on multi-core grid slots (e.g. `--cpu=8`, so Go sees 8 CPUs), or on sbndbuild03 once it is back.
 
+## Status and conclusions (2026-11-12)
+
+| where | master | PR `original` | PR `dv2_split_move` | PR `original` + `asyncpreemptoff` |
+|---|---|---|---|---|
+| sbndbuild03, all local runs (64 CPUs, unpinned) | 1/52 | 8/83 | 9/190 | 0/10 |
+| sbndbuild03, `nuecc48-s40-48` only | 1/11 | 5/15 (PR modes together) | | 0/10 |
+| FermiGrid run 1 + 2 (1 CPU per job), 103 events × 6 | 0/60 | 0/60 | 0/60 | 0/60 |
+
+- **Cause:** ROOT's SIGURG handler (no `SA_ONSTACK`) runs on go-jsonnet goroutine stacks and overflows them. It is in master; PR #543 neither causes nor fixes it.
+- **PR #543:** on the same events the PR in either model behaves like master on the grid (0/120 vs 0/60). On sbndbuild03 master and the PR crash with the same Go signature, and the per-input rates are not statistically distinguishable (`nuecc48-s40-48`: 1/11 vs 5/15, p ≈ 0.2). Nothing blocks the merge on this account.
+- **Exposure:** only when Go threads truly run in parallel with the main thread: multi-core hosts without CPU pinning (sbndbuild03, `run-pairs.sh` pools). One-CPU FermiGrid jobs saw no crash in 240 jobs, even with `GOMAXPROCS=64`.
+- **The fg1 grid step-2 crashes** (`TrackFitting::update_association`, `SteinerGrapher`, RSS runaway to ~4.5 GB; `sbnd-wirecell-production` `aurora/docs/aurora-r8-chain.md` §8) ran on one-CPU slots, so they are most likely a different bug, as are the two saved r7 master crashes (ROOT `TStyle::GetHistLineColor`).
+- **Open:** the mode comparison where the bug fires (multi-core: sbndbuild03 once back, or `--cpu=8` grid slots), and confirmation of `asyncpreemptoff` beyond 0/10.
+
 ## Fix options
 
-1. **Workaround (no rebuild):** `export GODEBUG=asyncpreemptoff=1` in the job setup (`aurora/env/fnal/setup-fnal-run.sh`). To be confirmed by the grid test.
+1. **Workaround (no rebuild):** `export GODEBUG=asyncpreemptoff=1` in the job setup (`aurora/env/fnal/setup-fnal-run.sh`), or `GOMAXPROCS=1`, or pin each `wire-cell` to one CPU (`taskset`). `asyncpreemptoff`: 0/10 on the crash-prone input on sbndbuild03 (master 1/10, PR 2/10 in the same test); the grid could not test it (no crash in any mode there). Documented in `sbnd-wirecell-production` (`aurora/AGENTS.md`, `aurora/docs/aurora-r8-chain.md` §8); not yet set in the setup scripts.
 2. **Fix in the toolkit:** after ROOT initializes, remove ROOT's SIGURG handler (`gSystem->ResetSignal(kSigUrgent)`), or save Go's handler before ROOT starts and put it back.
 3. **Remove the Go runtime:** build against the C++ jsonnet library instead of go-jsonnet.
 
@@ -136,3 +150,4 @@ Production uses the same ROOT and go-jsonnet (sbndbuild03 and FermiGrid), so som
   - sbndbuild03 rebooted at 08:51; the 30-run confirmation was lost.
   - Grid test (sbndbuild03 down): tarball, job, 120 tasks; scipy missing on the worker, fixed in tarball v2; emulation OK; submitted cluster 30747544@jobsub04.
   - Grid run 1: 0/120 crashes, every mode; every job had nproc = 1 (GOMAXPROCS = 1). Grid run 2 with GOMAXPROCS=64: cluster 30747639@jobsub04, also 0/120 (still one CPU per job).
+  - Status section; sbnd-wirecell-production docs updated (trap + known-problems row); WCT PR #543 merged with a pointer to this issue.
