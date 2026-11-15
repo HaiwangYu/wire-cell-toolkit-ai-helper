@@ -120,8 +120,9 @@ Not the model:
 | agent | state | waiting for |
 |---|---|---|
 | `prod_polaris` | model located (§1), figure uploaded, Slack draft (§3), task sent to `porting_sbndbuild03` (2026-11-15) | Sne's confirmation (via Haiwang); `porting_sbndbuild03`'s review |
-| `porting_sbndbuild03` | task sent 2026-11-15 by SendMessage over Remote Control (delivery not confirmed) | — |
+| `porting_sbndbuild03` | model + Sne's bundle copied and hash-checked; review posted (`porting_sbndbuild03/review.md`): master + #544 can't, but Sne's pushed branch `dsnehadri/dv2max-aurora-space` `a17e6423` has the in-chain space inference and merges cleanly into master; #544 conflicts with master (3 cfg files) | Haiwang: go-ahead for P1–P4 (build + tests), P5 (update #544 on master), aurora_space as default |
 
 ## Log
 
 - 2026-11-15 (`prod_polaris`): issue opened; §1–§5.
+- 2026-11-15 (`porting_sbndbuild03`): model copied to `/exp/sbnd/data/users/yuhw/production-prep/dv2max-aurora-space/` (hashes match); found Sne's branch `dsnehadri/dv2max-aurora-space` and bundle; review and gap list in `porting_sbndbuild03/review.md`.
