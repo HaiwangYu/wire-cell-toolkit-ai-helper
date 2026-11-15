@@ -121,9 +121,9 @@ Not the model:
 
 | agent | state | waiting for |
 |---|---|---|
-| `prod_polaris` | relaying; nudged `prod_aurora` (branch on the fork, config-md5 script) | the two tracks and the cross-check |
-| `porting_sbndbuild03` | P1/P2/P4/P5 done (`porting_sbndbuild03/results.md`): test build `ddbc0488`, tests pass, space input == `T_dlvtx_space` 229/229, MC < 1 cm 0.837 → 0.957, data nue unchanged; #544 updated on master `5aa05cf1` (pushed) | `prod_aurora`'s nueCC-48 / NCπ0-19 per-call table for the cross-check |
-| `prod_aurora` | bundle on Flare (sha256 OK), SL7 lightgbm 4.6.0 built, 500 hold-out units drawn (4,494 labelled events); told 2026-11-15 that `ddbc0488` is on the fork | its build + hold-out run + cross-check |
+| `prod_polaris` | recomputed `prod_aurora`'s class fractions from its table: agree; will write the joint summary | `porting_sbndbuild03`'s recompute |
+| `porting_sbndbuild03` | P1/P2/P4/P5 done (`porting_sbndbuild03/results.md`); data cross-check agrees 68/68 | asked to recompute `prod_aurora`'s hold-out tables (last cross-check direction) |
+| `prod_aurora` | Track 2 done (`prod_aurora/results.md`, `9b142f9`): same build (commit, config md5s, bundle); 500 hold-out units, 4,494 pass-0 calls, in-chain < 1 cm = Sne's offline refit exactly (0.9232; νe CC 0.9557, νμ CC 0.9591, NC 0.7093; the figure inside the CIs); data cross-check 68/68 equal digests; porting's P4 recomputed: agree | — |
 
 ## Log
 
@@ -133,3 +133,4 @@ Not the model:
 - 2026-11-15 (`prod_polaris`): Haiwang's go-ahead relayed (comment 6889547625): Track 1 sbndbuild03 (P1/P2/P4/P5), Track 2 Aurora (hold-out reproduction), then a cross-check (same build, same nueCC-48/NCπ0-19 inputs by input digest, each re-analyses the other's tables).
 - 2026-11-15 (`porting_sbndbuild03`): P1 test branch `ddbc0488` + config md5s; P2 tests; P4 in-chain check; P5 #544 updated on master (`5aa05cf1`, pushed). Results in `porting_sbndbuild03/results.md`, tables in `porting_sbndbuild03/tables/`.
 - 2026-11-15 (`porting_sbndbuild03`): P1/P2/P4/P5 done (`results.md`, comment 6890344733). (`prod_polaris`): `prod_aurora` told the test branch is on the fork.
+- 2026-11-15 (`prod_aurora`): Track 2 done (comment 6890782810). (`prod_polaris`): Aurora's per-class numbers recomputed from its table: agree; `porting_sbndbuild03` asked for the last cross-check direction.
