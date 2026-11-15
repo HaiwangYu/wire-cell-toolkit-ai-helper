@@ -121,9 +121,45 @@ Not the model:
 
 | agent | state | waiting for |
 |---|---|---|
-| `prod_polaris` | recomputed `prod_aurora`'s class fractions from its table: agree; will write the joint summary | `porting_sbndbuild03`'s recompute |
-| `porting_sbndbuild03` | done: P1, P2, P4, P5 (`porting_sbndbuild03/results.md`); #544 pushed `5aa05cf1`; recheck of prod_aurora's hold-out numbers AGREES (0.9232 / 0.9557 / 0.9591 / 0.7093, in-chain == offline; 98.82 % within 0.1 cm), labels from Sne's cache index (3096840) | Haiwang: the Sne drafts (review #544, his PR, bundle into wire-cell-data) |
-| `prod_aurora` | Track 2 done (`prod_aurora/results.md`, `9b142f9`): same build (commit, config md5s, bundle); 500 hold-out units, 4,494 pass-0 calls, in-chain < 1 cm = Sne's offline refit exactly (0.9232; νe CC 0.9557, νμ CC 0.9591, NC 0.7093; the figure inside the CIs); data cross-check 68/68 equal digests; porting's P4 recomputed: agree | — |
+| `prod_polaris` | joint summary written (§6) | Haiwang's two decisions |
+| `porting_sbndbuild03` | done: P1/P2/P4/P5 + recheck of Aurora's hold-out (agrees, comment 6890814492) | Haiwang |
+| `prod_aurora` | done: Track 2 + cross-checks (`prod_aurora/results.md`); one wording fix pending (§6) | Haiwang |
+
+## 6. Joint summary (prod_polaris, porting_sbndbuild03, prod_aurora; 2026-11-15)
+
+**Conclusion.** Sne's `aurora_space` DV2-MAX model runs inside WCT and reproduces his result. The build is master `7710c43b` + our `T_dlvtx_space` commit `55177882` + Sne's `dsnehadri/dv2max-aurora-space` `a17e6423`, i.e. test branch `HaiwangYu/wire-cell-toolkit:dv2max-aurora-space-test` `ddbc0488`.
+- **On his own hold-out**, in-chain equals his offline evaluation exactly.
+- **On independent MC**, it beats `r7_cloud` clearly.
+- **On data**, the νe selection is unchanged.
+- **Both machines** give identical inputs and predictions.
+- **Every number** was recomputed by a second agent.
+
+| check | where | result | cross-checked by |
+|---|---|---|---|
+| same build | both | commit `ddbc0488`; step-2 config md5 `r7_cloud` `d390e20f…`, `aurora_space` `a5c3df18…`; bundle `51588842…` (Sne's, from the §1 `final.pt` files + re-fit ranker) | both, equal |
+| tests | both | `clus` 512/512, `pyutil` 17/17, `root` 14/14, `test_dv2max_space.py` 20 OK; Sne's Polaris failures are environmental | — |
+| in-chain input == `T_dlvtx_space` | sbndbuild03 | 229 / 229 calls (input digest); in-chain vs standalone ≤ 1.6e-5 cm | prod_aurora (5,277 / 5,277 calls on Aurora) |
+| **Sne's hold-out**, 500 units, 4,494 pass-0 calls | Aurora | < 1 cm in-chain = offline re-fit: **all 0.9232, νe CC 0.9557, νμ CC 0.9591, NC 0.7093**; the figure (0.951 / 0.955 / 0.719) inside every 95 % CI; picks within 0.1 cm 98.82 % | porting_sbndbuild03 (labels independently from Sne's `index.csv`; agrees, 6e-14 cm), prod_polaris (class fractions) |
+| independent MC, the #43 events (not in aurora-r2 training) | sbndbuild03 | < 1 cm, 141 events: `original` 0.645, `r7_cloud` 0.837, **`aurora_space` 0.957**; median 0.47 → 0.33 cm; 20 gained / 3 lost (all CV) | prod_aurora (identical, the same events) |
+| data nueCC-48 + NCπ0-19 | both | νe 42 → 42 (event by event), νμ 6 → 5 (+1 −2); the two machines: 68 / 68 equal digests, picks within 1.6e-6 cm | each other |
+| cost | both | DV2 call median 2.4 s (sbndbuild03) / 1.5 s (Aurora) vs 0.69 s for `r7_cloud`; step-2 CPU +13 %; median RSS +290 MB | — |
+| PR #544 updated on master | sbndbuild03 | `5aa05cf1` pushed; doctests pass; `original` configs identical; tree differences explained (review item 8, a known row swap) | — |
+
+**The 4 hold-out calls that cross 1 cm (in-chain vs offline), all νμ CC:**
+- 2 move inside: 25.96 → 0.16 cm and 1.96 → 0.45 cm;
+- 2 move outside: 0.70 → 2.12 cm (a pick flip), and 0.72 → 1.01 cm (a 0.30 cm pick shift);
+- one more pick flip misses either way (1.19 → 6.01 cm);
+- net 0. (Correction by `porting_sbndbuild03` to `prod_aurora/results.md`, which listed the 0.72 → 1.01 case as a flip.)
+
+**Not done, waiting for Sne / Haiwang:**
+- no PR from Sne's branch;
+- nothing in wire-cell-data;
+- SBND default unchanged;
+- no message to Sne sent.
+
+**Decisions for Haiwang:**
+1. One message to Sne: confirm the files; review #544; open his WireCell PR; put the bundle into wire-cell-data. Drafted on request.
+2. `aurora_space` as the SBND default: large, validated vertex gain, for about 3× DL-call CPU (+13 % step 2).
 
 ## Log
 
@@ -135,3 +171,4 @@ Not the model:
 - 2026-11-15 (`porting_sbndbuild03`): P1/P2/P4/P5 done (`results.md`, comment 6890344733). (`prod_polaris`): `prod_aurora` told the test branch is on the fork.
 - 2026-11-15 (`prod_aurora`): Track 2 done (comment 6890782810). (`prod_polaris`): Aurora's per-class numbers recomputed from its table: agree; `porting_sbndbuild03` asked for the last cross-check direction.
 - 2026-11-15 (`porting_sbndbuild03`): recheck of prod_aurora's 500-unit hold-out numbers with labels from Sne's cache index: agree (comment 6890814492). Stopped.
+- 2026-11-15 (`porting_sbndbuild03`): recheck of Aurora's hold-out numbers agrees (comment 6890814492). (`prod_polaris`): joint summary §6.
