@@ -123,7 +123,7 @@ Not the model:
 |---|---|---|
 | `prod_polaris` | joint summary written (§6) | Haiwang's two decisions |
 | `porting_sbndbuild03` | done: P1/P2/P4/P5 + recheck of Aurora's hold-out (agrees, comment 6890814492) | Haiwang |
-| `prod_aurora` | done: Track 2 + cross-checks (`prod_aurora/results.md`); one wording fix pending (§6) | Haiwang |
+| `prod_aurora` | done: Track 2 + cross-checks (`prod_aurora/results.md`; wording fix e51f455) | Haiwang |
 
 ## 6. Joint summary (prod_polaris, porting_sbndbuild03, prod_aurora; 2026-11-15)
 
@@ -149,7 +149,7 @@ Not the model:
 - 2 move inside: 25.96 → 0.16 cm and 1.96 → 0.45 cm;
 - 2 move outside: 0.70 → 2.12 cm (a pick flip), and 0.72 → 1.01 cm (a 0.30 cm pick shift);
 - one more pick flip misses either way (1.19 → 6.01 cm);
-- net 0. (Correction by `porting_sbndbuild03` to `prod_aurora/results.md`, which listed the 0.72 → 1.01 case as a flip.)
+- net 0. (Correction by `porting_sbndbuild03`; `prod_aurora/results.md` fixed in `e51f455`.)
 
 **Not done, waiting for Sne / Haiwang:**
 - no PR from Sne's branch;
