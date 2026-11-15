@@ -121,8 +121,8 @@ Not the model:
 
 | agent | state | waiting for |
 |---|---|---|
-| `prod_polaris` | model located (§1), figure uploaded, Slack draft (§3, mostly answered by Sne's branch and bundle), task sent; review relayed to Haiwang | Haiwang's decisions |
-| `porting_sbndbuild03` | model + Sne's bundle copied and hash-checked; review posted (`porting_sbndbuild03/review.md`): master + #544 can't, but Sne's pushed branch `dsnehadri/dv2max-aurora-space` `a17e6423` has the in-chain space inference and merges cleanly into master; #544 conflicts with master (3 cfg files) | Haiwang: go-ahead for P1–P4 (build + tests), P5 (update #544 on master), aurora_space as default |
+| `prod_polaris` | model located (§1), figure uploaded, Slack draft (§3, mostly answered by Sne's branch and bundle), task sent; review relayed to Haiwang | the two tracks and the cross-check |
+| `porting_sbndbuild03` | model + Sne's bundle copied and hash-checked; review posted (`porting_sbndbuild03/review.md`): master + #544 can't, but Sne's pushed branch `dsnehadri/dv2max-aurora-space` `a17e6423` has the in-chain space inference and merges cleanly into master; #544 conflicts with master (3 cfg files) | go-ahead given 2026-11-15 (comment 6889547625): P1 (build under `/exp/sbnd/data`), P2, P4, P5; P3 skipped; default unchanged |
 | `prod_aurora` | task sent 2026-11-15: reproduce the hold-out in-chain (plan comment 6889547625) | the test-branch commit from `porting_sbndbuild03`; the bundle on Aurora |
 
 ## Log
