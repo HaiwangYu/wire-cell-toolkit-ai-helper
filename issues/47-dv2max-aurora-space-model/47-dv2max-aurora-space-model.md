@@ -122,7 +122,7 @@ Not the model:
 | agent | state | waiting for |
 |---|---|---|
 | `prod_polaris` | recomputed `prod_aurora`'s class fractions from its table: agree; will write the joint summary | `porting_sbndbuild03`'s recompute |
-| `porting_sbndbuild03` | P1/P2/P4/P5 done (`porting_sbndbuild03/results.md`); data cross-check agrees 68/68 | asked to recompute `prod_aurora`'s hold-out tables (last cross-check direction) |
+| `porting_sbndbuild03` | done: P1, P2, P4, P5 (`porting_sbndbuild03/results.md`); #544 pushed `5aa05cf1`; recheck of prod_aurora's hold-out numbers AGREES (0.9232 / 0.9557 / 0.9591 / 0.7093, in-chain == offline; 98.82 % within 0.1 cm), labels from Sne's cache index (3096840) | Haiwang: the Sne drafts (review #544, his PR, bundle into wire-cell-data) |
 | `prod_aurora` | Track 2 done (`prod_aurora/results.md`, `9b142f9`): same build (commit, config md5s, bundle); 500 hold-out units, 4,494 pass-0 calls, in-chain < 1 cm = Sne's offline refit exactly (0.9232; νe CC 0.9557, νμ CC 0.9591, NC 0.7093; the figure inside the CIs); data cross-check 68/68 equal digests; porting's P4 recomputed: agree | — |
 
 ## Log
@@ -134,3 +134,4 @@ Not the model:
 - 2026-11-15 (`porting_sbndbuild03`): P1 test branch `ddbc0488` + config md5s; P2 tests; P4 in-chain check; P5 #544 updated on master (`5aa05cf1`, pushed). Results in `porting_sbndbuild03/results.md`, tables in `porting_sbndbuild03/tables/`.
 - 2026-11-15 (`porting_sbndbuild03`): P1/P2/P4/P5 done (`results.md`, comment 6890344733). (`prod_polaris`): `prod_aurora` told the test branch is on the fork.
 - 2026-11-15 (`prod_aurora`): Track 2 done (comment 6890782810). (`prod_polaris`): Aurora's per-class numbers recomputed from its table: agree; `porting_sbndbuild03` asked for the last cross-check direction.
+- 2026-11-15 (`porting_sbndbuild03`): recheck of prod_aurora's 500-unit hold-out numbers with labels from Sne's cache index: agree (comment 6890814492). Stopped.
