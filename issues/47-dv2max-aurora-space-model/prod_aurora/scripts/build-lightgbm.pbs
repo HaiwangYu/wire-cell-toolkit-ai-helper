@@ -1,0 +1,39 @@
+#!/bin/bash
+#PBS -N dv2-lightgbm
+#PBS -A neutrinoGPU::WireCell_aurora
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:30:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/dv2max-aurora-space/logs/build-lightgbm.out
+# ai-helper #47: lightgbm 4.6.0 for the SL7 py3.9 stack (the PyPI wheel needs glibc 2.27).
+# Builds lib_lightgbm.so from the 4.6.0 sdist with UPS gcc, assembles $D/site/lightgbm, tests import + bundle load.
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+D=$Y/products/dv2-extra-py39
+P=$Y/production-prep/dv2max-aurora-space
+E=$Y/sbnd-wirecell-production/aurora/env/aurora
+module load apptainer >/dev/null 2>&1
+/bin/date -u
+$E/in-aurora-sl7.sh bash -c "
+set -e
+cd $D/src/lightgbm-4.6.0
+rm -rf build
+$D/src/cmake-3.29.6-linux-x86_64/bin/cmake -S . -B build -D__BUILD_FOR_PYTHON=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=\$(which gcc) -DCMAKE_CXX_COMPILER=\$(which g++) 2>&1 | tail -5
+$D/src/cmake-3.29.6-linux-x86_64/bin/cmake --build build -j 64 2>&1 | tail -3
+L=\$(find . -name lib_lightgbm.so | head -1); echo built \$L
+rm -rf $D/site/lightgbm; cp -a lightgbm $D/site/lightgbm; mkdir -p $D/site/lightgbm/lib; cp \$L $D/site/lightgbm/lib/
+gcc --version | head -1; python3 --version
+source $E/setup-aurora-dlvtx.sh
+export PYTHONPATH=$D/site:$P/sne-py/pyutil/python:\$PYTHONPATH
+python3 - <<'PY'
+import numpy, scipy, torch, lightgbm, json
+print('versions numpy', numpy.__version__, 'scipy', scipy.__version__, 'torch', torch.__version__, 'lightgbm', lightgbm.__version__)
+b = lightgbm.Booster(model_file='$P/bundle/aurora_space/ranker_fold0.txt'); print('ranker trees', b.num_trees(), 'features', b.num_feature())
+import DV2_Vertex as D
+print('DV2_Load', D.DV2_Load('$P/bundle/aurora_space/bundle.json').decode()[:600])
+PY
+"
+echo RC=$?
+/bin/date -u

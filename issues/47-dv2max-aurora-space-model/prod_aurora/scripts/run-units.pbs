@@ -1,0 +1,17 @@
+#!/bin/bash
+#PBS -N dv2test-holdout
+#PBS -A neutrinoGPU::WireCell_aurora
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+# ai-helper #47 (prod_aurora): step 2 with the test build (aurora_space) on hold-out units.
+#   qsub -v UNITS=<tsv>,RUN=<dir>,NPAR=<n> run-units.pbs
+set -u
+module load apptainer >/dev/null 2>&1
+P=/lus/flare/projects/neutrinoGPU/yuhw/production-prep/dv2max-aurora-space
+/bin/date -u; echo "units $UNITS run $RUN npar ${NPAR:-64} host $(hostname)"
+( while sleep 120; do echo "$(/bin/date -u +%T) load $(cut -d' ' -f1 /proc/loadavg) mem_used_GB $(free -g | awk '/Mem/{print $3}') done $(ls $RUN/*/*/DONE 2>/dev/null | wc -l)"; done ) > $RUN.sampler 2>&1 &
+$P/node-units.sh $UNITS $RUN ${NPAR:-64}
+/bin/date -u

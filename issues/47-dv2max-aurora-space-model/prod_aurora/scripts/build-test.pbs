@@ -1,0 +1,48 @@
+#!/bin/bash
+#PBS -N wct-dv2test-build
+#PBS -A neutrinoGPU::WireCell_aurora
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/dv2max-aurora-space/logs/build-test.out
+# ai-helper #47 (prod_aurora): build the test branch worktree $W (dv2max-aurora-space-test) into $O.
+# Never touches $Y/opt or the other installs.  Doctests: clus + pyutil.
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+P=$Y/production-prep/dv2max-aurora-space
+W=$Y/wct-dv2test
+O=$Y/opt-dv2test
+NJ=${NJ:-96}
+export Y; unset LD_PRELOAD
+module load apptainer >/dev/null 2>&1; module load fuse-overlayfs >/dev/null 2>&1
+echo "=== START $(/bin/date -u) $(hostname) src $(git -C $W rev-parse HEAD) -> $O"
+mkdir -p $O
+$S/in-aurora-sl7.sh bash -c "
+  set -o pipefail
+  export OPT=$O WCT_SRC=$W
+  cd $W
+  [ -f build/c4che/_cache.py ] || { echo 'configure'; $S/configure-wct-aurora.sh 2>&1 | tail -5; }
+  grep -q \"PREFIX = '$O'\" build/c4che/_cache.py && echo 'prefix ok' || { echo 'PREFIX MISMATCH'; grep PREFIX build/c4che/_cache.py; exit 4; }
+  time python3 ./wcb -p --notests install -j$NJ 2>&1 | grep -v '^\[' | tail -30
+  echo WCB_RC=\${PIPESTATUS[0]}
+  n=0; for f in $O/lib/libWireCell*.so $O/lib/libWCP*.so $O/bin/wire-cell $O/bin/wcsonnet; do
+    [ -e \"\$f\" ] || continue
+    old=\$(patchelf --print-rpath \"\$f\"); echo \"\$old\" | grep -q wct-dv2test/build || continue
+    rest=\$(echo \"\$old\" | tr : '\n' | grep -v wct-dv2test/build | grep -v \"^$O/lib\$\" | paste -sd:)
+    patchelf --force-rpath --set-rpath \"$O/lib\${rest:+:\$rest}\" \"\$f\" && n=\$((n+1))
+  done; echo rpath_stripped=\$n
+  echo nlibs=\$(ls $O/lib/libWireCell*.so | wc -l)
+  ls $O/python
+  for pkg in clus pyutil; do
+    python3 ./wcb -p --tests --target=wcdoctest-\$pkg -j$NJ 2>&1 | grep -v '^\[' | tail -3
+    ( source $P/setup-dv2test.sh >/dev/null 2>&1; cd build && \$pkg/wcdoctest-\$pkg ) > $P/logs/doctest-\$pkg.log 2>&1; echo DOCTEST_\${pkg}_RC=\$?
+    grep -E '^\[doctest\] (test cases|assertions|Status)' $P/logs/doctest-\$pkg.log
+  done
+  echo BUILD_DONE
+"
+[ -e $O/larwirecell ] || ln -s $Y/opt/larwirecell $O/larwirecell
+[ -d $O/python/SCN ] || cp -an $Y/opt/python/. $O/python/
+echo "=== END $(/bin/date -u)"
