@@ -1,0 +1,12 @@
+master,clus,503,503passed,0failed,1skipped
+master,pyutil,12,12passed,0failed,0skipped
+master,py-test_dv2max,33,OK
+p544,clus,507,507passed,0failed,1skipped
+p544,pyutil,12,12passed,0failed,0skipped
+p544,root,14,14passed,0failed,0skipped
+p544,py-test_dv2max,33,OK
+test,clus,512,512passed,0failed,1skipped
+test,pyutil,17,17passed,0failed,0skipped
+test,root,14,14passed,0failed,0skipped
+test,py-test_dv2max,33,OK
+test,py-test_dv2max_space,20,OK

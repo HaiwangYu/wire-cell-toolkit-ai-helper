@@ -1,0 +1,9 @@
+tree,branch,what,files,example,example_evt
+T_overlap,particle_id,values differ,5,mc-cv--reco1-detsim-g4-gen-Gen2_2026-8cf2-9271-1cd3-49e4,pr_evt18
+T_pf,kine_index,values differ,3,mc-nuecc--reco1-detsim-g4-filter-gen-2af0-0ac1-5f81-ad52_nuecc,pr_evt2204
+T_rec_charge,pt,values differ,1,mc-nuecc--reco1-detsim-g4-filter-gen-3750-c4a9-5a2b-9476_nuecc,pr_evt1844
+T_rec_charge,pu,values differ,1,mc-nuecc--reco1-detsim-g4-filter-gen-3750-c4a9-5a2b-9476_nuecc,pr_evt1844
+T_rec_charge,pv,values differ,1,mc-nuecc--reco1-detsim-g4-filter-gen-3750-c4a9-5a2b-9476_nuecc,pr_evt1844
+T_rec_charge,pw,values differ,1,mc-nuecc--reco1-detsim-g4-filter-gen-3750-c4a9-5a2b-9476_nuecc,pr_evt1844
+T_segment,shower_id,values differ,6,data--nuecc48-s24-32,pr_evt437699
+Trun,wct_version,values differ,276,data--ncpi0-s0-7,pr_evt114446

@@ -11,7 +11,7 @@ For every DL-vertex call recorded in a run (pr_evt*/tracking-pr.root, T_dlvtx_ca
   3. replay the call standalone (DV2_Vertex.DV2_Vertex, same bundle) and compare with the in-chain
      prediction of the matched hook record (distance, score difference).
 Run in the test-build environment (setup-aur-test.sh), with uproot on PYTHONPATH.
-One CSV row per call."""
+One CSV row per call; input_sha1 = the digest (the cross-machine key with prod_aurora)."""
 import csv
 import glob
 import json
@@ -29,7 +29,7 @@ import DV2_Vertex as DV  # noqa: E402
 bundle, out = sys.argv[1], sys.argv[2]
 space_bundle = json.loads(DV.DV2_Load(bundle)).get("space") is not None   # DV2_Load: JSON bytes
 F = ["run", "evt", "runNo", "subRunNo", "eventNo", "nu_index", "call_index", "pass", "n", "n_vertex_rows",
-     "n_space_dump", "n_space_tree", "n_space_hook", "digest_in_hook", "hook_x", "hook_y", "hook_z", "hook_score",
+     "n_space_dump", "n_space_tree", "n_space_hook", "input_sha1", "digest_in_hook", "hook_x", "hook_y", "hook_z", "hook_score",
      "sa_x", "sa_y", "sa_z", "sa_score", "d_sa_hook_cm", "dscore", "exact", "accepted", "dl_x", "dl_y", "dl_z",
      "final_x", "final_y", "final_z", "truth_valid", "truth_reco_x", "truth_reco_y", "truth_reco_z", "ms_sa"]
 rows = []
@@ -79,7 +79,7 @@ for run in sys.argv[3:]:
                 runNo=int(c["runNo"][i]), subRunNo=int(c["subRunNo"][i]), eventNo=int(c["eventNo"][i]),
                 nu_index=int(key[0]), call_index=int(key[1]), **{"pass": int(key[2])}, n=len(q), n_vertex_rows=nv,
                 n_space_dump=n_sp, n_space_tree=int(g("n_space")) if g("n_space") is not None else "",
-                n_space_hook=h.get("n_space", ""), digest_in_hook=int(bool(hh)),
+                n_space_hook=h.get("n_space", ""), input_sha1=dg, digest_in_hook=int(bool(hh)),
                 hook_x=hp_[0] if hp_ else "", hook_y=hp_[1] if hp_ else "", hook_z=hp_[2] if hp_ else "",
                 hook_score=h.get("score", ""),
                 sa_x="" if sa is None else float(sa[0]), sa_y="" if sa is None else float(sa[1]),

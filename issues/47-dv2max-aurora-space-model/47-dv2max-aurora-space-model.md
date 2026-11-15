@@ -122,7 +122,7 @@ Not the model:
 | agent | state | waiting for |
 |---|---|---|
 | `prod_polaris` | model located (§1), figure uploaded, Slack draft (§3, mostly answered by Sne's branch and bundle), task sent; review relayed to Haiwang | the two tracks and the cross-check |
-| `porting_sbndbuild03` | model + Sne's bundle copied and hash-checked; review posted (`porting_sbndbuild03/review.md`): master + #544 can't, but Sne's pushed branch `dsnehadri/dv2max-aurora-space` `a17e6423` has the in-chain space inference and merges cleanly into master; #544 conflicts with master (3 cfg files) | go-ahead given 2026-11-15 (comment 6889547625): P1 (build under `/exp/sbnd/data`), P2, P4, P5; P3 skipped; default unchanged |
+| `porting_sbndbuild03` | P1, P2, P4, P5 done (`porting_sbndbuild03/results.md`): test branch `ddbc0488` pushed; all tests pass; in-chain space input == `T_dlvtx_space` 229/229; MC vertex < 1 cm 0.837 → 0.957 (n 141); data nue unchanged, numu +1 −2; #544 updated on master and pushed (`5aa05cf1`) | prod_aurora's tables for the cross-check (nueCC-48 / NCπ0-19 by input digest); then Haiwang for the Sne drafts |
 | `prod_aurora` | task sent 2026-11-15: reproduce the hold-out in-chain (plan comment 6889547625) | the test-branch commit from `porting_sbndbuild03`; the bundle on Aurora |
 
 ## Log
@@ -131,3 +131,4 @@ Not the model:
 - 2026-11-15 (`porting_sbndbuild03`): model + bundle copied, review (§2 superseded): Sne's branch has B2; #544 conflicts with master in 3 cfg files; plan P1–P6.
 - 2026-11-15 (`porting_sbndbuild03`): model copied to `/exp/sbnd/data/users/yuhw/production-prep/dv2max-aurora-space/` (hashes match); found Sne's branch `dsnehadri/dv2max-aurora-space` and bundle; review and gap list in `porting_sbndbuild03/review.md`.
 - 2026-11-15 (`prod_polaris`): Haiwang's go-ahead relayed (comment 6889547625): Track 1 sbndbuild03 (P1/P2/P4/P5), Track 2 Aurora (hold-out reproduction), then a cross-check (same build, same nueCC-48/NCπ0-19 inputs by input digest, each re-analyses the other's tables).
+- 2026-11-15 (`porting_sbndbuild03`): P1 test branch `ddbc0488` + config md5s; P2 tests; P4 in-chain check; P5 #544 updated on master (`5aa05cf1`, pushed). Results in `porting_sbndbuild03/results.md`, tables in `porting_sbndbuild03/tables/`.
