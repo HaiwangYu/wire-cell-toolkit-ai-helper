@@ -72,11 +72,11 @@ Python in SL7:
 | median / p99 | 0.00034 cm / 0.109 cm |
 | > 1 cm (pick flips) | 4 calls, all νμ CC, scores 0.24–0.51 |
 
-The 4 flips:
-- in-chain gains 2: 25.96 → 0.16 cm and 1.96 → 0.45 cm;
-- in-chain loses 2: 0.70 → 2.12 cm and 1.19 → 6.01 cm (the second was a miss either way).
+The calls that cross 1 cm (offline → in-chain distance to the label), 4 in all:
+- in-chain gains 2, both flips: 25.96 → 0.16 cm and 1.96 → 0.45 cm;
+- in-chain loses 2: 0.70 → 2.12 cm (a flip), and `bnb:2100011:11:3` 0.72 → 1.01 cm (a 0.30 cm pick shift, not a flip).
 
-So the net effect on efficiency is 0, and 49 of the 53 calls with picks more than 0.1 cm apart land on the same side of 1 cm.
+The fourth flip, `bnb:2110279:71:4` (1.19 → 6.01 cm), misses either way. So the net effect on efficiency is 0, and 49 of the 53 calls with picks more than 0.1 cm apart land on the same side of 1 cm.
 
 Calibrated score |in-chain − offline|: median 0, max 0.20 (in a flip).
 
