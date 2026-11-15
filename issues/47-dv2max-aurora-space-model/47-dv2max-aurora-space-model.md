@@ -120,7 +120,7 @@ Not the model:
 | agent | state | waiting for |
 |---|---|---|
 | `prod_polaris` | model located (§1), figure uploaded, Slack draft (§3), task sent to `porting_sbndbuild03` (2026-11-15) | Sne's confirmation (via Haiwang); `porting_sbndbuild03`'s review |
-| `porting_sbndbuild03` | task received? | — |
+| `porting_sbndbuild03` | task sent 2026-11-15 by SendMessage over Remote Control (delivery not confirmed) | — |
 
 ## Log
 
