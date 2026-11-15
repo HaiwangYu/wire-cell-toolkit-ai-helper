@@ -123,9 +123,11 @@ Not the model:
 |---|---|---|
 | `prod_polaris` | model located (§1), figure uploaded, Slack draft (§3, mostly answered by Sne's branch and bundle), task sent; review relayed to Haiwang | Haiwang's decisions |
 | `porting_sbndbuild03` | model + Sne's bundle copied and hash-checked; review posted (`porting_sbndbuild03/review.md`): master + #544 can't, but Sne's pushed branch `dsnehadri/dv2max-aurora-space` `a17e6423` has the in-chain space inference and merges cleanly into master; #544 conflicts with master (3 cfg files) | Haiwang: go-ahead for P1–P4 (build + tests), P5 (update #544 on master), aurora_space as default |
+| `prod_aurora` | task sent 2026-11-15: reproduce the hold-out in-chain (plan comment 6889547625) | the test-branch commit from `porting_sbndbuild03`; the bundle on Aurora |
 
 ## Log
 
 - 2026-11-15 (`prod_polaris`): issue opened; §1–§5.
 - 2026-11-15 (`porting_sbndbuild03`): model + bundle copied, review (§2 superseded): Sne's branch has B2; #544 conflicts with master in 3 cfg files; plan P1–P6.
 - 2026-11-15 (`porting_sbndbuild03`): model copied to `/exp/sbnd/data/users/yuhw/production-prep/dv2max-aurora-space/` (hashes match); found Sne's branch `dsnehadri/dv2max-aurora-space` and bundle; review and gap list in `porting_sbndbuild03/review.md`.
+- 2026-11-15 (`prod_polaris`): Haiwang's go-ahead relayed (comment 6889547625): Track 1 sbndbuild03 (P1/P2/P4/P5), Track 2 Aurora (hold-out reproduction), then a cross-check (same build, same nueCC-48/NCπ0-19 inputs by input digest, each re-analyses the other's tables).
