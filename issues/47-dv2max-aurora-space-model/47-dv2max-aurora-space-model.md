@@ -80,6 +80,8 @@ Not the model:
 
 ## 2. Preliminary code check (by `prod_polaris`, for `porting_sbndbuild03` to confirm)
 
+> **Superseded (2026-11-15):** `porting_sbndbuild03/review.md` corrects this. Sne has already pushed `dsnehadri/dv2max-aurora-space` `a17e6423` (in-chain space inference = #44 B2, bundle format v2, clean merge into master) and built the `aurora_space` bundle from the §1 files plus the re-fit ranker. So master + #544 alone still cannot run it, but the code exists.
+
 | ref | what it has |
 |---|---|
 | master `7710c43b` (2026-11-12) | **PR #543 is merged**: DV2-MAX `r7_cloud`, `vertex_method`. `DV2_Vertex(weights, x, y, z, q, n_vertex_rows, trad, q_scale, q_offset)` takes the **trajectory-fit cloud only**; no space-point argument |
@@ -119,10 +121,11 @@ Not the model:
 
 | agent | state | waiting for |
 |---|---|---|
-| `prod_polaris` | model located (§1), figure uploaded, Slack draft (§3), task sent to `porting_sbndbuild03` (2026-11-15) | Sne's confirmation (via Haiwang); `porting_sbndbuild03`'s review |
+| `prod_polaris` | model located (§1), figure uploaded, Slack draft (§3, mostly answered by Sne's branch and bundle), task sent; review relayed to Haiwang | Haiwang's decisions |
 | `porting_sbndbuild03` | model + Sne's bundle copied and hash-checked; review posted (`porting_sbndbuild03/review.md`): master + #544 can't, but Sne's pushed branch `dsnehadri/dv2max-aurora-space` `a17e6423` has the in-chain space inference and merges cleanly into master; #544 conflicts with master (3 cfg files) | Haiwang: go-ahead for P1–P4 (build + tests), P5 (update #544 on master), aurora_space as default |
 
 ## Log
 
 - 2026-11-15 (`prod_polaris`): issue opened; §1–§5.
+- 2026-11-15 (`porting_sbndbuild03`): model + bundle copied, review (§2 superseded): Sne's branch has B2; #544 conflicts with master in 3 cfg files; plan P1–P6.
 - 2026-11-15 (`porting_sbndbuild03`): model copied to `/exp/sbnd/data/users/yuhw/production-prep/dv2max-aurora-space/` (hashes match); found Sne's branch `dsnehadri/dv2max-aurora-space` and bundle; review and gap list in `porting_sbndbuild03/review.md`.
