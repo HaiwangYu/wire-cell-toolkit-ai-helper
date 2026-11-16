@@ -1,0 +1,8 @@
+off s2 sim dv2_split_move branch a0f9ebbaec8a876147fc951864c556de master a0f9ebbaec8a876147fc951864c556de EQUAL
+off s2 sim original branch f090967e76b997c24b3c9b6c24d49036 master f090967e76b997c24b3c9b6c24d49036 EQUAL
+off s1 sim branch aef01aee7a9f9e5c60d845fdd87baeb6 master aef01aee7a9f9e5c60d845fdd87baeb6 EQUAL
+on  s2 sim: 6 leaf keys differ from off: dl_vtx_dump_space, data/space_coords[0], data/space_coords[1], data/space_coords[2], space_pcname, space_touch_cm
+off s2 data dv2_split_move branch 930909ec96079c5b1903cb2d94ad4a30 master 930909ec96079c5b1903cb2d94ad4a30 EQUAL
+off s2 data original branch a5286b29171266f85246874e99297a39 master a5286b29171266f85246874e99297a39 EQUAL
+off s1 data branch 74ee130545fc67147b54e0115ce41660 master 74ee130545fc67147b54e0115ce41660 EQUAL
+on  s2 data: 6 leaf keys differ from off: dl_vtx_dump_space, data/space_coords[0], data/space_coords[1], data/space_coords[2], space_pcname, space_touch_cm

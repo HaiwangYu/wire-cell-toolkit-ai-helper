@@ -2,6 +2,37 @@
 
 Request: prod_polaris, relaying Haiwang, 2026-11-16. Prepare only: the PR is **not opened**, and nothing is posted on WireCell PRs.
 
+## Current state (round 2, after #547 merged): all gates pass
+
+| item | value |
+|---|---|
+| branch | `HaiwangYu/wire-cell-toolkit:sbnd-dlvtx-space-pr` **`db3c5ec1`**, **pushed** (rewritten from `794d7817`) |
+| base | master **`e7242071`** (#547 merged; same tree as #547 head `e426d988`) |
+| commit 1 | `99d6d368`, the writer (`55177882` rebased). `BeeClusterPoints` is an identical add; the one conflict, the `sbnd-pr-stage.jsonnet` `node()` signature, keeps all sides. Tree = the round-1 gate merge `f6c456e7` |
+| commit 2 | `db3c5ec1`, the proposal below, implemented: `pr_space_scope` feeds the PR Bee clustering layer, `dv2_space_pcname/coords` and the writer's `space_pcname/coords`; `dv2_bundle_space_touch_cm` next to `dv2_bundle_sha256` (`aurora_space` 1.0); `pr(space_touch_cm=null)` = that map, else 1.0; a number overrides. Plus `root/test/doctest_sbnd_dlvtx_space_knob.cxx` (3 cases: default off; configure error without `dl_vtx_dump`; error with `space_coords` not naming 3 arrays) |
+| builds | branch `/exp/sbnd/data/users/yuhw/opt-dumppr` (rebuilt); master = `opt-dataA` (source tree identical to `e7242071`) |
+
+Runs: the 27 #43 step-1 tars (276 events), `aurora_space` arm (master's default bundle, `dv2_split_move`), production step-2 TLAs, one pinned core each.
+- master (`opt-dataA`): 18 new MC runs plus task A's 9 data runs, same settings.
+- branch, knob off: 27 runs.
+- branch, knob on: 27 runs.
+
+All 72 new runs rc 0 (`scripts/tasks-dumppr2.txt`, `scripts/run-dumppr2.sh`).
+
+| gate | result |
+|---|---|
+| knob off: compiled configs = master (`tables/dumppr2-config.txt`) | **6/6 equal**: step 2 sim/data with the default (= master's SBND default, `aurora_space` + `dv2_split_move`) and `original`; step 1 sim/data |
+| knob off: `tracking-pr.root` = master, every tree by value (`tables/dumppr2-trees-off-vs-master.txt`) | 276/276 files: **only `Trun.wct_version`** (+ its `recTreeWireCell` column) |
+| Bee = master (`tables/dumppr2-bee-off-vs-master.txt`) | **27/27 units, 2,325/2,325 members byte-identical** |
+| knob on vs off (`tables/dumppr2-trees-on-vs-off.txt`, `-bee-on-vs-off.txt`) | **only** `T_dlvtx_space`, `T_dlvtx_call.space_cluster_id` / `n_space`, and their `recTreeWireCell` columns; Bee 2,325/2,325 identical. Config: only `dl_vtx_dump_space`, `space_touch_cm` (1), `space_pcname` ('3d'), `space_coords` (= the collector's) |
+| doctests | clus 512/512, pyutil 17/17, **root 17/17** (14 + the 3 new), `test_dv2max.py` 33 OK, `test_dv2max_space.py` 20 OK |
+| master + this branch, knob on: in-chain input digest == the dump, every call (`tables/dumppr2-percall-branch-aur.csv`) | **229/229**, `n_space` 229/229, 1,417,696 space points, replay within 1.6e-5 cm |
+| jsonnet | `dl_vtx_dump_space` without `dl_vtx_dump` is still a compile error; writer touch = 1 for `aurora_space` and for `r7_cloud` / `original` (fallback) |
+
+---
+
+## Round 1 (on master `c6be329e`, before #547 merged)
+
 ## Branch
 
 | item | value |
@@ -14,7 +45,7 @@ Request: prod_polaris, relaying Haiwang, 2026-11-16. Prepare only: the PR is **n
 | builds | `/exp/sbnd/data/users/yuhw/opt-dumppr` (the branch), `/exp/sbnd/data/users/yuhw/opt-dumpgate` (master + #547 + branch, local `f6c456e7`, not pushed) |
 | master baseline | master `c6be329e` has the same git tree as `5aa05cf1` (`9f966e53`), so `opt-p544` and its P5 runs (`runs-p544/r7c`) are the master build and outputs |
 
-## One setting for the writer's scope and #547's collector (proposal)
+## One setting for the writer's scope and #547's collector (proposal; implemented in round 2, `db3c5ec1`)
 
 Today, with both PRs in, three places in `clus.jsonnet` `pr()` must name the same point set:
 
