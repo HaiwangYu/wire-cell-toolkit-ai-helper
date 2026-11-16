@@ -1,0 +1,6 @@
+tree,suite,cases,passed,failed,skipped,vs_ddbc0488
+pr547_on_master_ea1d1062,clus,508,508,0,1,-4 (#544 cases not in this build: per_event_name x1 + truth match x3)
+pr547_on_master_ea1d1062,pyutil,17,17,0,0,same
+pr547_on_master_ea1d1062,root,11,11,0,0,-3 (#544 RootFlatTreeVisitor cases not in this build)
+pr547_on_master_ea1d1062,py-test_dv2max,33,33,0,0,same
+pr547_on_master_ea1d1062,py-test_dv2max_space,20,20,0,0,same

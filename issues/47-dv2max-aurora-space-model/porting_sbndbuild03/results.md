@@ -127,8 +127,44 @@ The differences:
 
 The test-branch `r7_cloud` run shows the same item-8 differences vs #43 v2 (`tables/trees-test-r7c-vs-v2-summary.csv`), plus the new `T_dlvtx_space` / `n_space` / `space_cluster_id`.
 
+## PR #547 head `c9f61962` (2026-11-16 UTC; request: comment 6904986947)
+
+PR #547 (`dsnehadri:dv2max-aurora-space`) = `a17e6423` (validated in `ddbc0488`) + `c9f61962` (only `pyutil/test/doctest_dv2_vertex.cxx`: leak test n = 200 → 1000, limit `least < n/4` → `least < n/2`).
+
+| item | value |
+|---|---|
+| tree | local branch `pr547-on-master` `ea1d1062` = master `7710c43b` + `c9f61962` (clean merge; not pushed), worktree `/exp/sbnd/data/users/yuhw/wct-pr547` |
+| build | `/exp/sbnd/data/users/yuhw/opt-pr547` (`scripts/build.sh`, the #43 configure, -j16), 12.7 min, rc 0 |
+| bundle | `clus.jsonnet` pins `dv2max/sbnd/aurora_space/bundle.json` = `51588842…8a74` = our copy; the 4 files listed in `bundle.json` (pass1, pass2, ranker, isotonic) and `SHA256SUMS` all verify |
+
+### Tests (`scripts/run-doctests.sh`, `tables/pr547-tests.csv`)
+
+| suite | PR #547 on master | `ddbc0488` | difference |
+|---|---|---|---|
+| clus doctest | 508/508 (1 skipped) | 512/512 | −4: `per_event_name` (1) and `truth match` (3) come from #544, not in this build |
+| pyutil doctest | **17/17** | 17/17 | none (the case lists are identical) |
+| root doctest | 11/11 | 14/14 | −3: the `RootFlatTreeVisitor` cases come from #544 |
+| `test_dv2max.py` | 33 OK | 33 OK | none |
+| `test_dv2max_space.py` | 20 OK | 20 OK | none |
+
+No failures. The only missing cases are #544's (`git grep`: in `b6278234`, not in `7710c43b` or `c9f61962`).
+
+### Leak test, repeated (`scripts/leaktest.sh`, `tables/pr547-leak.csv`)
+
+The test case alone (`-tc 'DV2_Vertex / DV2_Load: no Python reference leaks*'`, `-s` to log the batch growths), Python 3.9.15 (the production run env):
+
+| test | reps | rc 0 | growth per batch (blocks) | limit | time |
+|---|---|---|---|---|---|
+| new, `c9f61962`, unpinned | 20 | **20** | 34, 0, 0, 0 (one rep 35) | least < 500 | 3.1 s |
+| new, `c9f61962`, pinned to 1 core | 10 | **10** | 34, 0, 0, 0 (one rep 35) | least < 500 | 3.1 s |
+| old, `a17e6423` on `ddbc0488`, unpinned | 20 | 20 | 6, 0, 28, 0 (one rep 7) | least < 50 | 0.75 s |
+
+- Stable here: 30/30 pass, and the least batch is 0 every time.
+- The old test is stable here too, so the Polaris failures (Python 3.14 noise of +6..+421 per batch) don't reproduce with this Python.
+- I didn't re-test that the new limit still catches an injected leak; that is Sne's Polaris measurement (+1001..+1112 at n = 1000).
+
 ## Locations (sbndbuild03)
 
-- builds: `/exp/sbnd/data/users/yuhw/{opt-aur-test, opt-p544}`; worktrees `wct-aur-test`, `wct-p544`, `wct-master-p2`
+- builds: `/exp/sbnd/data/users/yuhw/{opt-aur-test, opt-p544, opt-pr547}`; worktrees `wct-aur-test`, `wct-p544`, `wct-master-p2`, `wct-pr547`
 - runs: `/exp/sbnd/data/users/yuhw/production-prep/issue47/{runs,runs-p544}/<arm>/<unit>/`
 - bundle copy: `/exp/sbnd/data/users/yuhw/production-prep/dv2max-aurora-space/bundle/aurora_space/` (on `WIRECELL_PATH` through `issue47/wcdata`)

@@ -122,7 +122,7 @@ Not the model:
 | agent | state | waiting for |
 |---|---|---|
 | `prod_polaris` | Sne opened PR #547 (= validated `a17e6423` + test-only `c9f61962`); review + Slack drafts in `prod_polaris/` (not posted/sent) | `porting_sbndbuild03`'s doctests on `c9f61962` (comment 6904986947); then Haiwang posts |
-| `porting_sbndbuild03` | offline at 2026-11-16; request posted (comment 6904986947): doctests on PR #547 head | — |
+| `porting_sbndbuild03` | PR #547 doctests done (`porting_sbndbuild03/results.md` § PR #547): master + `c9f61962` clus 508, pyutil 17, root 11 (−4/−3 = #544's cases), 33 + 20 OK; leak test 30/30; bundle hash matches | — (stopped) |
 | `prod_aurora` | done: Track 2 + cross-checks (`prod_aurora/results.md`; wording fix e51f455) | Haiwang |
 
 ## 6. Joint summary (prod_polaris, porting_sbndbuild03, prod_aurora; 2026-11-15)
@@ -174,3 +174,4 @@ Not the model:
 - 2026-11-15 (`porting_sbndbuild03`): recheck of Aurora's hold-out numbers agrees (comment 6890814492). (`prod_polaris`): joint summary §6.
 - 2026-11-16 (`prod_polaris`): Sne opened WireCell PR #547 (head `c9f61962` = `a17e6423` + a test-only leak-test commit). Missing: the `aurora_space` bundle in wire-cell-data (blocking; the PR makes it the default). Review draft and Slack draft in `prod_polaris/`; doctests on the head requested from `porting_sbndbuild03` (offline, so posted as comment 6904986947).
 - 2026-11-16 (`prod_polaris`): review posted on PR #547 (Comment, pullrequestreview-5914254473); the head-commit doctest counts follow in a PR comment once `porting_sbndbuild03` reports.
+- 2026-11-16 (`porting_sbndbuild03`): PR #547 as it would merge (master + `c9f61962`, `opt-pr547`): all doctests and Python tests pass; the only differences from `ddbc0488` are #544's 4 clus + 3 root cases; the new leak test passed 30/30 (least batch 0 < 500); the pinned bundle hash `51588842…` equals our copy.
