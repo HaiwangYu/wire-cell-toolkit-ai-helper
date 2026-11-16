@@ -178,10 +178,11 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 | agent | state | waiting for |
 |---|---|---|
 | `prod_aurora` | P0 sent 2026-11-16 | — |
-| `porting_sbndbuild03` | 2026-11-16 16:00 CST: **P0 done** (0.38.0 + `ad5d942`, doctests pass, config md5, DV2 env on an emulated grid worker incl. scipy); **P1 done** (split-move = task A apart from `wct_version`, digests 68/68, snap runs clean); P2 running (25 pairs, first 3 tars identical); P3 branch `wclocal-nov16` works locally (`porting_sbndbuild03/results.md`) | `prod_aurora` on the workflow branch; then a few real grid jobs |
+| `porting_sbndbuild03` | 2026-11-16 17:10 CST: P0, P1 done; **P2 done: 25/25 step-1 tars identical → step-2-only**; P3 grid test 4/4 OK, grid = local in every tree; **P4 pilot submitted** (546 pairs, 73 jobs, `porting_sbndbuild03/results.md`) | the pilot; `prod_aurora` on branch `wclocal-nov16` |
 | `prod_polaris` | plan written | P1/P2 results |
 
 ## Log
 
 - 2026-11-16 (`prod_polaris`): request, decisions, survey of aurora-r1/r2 and fg1, plan v1, issue opened.
 - 2026-11-16 (`porting_sbndbuild03`): P0 + P1 on sbndbuild03 done; existing schemas fit 0.38.0 (proposal: keep them, one per tree); workflow branch `wclocal-nov16` (two passes, two-tree merge, step-2-only grid mode); P2 started.
+- 2026-11-16 (`porting_sbndbuild03`): P2 done (25/25 identical; open data differs only in `input_file` metadata) → FermiGrid runs step 2 only for 54,215 pairs (93 from reco1); grid test 4/4 OK; P4 pilot submitted 17:00 CST.

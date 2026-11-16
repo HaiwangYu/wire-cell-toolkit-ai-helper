@@ -92,3 +92,62 @@ So both trees keep the schemas the readers already know:
 - `recTreeWireCell_dv2snap` = `recTreeWireCell.schema.json` (`d4396a34`, as fg1).
 
 The regenerated ones (2,404 and 2,389 branches) are in `wclocal-nov16/p1/ana/`.
+
+## P2: step-1 reuse test: **identical, so reuse**
+
+Setup:
+- 5 status-OK pairs per sample, seeded random (`scripts/pick-p2-pairs.py`, `tables/p2-pairs.tsv`).
+- Step 1 rerun with 0.38.0 + `ad5d942` from the reco1, followed by both step-2 passes, the two-tree merge and both validations. This is the full chain of the workflow branch, `scripts/run-p2.sh`, with `WC_STAMP_INPUT_FILE=1`.
+- 25/25 pairs OK, 935 events.
+- Each new `ql/all/qlpctree.tar.gz` compared with the kept tar by datapath (`scripts/compare-qlpctree.py`, `tables/p2-step1-compare.tsv`).
+
+| sample | kept tar (build) | pairs | tensors | result |
+|---|---|---|---|---|
+| MC CV | fg1 scratch (`4b6853d4`) | 5 (74 ev) | 16,736 | **identical**: arrays and metadata |
+| MC nueCC | fg1 scratch | 5 (43 ev) | 9,728 | **identical** |
+| beam-off | fg1 scratch | 5 (250 ev) | 55,056 | **identical** |
+| Run 3 (run3bnb) | scratch | 5 (250 ev) | 55,076 | **identical** |
+| Run 1 open data | persistent (`f6fd2209` + lwc `3b54651`) | 5 (250 ev) | 55,070 | **arrays identical**; metadata differs only in `input_file` (50/file). The open data predates the input-file stamping; allowed by the rule |
+
+→ **Run step 2 only from the kept tars.**
+
+Pairs whose earlier status is OK and that have one unsliced kept tar use the step-2-only grid mode (`WC_GRID_MODE=step2`). The others run from reco1 (`scripts/make-lists.py`, `lists/`):
+
+| sample | pairs | step-2-only (events) | full mode |
+|---|---|---|---|
+| MC CV | 37,742 | 37,720 (499,685) | 22 PARTIAL |
+| MC nueCC | 11,445 | 11,421 (99,808) | 20 PARTIAL + 4 EMPTY |
+| beam-off | 1,096 | 1,054 (49,828) | 4 PARTIAL + 38 EMPTY |
+| Run 3 | 2,208 | 2,204 (109,287) | 4 PARTIAL |
+| Run 1 open data | 1,817 | 1,816 (89,896) | 1 PARTIAL |
+| **total** | 54,308 | **54,215 (848,504)** | 93 |
+
+## P3: the workflow on the grid
+
+- **Branch:** `HaiwangYu/sbnd-wirecell-production` `wclocal-nov16` `99e1fc9`.
+- **Tarball:** `wclocal-nov16/tar/wcgrid-wcl1116-99e1fc9.tar.gz`, 268 MB.
+  - Provenance: 0.38.0 `c935e30d`, larwirecell `ad5d942`, wire-cell-data `99c6497`, bundle sha256 `51588842…`, pydv2.
+- **Test:** 2 MC CV pairs from P2, run once in full mode (cluster `72818346@jobsub03`) and once in step-2-only mode (`30993258@jobsub05`). Output: `/pnfs/sbnd/scratch/users/yuhw/prod-fermigrid/WCLocal2026Nov16-test/`.
+  - **4/4 jobs OK**; each merged CAF carries `recTreeWireCell` + `recTreeWireCell_dv2snap`, both validated.
+- **Grid vs the local P2 run of the same pair** (`fermigrid/bin/compare-outputs.py`): every tree of every `tracking-pr.root` and of the merged CAF is identical (322 trees, 49,130 branches per pair). The full-mode qlpctree is identical too.
+  - The only differences are the two `_info` notes: creation time and schema path, as in the fg1 grid test.
+- **Grid cost (MC CV, 16 events), step-2-only:**
+  - split pass ~170 s CPU, snap pass ~165 s;
+  - merges 2 × 8 s;
+  - validations ~100 s;
+  - total **≈ 33 CPU-s/event**; peak RSS 1.77 GB.
+- In full mode, step 1 adds 45–60 s/event on these nodes.
+
+## P4: pilot (submitted 2026-11-16 17:00 CST)
+
+- **Pairs:** every 100th step-2-only pair per sample (`lists/pilot-*-step2.tsv`): 546 pairs, 8,540 events.
+- **Output:** the production tree `/pnfs/sbnd/scratch/users/yuhw/prod-fermigrid/WCLocal2026Nov16/<sample>/<id>/`. P5 submits the whole lists, and its jobs skip pairs that are already finished.
+- **Job settings:** `WC_GRID_MODE=step2`, both passes, 4000 MB + auto-release (+2 GB), 6 h, 10 GB disk.
+
+| sample | pairs / per job | jobs | cluster |
+|---|---|---|---|
+| mc-cv | 378 / 12 | 32 | `30782033@jobsub04` |
+| mc-nuecc | 115 / 8 | 15 | `87512756@jobsub01` |
+| beam-off | 11 / 3 | 4 | `30993748@jobsub05` |
+| run3bnb | 23 / 2 | 12 | `30993749@jobsub05` |
+| opendata | 19 / 2 | 10 | `94490280@jobsub02` |
