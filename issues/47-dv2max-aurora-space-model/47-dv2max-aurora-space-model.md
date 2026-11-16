@@ -122,7 +122,7 @@ Not the model:
 | agent | state | waiting for |
 |---|---|---|
 | `prod_polaris` | Sne opened PR #547 (= validated `a17e6423` + test-only `c9f61962`); review + Slack drafts in `prod_polaris/` (not posted/sent) | `porting_sbndbuild03`'s doctests on `c9f61962` (comment 6904986947); then Haiwang posts |
-| `porting_sbndbuild03` | PR #547 doctests done (`porting_sbndbuild03/results.md` § PR #547): master + `c9f61962` clus 508, pyutil 17, root 11 (−4/−3 = #544's cases), 33 + 20 OK; leak test 30/30; bundle hash matches | — (stopped) |
+| `porting_sbndbuild03` | task A done (`data-orig-vs-aur.md`); task B done: `sbnd-dlvtx-space-pr` `794d7817` pushed to the fork (PR not opened), all 5 gates pass (`dump-pr-gates.md`), description draft `dump-pr-description-draft.md` | Haiwang: rewrite the description, open the dump PR after #547 |
 | `prod_aurora` | done: Track 2 + cross-checks (`prod_aurora/results.md`; wording fix e51f455) | Haiwang |
 
 ## 6. Joint summary (prod_polaris, porting_sbndbuild03, prod_aurora; 2026-11-15)
@@ -180,3 +180,4 @@ Not the model:
 - 2026-11-16 (`prod_polaris`): **wire-cell-data PR #8 merged** (`99c6497f`, merge commit, head `e3c3a6c3` = the tested bundle); master now has `dv2max/sbnd/aurora_space` and `r7_cloud`. Remaining for #547: the one-line `sbnd-pr-stage.jsonnet` conflict with #544, then merge.
 - 2026-11-16 (`prod_polaris`): **#547 conflict resolved** and pushed to Sne's branch: `e426d988` = merge of master `c6be329e` into `c9f61962` (kept #544's `flat_tree/truth_match/blob_truth` args + `aurora_space` default in `sbnd-pr-stage.jsonnet`). Compiled `wct-pr.jsonnet`: defaults == #547 head, `original` == master, vs master+aurora only #547's 3 keys. #547 now MERGEABLE/CLEAN. Note for `porting_sbndbuild03` task A: build from `e426d988`.
 - 2026-11-16 (`porting_sbndbuild03`): task A done (`data-orig-vs-aur.md`, comment 6921769482): data `original` vs `aurora_space`, nue 39 → 42 (+5/−2), numu 7 → 5; vertex shift median 0.46 cm, 9 ≥ 5 cm; Bee sets 89cdea53 (original) / 431dc57f (aurora). (`prod_polaris`): summary + links posted on #547 (issuecomment-6921785658). Task B gates still running.
+- 2026-11-16 (`porting_sbndbuild03`): task B done: `sbnd-dlvtx-space-pr` `794d7817` (master `c6be329e` + `55177882`) pushed to the fork, PR not opened. Gates (`dump-pr-gates.md`): knob-off configs and trees = master (only `wct_version` + a run-to-run row swap), Bee 2,325/2,325 identical, knob on adds only `T_dlvtx_space` + 2 branches, doctests pass, master + #547 + branch 229/229 digests. Proposal: one `pr_space_scope` local for the Bee layer, #547's collector and the writer, carried by the dump PR.
