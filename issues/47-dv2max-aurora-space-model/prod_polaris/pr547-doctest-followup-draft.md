@@ -1,6 +1,6 @@
 # Draft: follow-up comment on PR #547 (the doctest counts promised in the review)
 
-Status: **DRAFT, not posted.** Source: porting_sbndbuild03, issue 47 comment 6905426354 (commit b52d99f).
+Status: **POSTED 2026-11-16**: https://github.com/WireCell/wire-cell-toolkit/pull/547#issuecomment-6905784393. Source: porting_sbndbuild03, issue 47 comment 6905426354 (commit b52d99f).
 
 ---
 
