@@ -7,7 +7,7 @@ Status: **DRAFT, not posted.** The doctest line (marked TODO) waits for `porting
 Thanks @dsnehadri, this is a big step: the vertex gain is real and it carries over into the chain. We validated the code of this PR on SBND, on two machines, before you opened it. Details, scripts and tables: https://github.com/HaiwangYu/wire-cell-toolkit-ai-helper/issues/47 (§6 of the doc).
 
 **What we tested**
-- **Build:** master `7710c43b` + your `a17e6423` (this PR minus the leak-test commit `c9f61962`) + our `T_dlvtx_space` writer. One commit, `ddbc0488`, built on sbndbuild03 and on Aurora: same compiled-config md5 on both, and the same bundle as you pin here (`bundle.json` sha256 `51588842…`).
+- **Build:** master `7710c43b` + your `a17e6423` (this PR minus the leak-test commit `c9f61962`) + our `T_dlvtx_space` writer. One commit, `ddbc0488`, built on sbndbuild03 and on Aurora: same compiled-config md5 on both, and the same bundle as you pin here (`bundle.json` sha256 `51588842…`, read from your Polaris clone of `dsnehadri/wire-cell-data:dv2max-sbnd-aurora-space`).
 - **Tests:** clus 512/512, pyutil 17/17, `test_dv2max_space.py` 20 OK. The clus/pyutil failures in your Polaris `tests.out` do not reproduce, so they come from that environment, not the code.
   - TODO (head `c9f61962`, master + this PR only): clus __/__, pyutil __/__, leak test __ of 10 runs stable.
 
@@ -25,7 +25,7 @@ Thanks @dsnehadri, this is a big step: the vertex gain is real and it carries ov
 The 141-event row compares both models on the same events, so it answers the apples-to-apples caveat in the description. You may want to quote it there.
 
 **Before merging**
-1. **The `aurora_space` bundle is not in wire-cell-data yet (blocking).** wire-cell-data has only `dv2max/sbnd/r7_cloud` (your #7). This PR makes `aurora_space` the SBND default, and since #543 a missing bundle fails at configure, so every default SBND job would stop. Could you open the wire-cell-data PR for `dv2max/sbnd/aurora_space/`, with the same `bundle.json` this PR pins (`51588842…`), and merge the two together?
+1. **The `aurora_space` bundle needs a wire-cell-data PR (blocking).** WireCell/wire-cell-data has only `dv2max/sbnd/r7_cloud` (your #7). Your fork branch `dsnehadri/wire-cell-data:dv2max-sbnd-aurora-space` (`e3c3a6c`) has the bundle, with the `bundle.json` this PR pins and that we tested (`51588842…`), but there is no PR for it yet. This PR makes `aurora_space` the SBND default, and since #543 a missing bundle fails at configure, so the two should merge together.
 2. **The `dl_vtx_dump_space` writer the README cites is not on master.** It is our `T_dlvtx_space` writer (ai-helper #44), still on our fork. We'll open it as a follow-up PR after this one, built on your `BeeClusterPoints`. It also moves the Bee clustering layer onto that helper, so the Bee display, the training-data writer and your in-chain collector use one recipe and one scope setting. Until then the Bee writer keeps its own copy of the same code. A "(follow-up PR)" note in the README would make that clear.
 3. **Merge order with #544.** The two conflict on one line of `sbnd-pr-stage.jsonnet`: #544 adds `flat_tree/truth_match/blob_truth`, and you change the default bundle on the same line. Whoever merges second keeps both. #544 is reviewed and current with master, so I'd merge it first, and we can resolve the line here.
 
