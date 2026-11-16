@@ -162,7 +162,7 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 
 | agent | role |
 |---|---|
-| `prod_aurora` | WCLocal2026Nov16-Aurora: P0–P5 on Aurora |
+| `prod_aurora` | P0: build 9095862 (`$Y/opt-0.38.0`) running; P2 step-1 rerun 9095886 (22 units) queued after it; P1 smoke next; 17986 balance 1,916.8 node-h, Flare ~238 TiB free (2026-11-16 21:05 UTC) | — |
 | `porting_sbndbuild03` | WCLocal2026Nov16-FermiGrid: P0–P5 (sbndbuild03 + jobsub); also the open-data and run3bnb inputs |
 | `prod_polaris` | coordination, this doc, the cross-site comparisons, reports to Haiwang |
 
