@@ -5,6 +5,12 @@ import csv, re, json, sys, math, urllib.request
 math.dist = lambda p, q: math.sqrt(sum((a - b) ** 2 for a, b in zip(p, q)))
 from collections import Counter
 cand = sys.argv[1]; out = sys.argv[2]
+# Xin r2 main vertex: the exact one (q == 15000 marker of his Bee vertices layer, production-prep_wcgpu1, issue 47 comment
+# 6923970905) when that table is given; else the common start of the top-level particles of his Bee 'mc' layer.
+XV = {}
+if len(sys.argv) > 3:
+    for r in csv.DictReader(open(sys.argv[3])):
+        XV[(int(r["run"]), int(r["event"]))] = (float(r["nu_x"]), float(r["nu_y"]), float(r["nu_z"]))
 C = {}
 for r in csv.DictReader(open(cand)):
     if r["selected_A"] == "1":
@@ -30,6 +36,7 @@ for f, samp in (("t0.csv", "nuecc48"), ("r2.csv", "ncpi0")):
         m = re.search(r"\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)", text)
         bad = verdict.lower() in ("not ok", "not good", "not idea")
         xv, nstart = xin_vtx(r[1])
+        if (run, evt) in XV: xv = XV[(run, evt)]
         if bad and m: ref, src = tuple(float(v) for v in m.groups()), "scanner xyz" + (" (?)" if "?" in text else "")
         elif not bad and xv: ref, src = xv, "Xin r2 vertex"
         else: ref, src = None, "none (Not good, no xyz)"
