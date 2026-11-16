@@ -1,0 +1,142 @@
+{
+ "events": 67,
+ "events_A": 67,
+ "events_B": 67,
+ "candidates": 68,
+ "candidates_both": 68,
+ "d_final_cm": {
+  "median": 0.449,
+  "lt0p1": 2,
+  "lt1": 56,
+  "lt2": 63,
+  "ge5": 1,
+  "max": 8.68
+ },
+ "dl_based": {
+  "split": 68,
+  "snap": 68
+ },
+ "selection": {
+  "split": {
+   "generic": 67,
+   "nue": 42,
+   "numu": 5
+  },
+  "snap": {
+   "generic": 67,
+   "nue": 39,
+   "numu": 6
+  }
+ },
+ "changed_events": [
+  {
+   "unit": "ncpi0-s0-7",
+   "rse": "18255/1/71372",
+   "split_generic": 1,
+   "snap_generic": 1,
+   "split_nue": 0,
+   "snap_nue": 0,
+   "split_numu": 0,
+   "snap_numu": 1,
+   "split_nue_score": 0.868,
+   "snap_nue_score": -15.0,
+   "split_numu_score": 0.512,
+   "snap_numu_score": 1.721
+  },
+  {
+   "unit": "ncpi0-s13-19",
+   "rse": "18364/1/84229",
+   "split_generic": 1,
+   "snap_generic": 1,
+   "split_nue": 0,
+   "snap_nue": 0,
+   "split_numu": 0,
+   "snap_numu": 1,
+   "split_nue_score": -15.0,
+   "snap_nue_score": -15.0,
+   "split_numu_score": 0.862,
+   "snap_numu_score": 0.988
+  },
+  {
+   "unit": "nuecc48-s16-24",
+   "rse": "18255/1/268784",
+   "split_generic": 1,
+   "snap_generic": 1,
+   "split_nue": 1,
+   "snap_nue": 0,
+   "split_numu": 0,
+   "snap_numu": 0,
+   "split_nue_score": 8.386,
+   "snap_nue_score": 4.843,
+   "split_numu_score": 0.076,
+   "snap_numu_score": 0.483
+  },
+  {
+   "unit": "nuecc48-s16-24",
+   "rse": "18255/1/271851",
+   "split_generic": 1,
+   "snap_generic": 1,
+   "split_nue": 0,
+   "snap_nue": 0,
+   "split_numu": 1,
+   "snap_numu": 0,
+   "split_nue_score": -15.0,
+   "snap_nue_score": -15.0,
+   "split_numu_score": 1.094,
+   "snap_numu_score": 0.52
+  },
+  {
+   "unit": "nuecc48-s32-40",
+   "rse": "18259/1/52672",
+   "split_generic": 1,
+   "snap_generic": 1,
+   "split_nue": 1,
+   "snap_nue": 0,
+   "split_numu": 0,
+   "snap_numu": 0,
+   "split_nue_score": 11.166,
+   "snap_nue_score": 1.411,
+   "split_numu_score": -0.086,
+   "snap_numu_score": -0.183
+  },
+  {
+   "unit": "nuecc48-s32-40",
+   "rse": "18259/1/111412",
+   "split_generic": 1,
+   "snap_generic": 1,
+   "split_nue": 1,
+   "snap_nue": 0,
+   "split_numu": 0,
+   "snap_numu": 0,
+   "split_nue_score": 8.079,
+   "snap_nue_score": 3.606,
+   "split_numu_score": -1.067,
+   "snap_numu_score": -0.624
+  }
+ ],
+ "selected_candidate_differs": 0,
+ "selection_nuecc48": {
+  "split": {
+   "generic": 48,
+   "nue": 41,
+   "numu": 4
+  },
+  "snap": {
+   "generic": 48,
+   "nue": 38,
+   "numu": 3
+  }
+ },
+ "selection_ncpi0": {
+  "split": {
+   "generic": 19,
+   "nue": 1,
+   "numu": 1
+  },
+  "snap": {
+   "generic": 19,
+   "nue": 1,
+   "numu": 3
+  }
+ }
+}

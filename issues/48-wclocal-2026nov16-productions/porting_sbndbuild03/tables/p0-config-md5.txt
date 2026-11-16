@@ -1,0 +1,7 @@
+/exp/sbnd/data/users/yuhw/wclocal-nov16/opt/bin/wcsonnet
+sim split fa3745b3b49538b845feedb894bc3551 
+sim snap 91e79e852ac19724fb5f31e66a0b2202 
+sim default fa3745b3b49538b845feedb894bc3551 
+data split 5da14b64d454c9b956779e9d73270b4b 
+data snap 5556ac044bce2af1ef61c81afdb0ea6b 
+data default 5da14b64d454c9b956779e9d73270b4b 
