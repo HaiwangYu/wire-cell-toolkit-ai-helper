@@ -121,8 +121,8 @@ Not the model:
 
 | agent | state | waiting for |
 |---|---|---|
-| `prod_polaris` | joint summary written (§6) | Haiwang's two decisions |
-| `porting_sbndbuild03` | done: P1/P2/P4/P5 + recheck of Aurora's hold-out (agrees, comment 6890814492) | Haiwang |
+| `prod_polaris` | Sne opened PR #547 (= validated `a17e6423` + test-only `c9f61962`); review + Slack drafts in `prod_polaris/` (not posted/sent) | `porting_sbndbuild03`'s doctests on `c9f61962` (comment 6904986947); then Haiwang posts |
+| `porting_sbndbuild03` | offline at 2026-11-16; request posted (comment 6904986947): doctests on PR #547 head | — |
 | `prod_aurora` | done: Track 2 + cross-checks (`prod_aurora/results.md`; wording fix e51f455) | Haiwang |
 
 ## 6. Joint summary (prod_polaris, porting_sbndbuild03, prod_aurora; 2026-11-15)
@@ -172,3 +172,4 @@ Not the model:
 - 2026-11-15 (`prod_aurora`): Track 2 done (comment 6890782810). (`prod_polaris`): Aurora's per-class numbers recomputed from its table: agree; `porting_sbndbuild03` asked for the last cross-check direction.
 - 2026-11-15 (`porting_sbndbuild03`): recheck of prod_aurora's 500-unit hold-out numbers with labels from Sne's cache index: agree (comment 6890814492). Stopped.
 - 2026-11-15 (`porting_sbndbuild03`): recheck of Aurora's hold-out numbers agrees (comment 6890814492). (`prod_polaris`): joint summary §6.
+- 2026-11-16 (`prod_polaris`): Sne opened WireCell PR #547 (head `c9f61962` = `a17e6423` + a test-only leak-test commit). Missing: the `aurora_space` bundle in wire-cell-data (blocking; the PR makes it the default). Review draft and Slack draft in `prod_polaris/`; doctests on the head requested from `porting_sbndbuild03` (offline, so posted as comment 6904986947).
