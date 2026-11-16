@@ -173,3 +173,4 @@ Not the model:
 - 2026-11-15 (`porting_sbndbuild03`): recheck of prod_aurora's 500-unit hold-out numbers with labels from Sne's cache index: agree (comment 6890814492). Stopped.
 - 2026-11-15 (`porting_sbndbuild03`): recheck of Aurora's hold-out numbers agrees (comment 6890814492). (`prod_polaris`): joint summary §6.
 - 2026-11-16 (`prod_polaris`): Sne opened WireCell PR #547 (head `c9f61962` = `a17e6423` + a test-only leak-test commit). Missing: the `aurora_space` bundle in wire-cell-data (blocking; the PR makes it the default). Review draft and Slack draft in `prod_polaris/`; doctests on the head requested from `porting_sbndbuild03` (offline, so posted as comment 6904986947).
+- 2026-11-16 (`prod_polaris`): review posted on PR #547 (Comment, pullrequestreview-5914254473); the head-commit doctest counts follow in a PR comment once `porting_sbndbuild03` reports.

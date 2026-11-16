@@ -1,6 +1,6 @@
 # Draft: review of WireCell PR #547 (to post as a "Comment" review by Haiwang)
 
-Status: **DRAFT, not posted.** The doctest line (marked TODO) waits for `porting_sbndbuild03`'s run on `c9f61962` (issue 47 comment 6904986947).
+Status: **POSTED 2026-11-16** as a Comment review: https://github.com/WireCell/wire-cell-toolkit/pull/547#pullrequestreview-5914254473 (the TODO line was replaced by "doctests on the head are running; counts follow in a comment"). Follow-up comment pending porting_sbndbuild03's doctests.
 
 ---
 
