@@ -1,0 +1,44 @@
+#!/bin/bash
+#PBS -N wct-0.38.0-finish
+#PBS -A neutrinoGPU::WireCell_aurora
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/logs/build-0.38.0-finish.out
+# ai-helper #48 P0 (prod_aurora): (1) finish the release install of tag 0.38.0 with waf -k (two doctest programs,
+# clus/test/doctest_dv2_space.cxx and pytorch/test/doctest_fm_direct.cxx, fail to compile under the release
+# -Werror flags; everything else builds); (2) clus doctests from a side worktree $D configured with
+# -Wno-error=range-loop-construct (never installed; prefix $P/p0/dt-prefix).
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+P=$Y/production-prep/WCLocal2026Nov16
+W=$Y/wct-0.38.0; D=$Y/wct-0.38.0-dt; O=$Y/opt-0.38.0; NJ=96
+export Y; unset LD_PRELOAD
+module load apptainer >/dev/null 2>&1; module load fuse-overlayfs >/dev/null 2>&1
+echo "=== START $(/bin/date -u) $(hostname)"
+$S/in-aurora-sl7.sh bash -c "
+  export OPT=$O WCT_SRC=$W; cd $W
+  python3 ./wcb -k --notests install -j$NJ > $P/logs/wcb-install-k.log 2>&1; echo WCB_K_RC=\$?
+  grep -E \"^ -> task in|error:\" $P/logs/wcb-install-k.log | sort | uniq -c | head
+  n=0; for f in $O/lib/libWireCell*.so $O/lib/libWCP*.so $O/bin/*; do
+    [ -f \"\$f\" ] && file \"\$f\" | grep -q ELF || continue
+    old=\$(patchelf --print-rpath \"\$f\"); echo \"\$old\" | grep -q wct-0.38.0/build || continue
+    rest=\$(echo \"\$old\" | tr : '\n' | grep -v wct-0.38.0/build | grep -v \"^$O/lib\$\" | paste -sd:)
+    patchelf --force-rpath --set-rpath \"$O/lib\${rest:+:\$rest}\" \"\$f\" && n=\$((n+1))
+  done; echo rpath_stripped=\$n
+  echo bins=\$(ls $O/bin | wc -l) libs=\$(ls $O/lib/*.so | wc -l) share=\$(ls $O/share/wirecell 2>/dev/null | wc -l) cmake=\$(ls -d $O/lib/cmake 2>/dev/null)
+  grep -rl wct-0.38.0/build $O/lib/*.so $O/bin/* 2>/dev/null | head -3
+"
+$S/in-aurora-sl7.sh bash -c "
+  export OPT=$P/p0/dt-prefix WCT_SRC=$D; cd $D
+  $P/scripts/configure-wct-aurora-dt.sh 2>&1 | tail -3
+  python3 ./wcb --target=wcdoctest-clus -j$NJ > $P/logs/wcb-dt.log 2>&1; echo WCB_DT_RC=\$?
+  grep -E 'error:' $P/logs/wcb-dt.log | head -5
+  source $P/scripts/setup-0.38.0.sh >/dev/null 2>&1
+  ( cd build && clus/wcdoctest-clus ) > $P/p0/doctests/clus.log 2>&1; echo DOCTEST_clus_RC=\$?
+  grep -aE '^\[doctest\] (test cases|assertions|Status)' $P/p0/doctests/clus.log
+"
+echo "=== END $(/bin/date -u)"

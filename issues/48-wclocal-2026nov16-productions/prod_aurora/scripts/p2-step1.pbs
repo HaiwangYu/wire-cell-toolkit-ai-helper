@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -N wcl48-p2-step1
+#PBS -A neutrinoGPU::WireCell_aurora
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/logs/p2-step1.out
+# ai-helper #48 P2 (prod_aurora): step 1 with 0.38.0 on the units of p2/units-p2.tsv (from reco1, MC),
+# output p2/<sample>/<unit>/ql/all; compared afterwards with the aurora-r1 tar (scripts/tarcmp.py).
+set -u
+module load apptainer >/dev/null 2>&1
+Y=/lus/flare/projects/neutrinoGPU/yuhw; W=$Y/production-prep/WCLocal2026Nov16; E=$Y/sbnd-wirecell-production/aurora
+export Y W E SL7_SETUP=$W/scripts/setup-0.38.0.sh
+/bin/date -u; hostname
+one() { s=$1; u=$2; n=$4; f=$5
+  O=$W/p2/$s/$u/ql/all; [ -f $O/DONE ] && return 0; mkdir -p $O; t0=$(/bin/date +%s)
+  $E/env/aurora/in-aurora-sl7.sh /usr/bin/time -v -o $O/time.txt /usr/bin/timeout -k 60 $((900 + 120 * n)) $E/bin/step1.sh $f $O sim 0 all > $O/step1.out 2>&1
+  rc=$?; echo "$s $u rc $rc ev $n wall $(( $(/bin/date +%s) - t0 ))" >> $W/p2/units.log; [ $rc = 0 ] && touch $O/DONE; }
+export -f one
+tr '\t' ' ' < $W/p2/units-p2.tsv | xargs -P 32 -L 1 bash -c 'one "$@"' _
+/bin/date -u

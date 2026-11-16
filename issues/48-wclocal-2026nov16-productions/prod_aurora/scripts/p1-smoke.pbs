@@ -1,0 +1,28 @@
+#!/bin/bash
+#PBS -N wcl48-p1-smoke
+#PBS -A neutrinoGPU::WireCell_aurora
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:30:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/logs/p1-smoke.out
+# ai-helper #48 P1 (prod_aurora): step 2 with 0.38.0 in both modes on the prod #7 data step-1 tars
+# (nueCC-48 c0-c4, NCpi0-19 c0-c1): p1/<sample>/<unit>/{pr (dv2_split_move, space dump), pr-dv2snap (dv2_snap)}.
+set -u
+module load apptainer >/dev/null 2>&1
+Y=/lus/flare/projects/neutrinoGPU/yuhw; W=$Y/production-prep/WCLocal2026Nov16; E=$Y/sbnd-wirecell-production/aurora
+export Y W E SL7_SETUP=$W/scripts/setup-0.38.0.sh
+/bin/date -u; hostname
+one() { s=$1; u=$2; T=$3; real=$4; pass=$5
+  case $pass in pr) vm=dv2_split_move sp=true;; pr-dv2snap) vm=dv2_snap sp=false;; esac
+  O=$W/p1/$s/$u; mkdir -p $O; [ -f $O/$pass.DONE ] && return 0; t0=$(/bin/date +%s)
+  PASS_ENV='DV2_HOOK_LOG DLVTX_SPACE WC_EVT_SUBDIR WC_VERTEX_METHOD WC_DV2_BUNDLE' DV2_HOOK_LOG=$O/$pass.dv2hook.jsonl \
+  DLVTX_SPACE=$sp WC_VERTEX_METHOD=$vm WC_DV2_BUNDLE=dv2max/sbnd/aurora_space/bundle.json WC_EVT_SUBDIR='pr_evt{run}_{subrun}_{event}' \
+    $E/env/aurora/in-aurora-sl7.sh /usr/bin/time -v -o $O/$pass.time.txt /usr/bin/timeout -k 60 1500 \
+    $W/scripts/step2-pass.sh $T $O/$pass $real > $O/$pass.step2.out 2>&1
+  rc=$?; echo "$s $u $pass rc $rc wall $(( $(/bin/date +%s) - t0 )) calls $(cat $O/$pass.dv2hook.jsonl 2>/dev/null | wc -l)" >> $W/p1/units.log
+  [ $rc = 0 ] && touch $O/$pass.DONE; }
+export -f one
+for p in pr pr-dv2snap; do sed "s/\$/\t$p/" $W/p1/units.tsv; done | tr '\t' ' ' | xargs -P 14 -L 1 bash -c 'one "$@"' _
+/bin/date -u

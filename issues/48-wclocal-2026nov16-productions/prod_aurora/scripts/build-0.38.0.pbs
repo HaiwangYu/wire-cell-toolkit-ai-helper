@@ -1,0 +1,57 @@
+#!/bin/bash
+#PBS -N wct-0.38.0-build
+#PBS -A neutrinoGPU::WireCell_aurora
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/logs/build-0.38.0.out
+# ai-helper #48 P0 (prod_aurora): build tag 0.38.0 (worktree $W) into the new prefix $O.
+# Never touches $Y/opt, $Y/opt-dlvtx44 or the other installs.  larwirecell ad5d942: a COPY of the deployed libs.
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+P=$Y/production-prep/WCLocal2026Nov16
+W=$Y/wct-0.38.0
+O=$Y/opt-0.38.0
+NJ=${NJ:-96}
+export Y; unset LD_PRELOAD
+module load apptainer >/dev/null 2>&1; module load fuse-overlayfs >/dev/null 2>&1
+echo "=== START $(/bin/date -u) $(hostname) src $(git -C $W rev-parse HEAD) -> $O"
+mkdir -p $O $P/p0/doctests
+$S/in-aurora-sl7.sh bash -c "
+  set -o pipefail
+  export OPT=$O WCT_SRC=$W
+  cd $W
+  [ -f build/c4che/_cache.py ] || { echo 'configure'; $S/configure-wct-aurora.sh 2>&1 | tail -5; }
+  grep -q \"PREFIX = '$O'\" build/c4che/_cache.py && echo 'prefix ok' || { echo 'PREFIX MISMATCH'; grep PREFIX build/c4che/_cache.py; exit 4; }
+  time python3 ./wcb --notests install -j$NJ > $P/logs/wcb-install.log 2>&1
+  echo WCB_RC=\$?; grep -n -B3 -A12 'error' $P/logs/wcb-install.log | head -80
+  n=0; for f in $O/lib/libWireCell*.so $O/lib/libWCP*.so $O/bin/wire-cell $O/bin/wcsonnet; do
+    [ -e \"\$f\" ] || continue
+    old=\$(patchelf --print-rpath \"\$f\"); echo \"\$old\" | grep -q wct-0.38.0/build || continue
+    rest=\$(echo \"\$old\" | tr : '\n' | grep -v wct-0.38.0/build | grep -v \"^$O/lib\$\" | paste -sd:)
+    patchelf --force-rpath --set-rpath \"$O/lib\${rest:+:\$rest}\" \"\$f\" && n=\$((n+1))
+  done; echo rpath_stripped=\$n
+  echo nlibs=\$(ls $O/lib/libWireCell*.so | wc -l)
+  echo BUILD_DONE
+"
+[ -x $O/bin/wire-cell ] || { echo "NO $O/bin/wire-cell: stop"; exit 5; }
+[ -d $O/larwirecell ] || cp -a $Y/opt/larwirecell $O/larwirecell
+[ -d $O/python/SCN ] || cp -an $Y/opt/python/. $O/python/
+$S/in-aurora-sl7.sh bash -c "
+  source $P/scripts/setup-0.38.0.sh >/dev/null 2>&1
+  cd $W
+  for pkg in clus pyutil root; do
+    python3 ./wcb -p --tests --target=wcdoctest-\$pkg -j$NJ 2>&1 | grep -v '^\[' | tail -2
+    ( cd build && \$pkg/wcdoctest-\$pkg ) > $P/p0/doctests/\$pkg.log 2>&1; echo DOCTEST_\${pkg}_RC=\$?
+    grep -aE '^\[doctest\] (test cases|assertions|Status)' $P/p0/doctests/\$pkg.log
+  done
+  for t in pyutil/test/test_*.py; do n=\$(basename \$t .py)
+    (cd pyutil/test && PYTHONPATH=$W/pyutil/python:\$PYTHONPATH python3 -m unittest \$n) > $P/p0/doctests/py-\$n.log 2>&1; echo \"PY \$n rc=\$? \$(grep -aE '^Ran |^OK|^FAILED' $P/p0/doctests/py-\$n.log | tr '\n' ' ')\"
+  done
+  echo '--- config md5'; $P/scripts/config-md5.sh $W
+  echo '--- ldd'; ldd $O/lib/libWireCellClus.so | grep -c 'not found'; which wire-cell lar; wire-cell --version 2>/dev/null | head -2
+"
+echo "=== END $(/bin/date -u)"
