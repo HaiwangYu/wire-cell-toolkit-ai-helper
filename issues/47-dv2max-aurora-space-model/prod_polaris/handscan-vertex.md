@@ -23,20 +23,18 @@ Frames agree: where the scan is Good, our `original` vertex is a median 0.43 cm 
 - **6 events where our selected candidate is a different interaction from the scanned one:** both arms more than 10 cm from the reference and within 0.2 cm of each other. These are nueCC 10550, 42280, 52672 and NCπ0 84229, 114446 ("QL mismatch"), 521075.
   - In NCπ0 84229, Xin's particle-flow layer has 5 different top-level starts, so his vertex is ambiguous.
   - The two arms always pick the same candidate, so these say nothing about the vertexer.
-- **5 events without a usable reference:**
-  - 3 are "Not good" with no coordinates;
-  - 2 sheet events have no entry in our table (nueCC 234538, 40074);
-  - 3 of our nueCC-48 events are not in the sheet (it has 47 nueCC rows).
+- **3 events without a usable reference:** "Not good" with no coordinates.
+- **Sheet typos, corrected** (checked against the RSE of Xin's round-2 Bee event for that row): 18255-234538 → 18255/1/234638, 18355-40074 → 18355/1/400474. One of our nueCC-48 events (18259/1/116962) is not in the sheet, which has 47 nueCC rows.
 
-## Results (55 events)
+## Results (57 events)
 
 | reference | n | < 1 cm `original` / `aurora` | < 2 cm | < 3 cm | median cm | `aurora` closer |
 |---|---|---|---|---|---|---|
-| scan Good/OK → Xin's round-2 vertex | 42 | 31 / **33** | 34 / **37** | 37 / **39** | 0.43 / **0.34** | 25 of 42 |
+| scan Good/OK → Xin's round-2 vertex | 44 | 32 / **34** | 35 / **38** | 39 / **41** | 0.43 / **0.34** | 26 of 44 |
 | scan Not good → scanner's point | 13 | 4 / **8** | 6 / **11** | 6 / **12** | 5.15 / **0.93** | 10 of 13 |
 | — of which nueCC-48 | 8 | 4 / 5 | 6 / 7 | 6 / 8 | 1.06 / 0.80 | 5 |
 | — of which NCπ0-19 | 5 | 0 / 3 | 0 / 4 | 0 / 4 | 25.6 / 0.94 | 5 |
-| **all** | **55** | 35 / **41** | 40 / **48** | 43 / **51** | 0.60 / **0.56** | 35 of 55 |
+| **all** | **57** | 36 / **42** | 41 / **49** | 45 / **53** | 0.60 / **0.56** | 36 of 57 |
 
 **The events the scanners flagged and located** (distance to the scanner's point, cm):
 
@@ -59,7 +57,7 @@ Frames agree: where the scan is Good, our `original` vertex is a median 0.43 cm 
 **Reading:**
 - Where the scanners found the round-2 vertex wrong and marked the right place, `aurora_space` lands within 1.5 cm of their point in 11 of 13 events (within 2.4 cm in 12). `original` is far off (5–50 cm) in 7 of them.
 - `original` already fixes 6 of these 13 relative to Xin's round 2 (≤ 1.6 cm), because our current chain is newer than his round 2.
-- Where the scan is Good/OK, `aurora_space` is about as close to Xin's vertex as `original` (33 vs 31 within 1 cm). That is in spite of the reference being a vertex from the same family of chain as `original`, which favours `original`.
+- Where the scan is Good/OK, `aurora_space` is about as close to Xin's vertex as `original` (34 vs 32 within 1 cm). That is in spite of the reference being a vertex from the same family of chain as `original`, which favours `original`.
 - Larger `aurora_space` misses to look at in Bee:
   - nueCC 469665: 4.70 cm, vs 1.16 for `original`; the scan says "electron trunk ided as muon";
   - nueCC 196649: 2.01 vs 0.16;

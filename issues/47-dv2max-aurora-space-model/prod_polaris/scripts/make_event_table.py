@@ -4,12 +4,15 @@ import csv, re, sys, math
 nue_csv, nc_csv, T, HS, OUT = sys.argv[1:6]
 BO = "https://www.phy.bnl.gov/twister/bee/set/89cdea53-c227-476c-8f67-0ae765f804b4/event/%d/"
 BA = "https://www.phy.bnl.gov/twister/bee/set/431dc57f-997d-4cff-88e1-4e33fd743ab8/event/%d/"
+# Sheet RSE typos, checked against the runNo/subRunNo/eventNo of Xin's round-2 Bee event of that row:
+SHEET_FIX = {(18255, 234538): (18255, 234638), (18355, 40074): (18355, 400474)}
 def sheet(f, samp):
     R = list(csv.reader(open(f))); i = [k for k, r in enumerate(R) if r and r[0].lower().startswith("round 2")][0]
     out = {}
     for r in R[i + 1:]:
         if r and re.match(r"\d+-\d+", r[0]):
             run, evt = (int(x) for x in r[0].split("-"))
+            run, evt = SHEET_FIX.get((run, evt), (run, evt))
             out[(run, evt)] = dict(sample=samp, link=r[1].strip(), verdict=r[2].strip(),
                                    note=" ".join(x.strip() for x in r[3:5] if x.strip()).replace("|", "/"))
     return out

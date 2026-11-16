@@ -16,6 +16,8 @@ def xin_vtx(link):
     if not starts: return None, 0
     s, n = Counter(starts).most_common(1)[0]
     return s, len(set(starts))
+# Sheet RSE typos, checked against the runNo/subRunNo/eventNo of Xin's round-2 Bee event of that row:
+SHEET_FIX = {(18255, 234538): (18255, 234638), (18355, 40074): (18355, 400474)}
 rows_out = []
 for f, samp in (("t0.csv", "nuecc48"), ("r2.csv", "ncpi0")):
     R = list(csv.reader(open(f)))
@@ -23,6 +25,7 @@ for f, samp in (("t0.csv", "nuecc48"), ("r2.csv", "ncpi0")):
     for r in R[i + 1:]:
         if not r or not re.match(r"\d+-\d+", r[0]): continue
         run, evt = (int(x) for x in r[0].split("-"))
+        run, evt = SHEET_FIX.get((run, evt), (run, evt))
         verdict = r[2].strip(); text = " | ".join(x.strip() for x in r[3:5] if x.strip())
         m = re.search(r"\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)", text)
         bad = verdict.lower() in ("not ok", "not good", "not idea")
