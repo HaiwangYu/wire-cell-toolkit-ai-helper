@@ -144,6 +144,24 @@ Start rules:
 | **FermiGrid** core-hours | ~5–6k | ~13–14k (fg1: 8.9k for 650k events with one step 2) |
 | **FermiGrid** wall clock | after the step-2-only tooling (~0.5–1 day): **< 1 day** of grid time (fg1 took ~1.5 days at ≤ 2,000 jobs per sample) | **~2–3 days** of grid time + ~0.5 day of tooling |
 
+### FermiGrid, measured in the P4 pilot (`porting_sbndbuild03`, 2026-11-16)
+
+From 546 pilot pairs (8,540 events), both passes + merges + validations (`porting_sbndbuild03/results.md` P4).
+
+| P5 still to run | pairs | events | CPU (core-h) | tracking-pr tars | merged CAFs |
+|---|---|---|---|---|---|
+| MC CV | 37,342 + 22 from reco1 | 495,013 | ~2,130 | 0.56 TB | 0.50 TB |
+| MC nueCC | 11,306 + 24 | 99,015 | ~1,800 | 0.21 TB | 0.15 TB |
+| beam-off | 1,043 + 42 | 49,473 | ~170 | 0.02 TB | 0.01 TB |
+| run3bnb | 2,181 + 4 | 108,386 | ~320 | 0.09 TB | 0.03 TB |
+| opendata | 1,797 + 1 | 89,032 | ~310 | 0.08 TB | 0.03 TB |
+| **total** | **53,762** | **840,919** | **~4,700** (~5,700 slot-h with job overhead) | **0.95 TB** | **0.72 TB** |
+
+- **Disk:**
+  - scratch: +1.7 TB (tars + CAFs + 0.01 TB of logs);
+  - persistent: +0.72 TB for the CAF copy. The user pnfs quota has 864 of 4,656 GiB used.
+- **Wall clock:** 8,455 jobs of ~45–60 min. At the slot counts fg1 and run3bnb got, ~0.5–1 day of grid time. Then a recovery pass at 8 GB for the ~0.2 % of pairs killed at the 4 GB limit (1 of 546 in the pilot).
+
 Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 node-hours, users yuhw/abhat/xning). Its balance is not recorded; `prod_aurora` checks it in P0.
 
 ## 7. Risks
@@ -163,7 +181,7 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 | agent | role |
 |---|---|
 | `prod_aurora` | WCLocal2026Nov16-Aurora: P0–P5 on Aurora |
-| `porting_sbndbuild03` | WCLocal2026Nov16-FermiGrid: P0–P5 (sbndbuild03 + jobsub); also the open-data and run3bnb inputs |
+| `porting_sbndbuild03` | 2026-11-16 20:10 CST: **P4 pilot passed** (545/546 OK; 1 pair killed at the 4 GB limit, OK locally at 5.35 GB → 8 GB recovery pass); P5 tarball `53a90eb` (all BDT weight files; = pilot output on 2 emulated pairs); final estimate posted (§6); **P5 submitted** | P5 jobs; then recovery pass, CAF copy to persistent |
 | `prod_polaris` | coordination, this doc, the cross-site comparisons, reports to Haiwang |
 
 ## 9. Agent protocol (as in #47)
@@ -186,3 +204,4 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 - 2026-11-16 (`prod_polaris`): request, decisions, survey of aurora-r1/r2 and fg1, plan v1, issue opened.
 - 2026-11-16 (`porting_sbndbuild03`): P0 + P1 on sbndbuild03 done; existing schemas fit 0.38.0 (proposal: keep them, one per tree); workflow branch `wclocal-nov16` (two passes, two-tree merge, step-2-only grid mode); P2 started.
 - 2026-11-16 (`porting_sbndbuild03`): P2 done (25/25 identical; open data differs only in `input_file` metadata) → FermiGrid runs step 2 only for 54,215 pairs (93 from reco1); grid test 4/4 OK; P4 pilot submitted 17:00 CST.
+- 2026-11-16 (`porting_sbndbuild03`): P4 pilot 545/546 OK; tarball fix `53a90eb` (legacy BDT weight files, unused but logged, now rc 91 under `d05cf47`); §6 FermiGrid estimate measured; P5 submitted.

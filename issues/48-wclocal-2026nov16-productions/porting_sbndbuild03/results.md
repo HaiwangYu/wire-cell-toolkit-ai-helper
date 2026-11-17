@@ -151,3 +151,52 @@ Pairs whose earlier status is OK and that have one unsliced kept tar use the ste
 | beam-off | 11 / 3 | 4 | `30993748@jobsub05` |
 | run3bnb | 23 / 2 | 12 | `30993749@jobsub05` |
 | opendata | 19 / 2 | 10 | `94490280@jobsub02` |
+
+### P4 result (finished 2026-11-16 19:35 CST)
+
+All 73 jobs ended; 546/546 pairs have a `.done`. Per pair: `tables/p4-pilot-pairs.tsv`; per sample: `tables/p4-pilot-summary.tsv` (`scripts/pilot-summary.py`).
+
+| sample | pairs | OK | Wire-Cell events / CAF events | CPU s/event | pair wall s/event | tracking-pr kB/event | merged CAF kB/event |
+|---|---|---|---|---|---|---|---|
+| mc-cv | 378 | 377 | 4,975 / 4,987 | 15.5 | 18.7 | 1,132 | 1,019 |
+| mc-nuecc | 115 | 115 | 988 / 988 | 65.0 | 73.7 | 2,116 | 1,494 |
+| beam-off | 11 | 11 | 550 / 550 | 12.5 | 17.6 | 348 | 183 |
+| run3bnb | 23 | 23 | 1,101 / 1,101 | 10.5 | 12.5 | 814 | 290 |
+| opendata | 19 | 19 | 914 / 914 | 12.6 | 17.6 | 849 | 299 |
+| **total** | **546** | **545 (99.8 %)** | **8,528 / 8,540** | 20.1 | 24.1 | 1,124 | 849 |
+
+CPU and wall: both step-2 passes, both merges and both validations, per pair.
+
+- **Gate (status OK ≥ 99 %): passed**, 545/546.
+  - Every validation PASS (1,092 of 1,092).
+  - No `DL vertex failed`.
+  - Only one pair needed retries: the PARTIAL one.
+- **The PARTIAL pair** `mc-cv/reco1-detsim-g4-gen-Gen2_2026-571e-af6d-07bc-4c85` (14 events): step 2 was killed (rc 137) on its 3rd event in both passes and both tries, each time at 4,181 MB, in `determine_overall_main_vertex_DL` after 49,781 DV2 space points.
+  - So the CAF has 2 of the 14 events in each tree. The other 12 have no Wire-Cell entry, and both validations still PASS.
+  - Rerun on sbndbuild03 (`run-step2.sh`, `wclocal-nov16/p4mem/`): both passes rc 0 on all 14 events, peak RSS 5.35 GB (split) and 5.33 GB (snap).
+  - **Cause:** the 4 GB slot memory limit, not a code fault.
+  - Peak RSS of the other 545 pairs: 473 below 2 GB, 545 below 4 GB, max 3.67 GB.
+  - **For P5:** keep 4000 MB, then a recovery pass at 8000 MB for the pairs that are not OK, written to `<sample>-mem8g/` so nothing gets overwritten (`scripts/submit-p5.sh recover`).
+- **One job was held once** for a while (the watcher saw `HELD 1`; reason not recorded). It was released and all its pairs finished.
+- **Time:** submitted 17:00. The first pairs finished at 17:03, and 482/546 (88 %) by 18:00. The last nueCC jobs (8 pairs of ~74 s/event each) took until 19:35. P5 uses 4 nueCC pairs per job.
+
+#### Missing weight files in the pilot tarball (output unaffected)
+
+- **Problem:** `prod_aurora` found that a missing BDT weight file only WARNs, and made `step2.sh` (`d05cf47`) exit rc 91 on it.
+  - The pilot tarball (`99e1fc9`) has `XGB_nue_seed2_0923.xml` and the 15 sub-BDTs the XGB nue score uses.
+  - It lacks 15 legacy TMVA sub-BDT files that `UbooneNueBDTScorer` resolves but never evaluates (`mipid`, `gap`, `hol_lol`, `cme_anc`, `mgo_mgt`, `br1`, `br3`, `br4_tro`, `stem_dir_br2`, `stl_lem_brm`, `mipquality`, `pio_1`, `stw_spt`, `vis_1`, `vis_2`): no `cal_*_bdt` call site for any of them.
+  - Every pilot `wct.log` (1,094) has the 15 "weight file not found" lines.
+- **Effect: none.** The grid test pairs (same tarball, same 15 lines) are identical to the local runs, which had every file, in every tree: `T_tagger` included, 322 trees, 49,130 branches.
+- **Fix:** workflow `53a90eb` (pushed to `wclocal-nov16`). `make-tarball.sh` now ships every `uboone/weights` file the shipped SBND cfg names (36), and refuses to build if one is missing.
+- **P5 tarball:** `wclocal-nov16/tar/wcgrid-wcl1116-53a90eb.tar.gz` (290 MB). It also carries `d05cf47`'s rc-91 guard.
+- **Check of the P5 tarball:** two pilot pairs rerun on an emulated worker (`emulate-worker.sh`, apptainer with only /cvmfs and /pnfs, `wclocal-nov16/emu53a/`): one nueCC pair (8 events) and one opendata pair (50 events).
+  - Both OK, with 0 "weight file not found" lines.
+  - Against their pilot grid outputs (`compare-outputs.py`):
+    - nueCC: identical in every tree (175 trees, 39,910 branches); only the two `_info` TNamed differ.
+    - opendata: identical in every tree (668 trees, 101,183 branches); only the two `_info` TNamed differ.
+
+### P5 (`scripts/submit-p5.sh`)
+
+- **step2:** the whole `pairs-<s>-step2.tsv` lists. Pilot pairs are skipped. CV 12, nueCC 4, beam-off 3, run3bnb 2, opendata 2 pairs per job.
+- **full:** the 93 from-reco1 pairs, 1 per job, 4000 MB, 8 h, 15 GB.
+- **recover:** the pairs that are not OK, at 8000 MB, into `<sample>-mem8g/`.

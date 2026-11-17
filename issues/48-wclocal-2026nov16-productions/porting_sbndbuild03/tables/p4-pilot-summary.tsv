@@ -1,0 +1,7 @@
+sample	pairs	status	events	caf_ev	step2_failed	dl_fail	val_bad	retried	cpu_s/ev	pairwall_s/ev	maxrss_MB	tar_kB/ev	caf_kB/ev	logs_kB/ev
+mc-cv	378	OK=377 PARTIAL=1	4975	4987	1	0	0	1	15.5	18.7	4181	1132	1019	10.9
+mc-nuecc	115	OK=115	988	988	0	0	0	0	65.0	73.7	3672	2116	1494	34.9
+beam-off	11	OK=11	550	550	0	0	0	0	12.5	17.6	2596	348	183	5.3
+run3bnb	23	OK=23	1101	1101	0	0	0	0	10.5	12.5	2260	814	290	9.6
+opendata	19	OK=19	914	914	0	0	0	0	12.6	17.6	2691	849	299	10.2
+TOTAL	546	OK=545 PARTIAL=1	8528	8540	1	0	0	1	20.1	24.1	4181	1124	849	13.1
