@@ -1,0 +1,26 @@
+#!/bin/bash
+#PBS -N wcl1116-p4
+#PBS -A neutrinoGPU::WireCell_aurora
+#PBS -q capacity
+#PBS -l select=8
+#PBS -l walltime=02:00:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/logs/p4-pilot.out
+# ai-helper #48 P4 pilot (Aurora): every 100th aurora-r2 unit of BNB / nueCC / NC (p4/pilot-pairs.tsv, 908 units),
+# hardlink-seeded into p4/run/node<k> (seed-from-step1.py --nodes 8), step 2 only, two passes, two-tree merge.
+# Runs the branch's pbs/run-pairs-capacity.pbs with the WCLocal2026Nov16 knobs.  Resume: resubmit unchanged.
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+W=$Y/production-prep/WCLocal2026Nov16
+export REPO=$Y/swp-wclocal/aurora PAIRS=$W/p4/pilot-pairs.tsv WORK=$W/p4/run
+export SCHEMA=$REPO/schema/recTreeWireCell-dlvtx-space.schema.json
+export WC_SL7_SETUP=$REPO/env/aurora/setup-aurora-wclocal-nov16.sh
+export WC_OPT=$Y/opt-0.38.0 WC_WCT_SRC=$Y/wct-0.38.0 GODEBUG=asyncpreemptoff=1
+export WC_STEP2_PASSES="pr:dv2_split_move:space:recTreeWireCell-dlvtx-space.schema.json pr-dv2snap:dv2_snap:nospace:recTreeWireCell.schema.json"
+export WC_DV2_BUNDLE=dv2max/sbnd/aurora_space/bundle.json
+export WC_STEP1_SEEDED=1 WC_KEEP=semiprod WC_MAXPAR=100 WC_TRUST_EVENTS=1
+unset LD_PRELOAD
+echo "=== START $(/bin/date -u) job ${PBS_JOBID:-}; toolkit $(git -C $WC_WCT_SRC rev-parse --short HEAD); workflow $(git -C $REPO rev-parse --short HEAD)"
+bash $REPO/pbs/run-pairs-capacity.pbs
+echo "=== END $(/bin/date -u)"

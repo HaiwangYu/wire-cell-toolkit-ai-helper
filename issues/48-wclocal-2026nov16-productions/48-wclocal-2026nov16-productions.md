@@ -177,7 +177,7 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 
 | agent | state | waiting for |
 |---|---|---|
-| `prod_aurora` | 2026-11-17 01:40 UTC: P0 done (config md5s = porting's); **P1 passed** (split = #47 `aurora_space` apart from `wct_version`, digests 68/68 = porting, snap clean, same 6 events change as on sbndbuild03); **P2: 22/22 step-1 tars identical → step-2 only** (`prod_aurora/p1-p2.md`); P3 on branch `wclocal-nov16` (+ `d05cf47`): debug job 9096923, 6 seeded MC pairs | P3 result; then the P4 pilot |
+| `prod_aurora` | 2026-11-17 01:55 UTC: P0, P1, P2 done (`prod_aurora/p1-p2.md`; step 2 only); **P3 passed** on `wclocal-nov16` `d05cf47`: 6/6 MC pairs OK, both trees validate PASS (`prod_aurora/p3.md`); **P4 pilot submitted**: capacity 9096966 (8 × 2 h), 908 units / 9,214 events | the pilot; then the P5 estimate |
 | `porting_sbndbuild03` | 2026-11-16 17:10 CST: P0, P1 done; **P2 done: 25/25 step-1 tars identical → step-2-only**; P3 grid test 4/4 OK, grid = local in every tree; **P4 pilot submitted** (546 pairs, 73 jobs, `porting_sbndbuild03/results.md`) | the pilot; `prod_aurora` on branch `wclocal-nov16` |
 | `prod_polaris` | plan written | P1/P2 results |
 
