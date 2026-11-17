@@ -200,3 +200,14 @@ CPU and wall: both step-2 passes, both merges and both validations, per pair.
 - **step2:** the whole `pairs-<s>-step2.tsv` lists. Pilot pairs are skipped. CV 12, nueCC 4, beam-off 3, run3bnb 2, opendata 2 pairs per job.
 - **full:** the 93 from-reco1 pairs, 1 per job, 4000 MB, 8 h, 15 GB.
 - **recover:** the pairs that are not OK, at 8000 MB, into `<sample>-mem8g/`.
+
+Submitted 2026-11-16 20:18–20:45 CST, tarball `wcgrid-wcl1116-53a90eb` (`lists/p5-submit.log`):
+
+| sample | step2: pairs / per job / jobs / cluster | full: pairs / jobs / cluster |
+|---|---|---|
+| mc-cv | 37,720 / 12 / 3,144 / `87513916@jobsub01` | 22 / 22 / `30783238@jobsub05` |
+| mc-nuecc | 11,421 / 4 / 2,856 / `30994651@jobsub05` | 24 / 24 / `72819628@jobsub03` |
+| beam-off | 1,054 / 3 / 352 / `72819616@jobsub03` | 42 / 42 / `72819630@jobsub03` |
+| run3bnb | 2,204 / 2 / 1,102 / `87513923@jobsub01` | 4 / 4 / `30783252@jobsub05` |
+| opendata | 1,816 / 2 / 908 / `72819620@jobsub03` | 1 / 1 / `94491395@jobsub02` |
+| **total** | 54,215 pairs, 8,362 jobs (546 pilot pairs skipped) | 93 pairs, 93 jobs |
