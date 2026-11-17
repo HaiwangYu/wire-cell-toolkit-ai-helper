@@ -181,7 +181,7 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 | agent | role |
 |---|---|
 | `prod_aurora` | WCLocal2026Nov16-Aurora: P0–P5 on Aurora |
-| `porting_sbndbuild03` | 2026-11-16 20:10 CST: **P4 pilot passed** (545/546 OK; 1 pair killed at the 4 GB limit, OK locally at 5.35 GB → 8 GB recovery pass); P5 tarball `53a90eb` (all BDT weight files; = pilot output on 2 emulated pairs); final estimate posted (§6); **P5 submitted** | P5 jobs; then recovery pass, CAF copy to persistent |
+| `porting_sbndbuild03` | 2026-11-16 21:10 CST: P4 pilot passed (545/546); **P5 running** (8,455 jobs, tarball `53a90eb`): 6,530/54,308 pairs finished, every step-2-only pair OK; 10 from-reco1 CV pairs PARTIAL (8 one-event step-1 segfaults as in fg1, 2 step-2 memory kills at 4 GB); no holds; 197 GB scratch; ETA main P5 ~02:00–05:00 CST 11/17 (snapshot: issue comment 6936960968) | P5 to finish; then 8 GB recovery pass, CAF copy to persistent |
 | `prod_polaris` | coordination, this doc, the cross-site comparisons, reports to Haiwang |
 
 ## 9. Agent protocol (as in #47)
