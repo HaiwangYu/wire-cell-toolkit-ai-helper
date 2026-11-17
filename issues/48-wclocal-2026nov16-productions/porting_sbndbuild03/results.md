@@ -252,7 +252,7 @@ Each pair was rerun on sbndbuild03 with the split pass, pinned to one CPU each a
 
 | pair | grid | local | RSS | where |
 |---|---|---|---|---|
-| CV `d8bb-e799-f307-1327` | rc 139, both passes | rc 139 after 3.6 min | 4.2 GB | event 4803/48/18: `find_other_vertex` → `Graphed::descriptor_valid` (PRGraph.cxx:362), from `bad_reconstruction` in `nue_tagger` |
+| CV `d8bb-e799-f307-1327` | rc 139, both passes | rc 139 after 3.6 min | 4.2 GB | event 4803/48/12 (corrected 2026-11-17; first written as 18 from an unrelated `ident=` log match): `find_other_vertex` → `Graphed::descriptor_valid` (PRGraph.cxx:362), from `bad_reconstruction` in `nue_tagger` |
 | CV `d7e5-a516-3477-e682` | rc 139, split pass only | rc 139 after 3.7 min | 4.5 GB | event 8169/41/12: `VertexIndexCmp` on a dead `Vertex` in `std::set::insert`, `id_pi0_with_vertex` (NeutrinoShowerClustering.cxx:8154) |
 | nueCC `2c2d-7fef-91ef-6f3a` | rc 139, both passes | rc 139 after 7.2 min | 4.5 GB | event 230/90/10679: `boost::remove_edge` on a freed edge list, `break_segment_into_two` (PRGraph.cxx:315) ← `break_segments` ← `find_other_segments` |
 | nueCC `2ce6-000e-14f2-234d` | rc 139, both passes | rc 139 after 5.7 min | 4.5 GB | event 206/11/5680: the same stack as `2c2d` |

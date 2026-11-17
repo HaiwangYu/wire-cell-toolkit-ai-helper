@@ -41,8 +41,10 @@ firstst = {(r[0], r[1]): (r[4], r[2]) for r in (l.rstrip('\n').split('\t') for l
 CACHE = f'{out}/.events-cache.tsv.gz'   # dst -> events, so a rebuild reads only new CAFs
 cache = collections.defaultdict(list)
 if os.path.exists(CACHE):
+    seen = set()   # a line written twice (an interrupted earlier build) counts once
     for l in gzip.open(CACHE, 'rt'):
-        d, *x = l.rstrip('\n').split('\t'); cache[d].append(tuple(int(v) for v in x)) if x else cache[d]
+        if l in seen: continue
+        seen.add(l); d, *x = l.rstrip('\n').split('\t'); cache[d].append(tuple(int(v) for v in x)) if x else cache[d]
 KNOWN = {'mc-cv': '/pnfs/sbnd/persistent/users/yuhw/prod-fermigrid/fg1/lists/events-mc-cv.tsv.gz',
          'mc-nuecc': '/pnfs/sbnd/persistent/users/yuhw/prod-fermigrid/fg1/lists/events-mc-nuecc.tsv.gz',
          'beam-off': '/pnfs/sbnd/persistent/users/yuhw/prod-fermigrid/fg1/lists/events-beam-off.tsv.gz',
@@ -52,7 +54,8 @@ for smp, f in KNOWN.items():
     for l in gzip.open(f, 'rt'):
         if l.startswith('#'): continue
         x = l.split('\t'); known[smp, x[0]].append((int(x[1]), int(x[2]), int(x[3]), 1, 1))
-ncaf = {(r[0], r[1]): int(r[7]) for r in (l.rstrip('\n').split('\t') for l in open(first)) if r[7] not in ('None', '')}
+# first try's Wire-Cell event count (column 7); for an OK pair it equals the CAF's event count
+ncaf = {(r[0], r[1]): int(r[6]) for r in (l.rstrip('\n').split('\t') for l in open(first)) if r[6] not in ('None', '')}
 import random
 fromlist = {}
 for r in rows:
@@ -98,12 +101,11 @@ for s in SAMPLES:
             st.write(f'{i}\t{status}\t{frm}\t{len(e)}\t{n1}\t{n2}\t{cause.get(k, "")}\n')
             for a, b, c, x, y in e: eo.write(f'{i}\t{a}\t{b}\t{c}\t{x}\t{y}\t{dst}\n')
             mc.write(dst + '\n'); d = os.path.dirname(src)
-            for t in glob.glob(f'{d}/*.tracking-pr.tar'): tp.write(t + '\n')
-            q = glob.glob(f'{d}/*.qlpctree.tar.gz')
-            if q: qp.write(q[0] + '\n')
-            else:
-                for l in open(f'{d}/{i}.done'):
-                    if l.startswith('qlpctree\t'): qp.write(l.split('\t')[1].strip() + '\n'); break
+            # paths from the workflow's layout, not from dCache listings (~0.3 s each over NFS): the step-2 tar
+            # is <pair dir>/<id>.tracking-pr.tar; the step-1 tar is the kept one of the step-2 list (column 6)
+            # for step-2-only pairs, <pair dir>/<id>.qlpctree.tar.gz for pairs run from reco1
+            tp.write(f'{d}/{i}.tracking-pr.tar\n')
+            qp.write((r[5] if len(r) > 5 and r[5] else f'{d}/{i}.qlpctree.tar.gz') + '\n')
             tot[s, 'caf'] += len(e); tot[s, 'split'] += n1; tot[s, 'snap'] += n2; tot[s, status] += 1
         else:
             stt = fs if fs == 'EMPTY' else 'PENDING'

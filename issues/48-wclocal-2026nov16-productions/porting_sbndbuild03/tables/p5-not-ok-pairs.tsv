@@ -1,7 +1,7 @@
 #sample	id	mode	phase	first_status	events	wc_events_first	final_status	wc_events_final	cause
 mc-cv	reco1-detsim-g4-gen-Gen2_2026-5b63-cb19-93cd-d792	step2	p5	PARTIAL	17	12	OK	17	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
 mc-cv	reco1-detsim-g4-gen-Gen2_2026-571e-af6d-07bc-4c85	step2	pilot	PARTIAL	14	2	OK	14	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
-mc-cv	reco1-detsim-g4-gen-Gen2_2026-d8bb-e799-f307-1327	step2	p5	PARTIAL	14	3	PARTIAL	3	step 2 segfault (deterministic, event 4803/48/18)
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-d8bb-e799-f307-1327	step2	p5	PARTIAL	14	3	PARTIAL	3	step 2 segfault (deterministic, event 4803/48/12)
 mc-cv	reco1-detsim-g4-gen-Gen2_2026-d7e5-a516-3477-e682	step2	p5	PARTIAL	13	4	PARTIAL	4	step 2 segfault (deterministic, event 8169/41/12)
 mc-cv	reco1-detsim-g4-gen-Gen2_2026-67a3-4e42-52e3-19f7	full	p5	PARTIAL	14	13	PARTIAL	13	step 1 lar crash, event skipped
 mc-cv	reco1-detsim-g4-gen-Gen2_2026-0cd6-6118-58a9-152c	full	p5	PARTIAL	12	11	PARTIAL	11	step 1 lar crash, event skipped
@@ -18,7 +18,7 @@ mc-cv	reco1-detsim-g4-gen-Gen2_2026-dd8e-81d2-297f-f71d	full	p5	PARTIAL	9	7	OK	9
 mc-cv	reco1-detsim-g4-gen-Gen2_2026-4133-31db-0db4-85fc	full	p5	PARTIAL	16	15	PARTIAL	15	step 1 lar crash, event skipped
 mc-cv	reco1-detsim-g4-gen-Gen2_2026-7c13-9686-a28b-e0b6	full	p5	PARTIAL	20	19	PARTIAL	19	step 1 lar crash, event skipped
 mc-nuecc	reco1-detsim-g4-filter-gen-8d59-c05f-88ea-0b18_nuecc	step2	p5	PARTIAL	9	5	OK	9	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
-mc-nuecc	reco1-detsim-g4-filter-gen-2008-a445-041f-88fc_nuecc	step2	p5	PARTIAL	8	6	PARTIAL	6	step 2 timeout; rerun with 4 h limit at 8 GB (<sample>-mem8g)
+mc-nuecc	reco1-detsim-g4-filter-gen-2008-a445-041f-88fc_nuecc	step2	p5	PARTIAL	8	6	OK	8	step 2 timeout (3,000 s limit, 3,012 s needed on the grid); rerun OK with a 4 h limit at 8 GB (<sample>-mem8g)
 mc-nuecc	reco1-detsim-g4-filter-gen-5acc-e1b0-fe29-0e31_nuecc	full	p5	PARTIAL	9	8	PARTIAL	8	step 1 lar crash, event skipped
 mc-nuecc	reco1-detsim-g4-filter-gen-bcc8-4ad6-2a32-46ff_nuecc	full	p5	PARTIAL	10	9	PARTIAL	9	step 1 lar crash, event skipped
 mc-nuecc	reco1-detsim-g4-filter-gen-2c2d-7fef-91ef-6f3a_nuecc	full	p5	PARTIAL	10	9	PARTIAL	9	step 2 segfault (deterministic, event 230/90/10679)
