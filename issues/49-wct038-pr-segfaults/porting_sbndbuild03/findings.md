@@ -85,10 +85,12 @@ Both run only after DV2 placement:
 - check the other `get_start_vertex_and_type()` users the same way.
 - Then find why DV2 leaves the start vertex out of the graph: a vertex replaced by the DV2 move without updating the shower.
 
-**Status:** this conclusion comes from the frames and the code. A gdb confirmation (the pointer value at the crash) is next.
+**Confirmed with gdb** (`scripts/gdb-step2.sh`; logs in `wclocal-nov16/issue49/gdb/`):
+- d8bb: in `find_other_vertex` the argument `vertex._M_ptr = 0x0`, while `seg` is valid. In `bad_reconstruction`, `get_start_vertex_and_type()` returned `(nullptr, 0)`.
+- d7e5: `Vertex::get_graph_index (this=0x0)`. In `id_pi0_with_vertex`, `start_vtx._M_ptr = 0x0` with connection type 2.
 
 ## Next
-1. gdb on one case per bug, to confirm the null start vertex (B) and the aliased pair (A, with `WCT_PR96_REMSEG_DEBUG=1` for the removal backtraces).
+1. Bug B is confirmed with gdb. For bug A, gdb can't see the locals at `remove_segment` in the optimized build. It will be confirmed in the fix branch instead, with a check that logs when the segment being removed doesn't own its edge (`g[desc].segment != seg`).
 2. Find the caller that creates the duplicate segment (A) and the step that drops the start vertex (B).
 3. Fix branch on my fork, off 0.38.0. Rerun the five events, then compare before/after on the #43 samples, nueCC-48 and NCπ0-19. No WireCell PR.
 4. Aurora's `eb42-73cd-76d2-dd4f` (old chain): check its log for the same aliasing line or frames. Asked prod_aurora on #49.
