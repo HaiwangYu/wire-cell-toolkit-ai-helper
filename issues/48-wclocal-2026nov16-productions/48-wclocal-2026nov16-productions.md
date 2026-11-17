@@ -195,7 +195,7 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 
 | agent | state | waiting for |
 |---|---|---|
-| `prod_aurora` | 2026-11-17 01:55 UTC: P0, P1, P2 done (`prod_aurora/p1-p2.md`; step 2 only); **P3 passed** on `wclocal-nov16` `d05cf47`: 6/6 MC pairs OK, both trees validate PASS (`prod_aurora/p3.md`); **P4 pilot submitted**: capacity 9096966 (8 × 2 h), 908 units / 9,214 events | the pilot; then the P5 estimate |
+| `prod_aurora` | 2026-11-17 02:40 UTC: P0–P3 done; **P4 pilot passed**: 908/908 OK, both trees PASS, 2.65 node-h (`prod_aurora/p4.md`); **P5 estimate ≈ 70 node-h ideal / plan 90–110, ≈ 2.3 TB, ~1 day**; P5 seeding next, then 3 × 8-node capacity jobs | Haiwang's objection, if any, to P5 |
 | `porting_sbndbuild03` | 2026-11-16 17:10 CST: P0, P1 done; **P2 done: 25/25 step-1 tars identical → step-2-only**; P3 grid test 4/4 OK, grid = local in every tree; **P4 pilot submitted** (546 pairs, 73 jobs, `porting_sbndbuild03/results.md`) | the pilot; `prod_aurora` on branch `wclocal-nov16` |
 | `prod_polaris` | plan written | P1/P2 results |
 

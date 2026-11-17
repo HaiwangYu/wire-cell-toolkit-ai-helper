@@ -1,0 +1,18 @@
+bad validations: []
+== bnb: units 119 events 6217; attempts=0 st_OK=119 validate-pr-dv2snap.json:PASS=119 validate.json:PASS=119 wfail=0
+   MB/event: pr 0.58 snap 0.56 merged 0.76 unit-total 3.77 (ql hardlinks counted in total)
+   wall s/event: step2 5.60 step2.pr-dv2snap 4.71 step3 0.21 step3.pr-dv2snap 0.19 validate 0.87 validate-pr-dv2snap 0.72
+   cpu  s/event: step2 4.51 step2.pr-dv2snap 4.53 step3 0.20 step3.pr-dv2snap 0.18 validate 0.86 validate-pr-dv2snap 0.71
+== nuecc: units 613 events 2728; attempts=0 st_OK=613 validate-pr-dv2snap.json:PASS=613 validate.json:PASS=613 wfail=0
+   MB/event: pr 1.11 snap 1.03 merged 1.63 unit-total 5.86 (ql hardlinks counted in total)
+   wall s/event: step2 26.07 step2.pr-dv2snap 24.84 step3 1.41 step3.pr-dv2snap 1.40 validate 2.99 validate-pr-dv2snap 2.67
+   cpu  s/event: step2 24.33 step2.pr-dv2snap 24.53 step3 1.29 step3.pr-dv2snap 1.29 validate 2.90 validate-pr-dv2snap 2.58
+== ncdr: units 176 events 269; attempts=0 st_OK=176 validate-pr-dv2snap.json:PASS=176 validate.json:PASS=176 wfail=0
+   MB/event: pr 0.89 snap 0.86 merged 2.50 unit-total 6.14 (ql hardlinks counted in total)
+   wall s/event: step2 19.69 step2.pr-dv2snap 20.45 step3 4.61 step3.pr-dv2snap 4.15 validate 5.19 validate-pr-dv2snap 4.44
+   cpu  s/event: step2 19.01 step2.pr-dv2snap 19.81 step3 4.33 step3.pr-dv2snap 3.93 validate 4.99 validate-pr-dv2snap 4.23
+step	tag	attempt	rc	wall_s	cpu_s	maxrss_MB	out_MB
+step2	all	1	0	131.55	85.33	1519	6.54
+step2.pr-dv2snap	all	1	0	88.18	87.11	1560	6.20
+
+[exited with code 0]
