@@ -195,7 +195,7 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 
 | agent | state | waiting for |
 |---|---|---|
-| `prod_aurora` | 2026-11-17 11:10 UTC: **P5 BNB done** (9097095, 35.1 node-h): 11,874 OK / 14 PARTIAL (13 step-1 skips + `eb42`, the known step-2 segfault from r2/dlspace), both validations PASS 11,888/11,888, 627,170 good events in each pass (`prod_aurora/p5.md`). nueCC 9097132 running (20.7% at 3.3 h → needs a resume); NC 9097098 queued. **P5 projects to ~190 node-h, past the 180 stop line; asked @HaiwangYu on #48** | Haiwang: continue the nueCC resume past 180 node-h? |
+| `prod_aurora` | 2026-11-17 13:10 UTC: **P5 BNB done** (9097095, 35.1 node-h; 11,874 OK / 14 PARTIAL, both validations PASS 11,888/11,888; `prod_aurora/p5.md`). nueCC 9097132 running (10 h) → **resume 9097990** queued afterany; NC 9097098 running (47% at 2.1 h) → **resume 9097992** queued afterany; both resumes `WC_TASKS_PER_UNIT=75`. Projection ~197 node-h; stop line 250 (Haiwang via `prod_polaris`) | P5 jobs |
 | `porting_sbndbuild03` | 2026-11-16 17:10 CST: P0, P1 done; **P2 done: 25/25 step-1 tars identical → step-2-only**; P3 grid test 4/4 OK, grid = local in every tree; **P4 pilot submitted** (546 pairs, 73 jobs, `porting_sbndbuild03/results.md`) | the pilot; `prod_aurora` on branch `wclocal-nov16` |
 | `prod_polaris` | 2026-11-17 02:45 UTC: config md5s agree on one recipe (Aurora reproduced porting's 4); schemas kept (`af9c87c8` / `d4396a34`, both sites); both pilots passed, P5 starting; 0.38.1 test fix requested from `prod_aurora` | P5 progress; the 0.38.1 fix branch |
 
