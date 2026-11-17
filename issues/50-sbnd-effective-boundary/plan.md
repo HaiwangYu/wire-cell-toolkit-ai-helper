@@ -12,8 +12,8 @@ Paths below are relative to the toolkit tree unless absolute.
 ## 0. Summary
 
 - **The machinery already exists in WCT.**
-  - `PolyFiducial` stacks polygon slabs along one axis. Its header says it is the port of the prototype's `ToyFiducial`.
-  - `CompositeFiducial{logic:'and'}` combines an x–y polygon and an x–z polygon. That is the paper's two-projection test.
+  - `PolyFiducial` (`aux/src/PolyFiducial.cxx`) stacks polygon slabs along one axis. Its header says it is the port of the prototype's `ToyFiducial`.
+  - `CompositeFiducial{logic:'and'}` (`aux/src/CompositeFiducial.cxx`) combines an x–y polygon and an x–z polygon. That is the paper's two-projection test.
 - **PDHD is a ready template.** PDHD has two drift volumes mirrored about a cathode at x = 0, like SBND.
   - It ships a default-off `curved_fv` knob: `pdhd/curved_fiducial.jsonnet`, `curved_fiducial_profiles.jsonnet`, and `pdhd/pr.jsonnet:1415-1447`.
   - Its surface comes from a cosmic exit-end census (doc `pdhd/09`, which ports doc `pdvd/43`).
@@ -33,7 +33,9 @@ The paper gives no coordinates (§V.A), and the prototype's numbers are MicroBoo
 
 ### 1.1 The measurement: an exit-end census on SBND cosmics
 
-This is the method of doc `pdhd/09` §5–7 (`/exp/sbnd/app/users/yuhw/wcp-porting-img/pdhd/docs/09_pdhd-space-charge-fiducial.md`), which ports doc `pdvd/43`. It is the paper's §V.A done with an end-point estimator:
+This is the method of doc `pdhd/09` §5–7, which ports doc `pdvd/43`. The doc and its `d09_*` scripts are in the private repo `WireCell/wcp-porting-validation` (repo access is Haiwang's call). Readable copies, identical to `origin/main`:
+- **Polaris (ALCF, neutrinoGPU group):** `/lus/eagle/projects/neutrinoGPU/yuhw/wcp-porting-validation/pdhd/docs/09_pdhd-space-charge-fiducial.md` and `…/pdhd/docs/scripts/d09_*.py`.
+- **FNAL:** `/exp/sbnd/app/users/yuhw/wcp-porting-img/pdhd/docs/09_pdhd-space-charge-fiducial.md`. It is the paper's §V.A done with an end-point estimator:
 - **Ends:** every end of every long (> 2 m, ≥ 40 points) cluster that is matched to light, in T0-corrected reconstructed coordinates. These are the coordinates the SBND taggers use (`sbnd/clus.jsonnet:104-110`).
 - **Assign each end to one wall:** the first of the six planes that a ray from the end, along the track's outward direction, crosses. Record the signed perpendicular gap.
 - **Exclude:** ends at the readout-window edges, which are incomplete. Subtract the flat non-exit floor.
@@ -41,7 +43,7 @@ This is the method of doc `pdhd/09` §5–7 (`/exp/sbnd/app/users/yuhw/wcp-porti
   - PDHD found p80 worse than the flat box and p90 best.
   - Regularize so the inset does not increase toward the anode (PAV), and bootstrap over ends (300).
 - **Grade with the held-out exit-end miss rate:** of the ends that really exit, the fraction the boundary calls contained (`pdhd/09` §7). Use the miss rate on an independent run to pick the quantile and cushion.
-- **Scripts:** the `d09_*` scripts named in `pdhd/09` §0 (`d09_exit_census.py`, `d09_quantile_surface.py`, `d09_quantile_offline.py`, `d09_fv_pdhd.py`). They hold PDHD-specific constants (§1.3) that the port must replace.
+- **Scripts:** the `d09_*` scripts named in `pdhd/09` §0 (on Polaris: `/lus/eagle/projects/neutrinoGPU/yuhw/wcp-porting-validation/pdhd/docs/scripts/`) (`d09_exit_census.py`, `d09_quantile_surface.py`, `d09_quantile_offline.py`, `d09_fv_pdhd.py`). They hold PDHD-specific constants (§1.3) that the port must replace.
 
 ### 1.2 Samples
 
@@ -97,14 +99,14 @@ This is the method of doc `pdhd/09` §5–7 (`/exp/sbnd/app/users/yuhw/wcp-porti
 - **z-dependence (paper Fig. 11):**
   - v1 uses one slab per projection, the inner envelope over z (the paper's "conservatively … the inner boundary of all Z-slices").
   - Z-binned x–y slabs (several slabs in one `PolyFiducial`, axis 2) are a v2 option, needed only for a light-mismatch-style use (§4, Q/L).
-  - Watch two things with multiple slabs: the slabs inside one `PolyFiducial` are OR-ed with inclusive edges, and the `m_bb` short-circuit (`PolyFiducial.cxx:139`) rejects anything past the slab span.
+  - Watch two things with multiple slabs: the slabs inside one `PolyFiducial` are OR-ed with inclusive edges, and the `m_bb` short-circuit (`aux/src/PolyFiducial.cxx:139`) rejects anything past the slab span.
 
 ### 2.2 Files
 
 - **New `cfg/pgrapher/experiment/sbnd/curved_fiducial.jsonnet`:** a port of `pdhd/curved_fiducial.jsonnet`. Change the constants (§1.3), use symmetric y walls (`±YW`, as in PDVD's version), and rename the keys to `_tpc0` / `_tpc1`.
   - It returns `{polys, composite, tn, configs, boundary_xy, boundary_xz}`.
   - It has a `profile=null` argument; `null` gives the flat walls, i.e. exactly the `sbnd_pr_fv` box.
-  - **Corner order:** axis 2 → (x, y); axis 1 → (z, x) (`PolyFiducial.cxx:62-68`). PDHD's file already does this.
+  - **Corner order:** axis 2 → (x, y); axis 1 → (z, x) (`aux/src/PolyFiducial.cxx:62-68`). PDHD's file already does this.
 - **New `cfg/pgrapher/experiment/sbnd/curved_fiducial_profiles.jsonnet`:** the measured knot lists, generated by the census, one entry per chosen surface (for example `p90`), with data and MC entries if they differ. Its header lists starved bins.
 - **`sbnd/clus.jsonnet` `pr()`:** the knob (§3).
 - **Drivers** (`sbnd/wct-pr.jsonnet`, `sbnd/wct-pr-perevt.jsonnet`, `sbnd/wcls-img-clus-matching-pr-lib.jsonnet`): pass the knob through as TLAs whose defaults are the off values.
@@ -116,7 +118,7 @@ This is the method of doc `pdhd/09` §5–7 (`/exp/sbnd/app/users/yuhw/wcp-porti
 - **Proposed default:** with the knob on, keep `fv_tolerance` = the current SBND margins (the band), and put space charge and the cushion into the vertices.
   - Expose `curved_fv_margin_y/z` as in PDHD, but default them to the current `tgm_fv_y_margin` / `tgm_fv_zmax_margin`, so that "knob on + flat profile" equals today's box exactly.
   - Whether the band should shrink once the surface is in is a decision for after the before/after comparison (§5), not part of v1.
-- **Tolerance semantics:** WCT moves the probe point by the tolerance; it does not move the polygon edge (`FiducialUtils.cxx:79-119`). On a slanted edge that differs slightly from the prototype's vertex inset, so a cushion that must be exact goes into the vertices (`cushion_*` arguments).
+- **Tolerance semantics:** WCT moves the probe point by the tolerance; it does not move the polygon edge (`clus/src/FiducialUtils.cxx:79-119`). On a slanted edge that differs slightly from the prototype's vertex inset, so a cushion that must be exact goes into the vertices (`cushion_*` arguments).
 
 ## 3. The knob, and keeping compiled configs byte-identical
 
@@ -162,18 +164,18 @@ The knob changes (a) only.
 | consumer | today | v1 (knob on) | why |
 |---|---|---|---|
 | **TGM**: `TaggerCheckTGM` `inside_fv` / `inside_fv_interior` (end points, chord midpoints, prolonged-signal check, neutrino-candidate apex) | (a) | **must switch** | the purpose of the issue (paper §V.B) |
-| **STM containment gate** (`cluster_fc_check` in `TaggerCheckSTM:3620`, `stm_consistent_fv=true`) | (a) | **must switch** (automatic) | paper §V.C "exactly one extreme point outside" |
+| **STM containment gate** (`cluster_fc_check` in `clus/src/TaggerCheckSTM.cxx:3620`, `stm_consistent_fv=true`) | (a) | **must switch** (automatic) | paper §V.C "exactly one extreme point outside" |
 | STM internal tests: kink search, internal TGM, one-end-outside, `check_dead_volume` | (b) | **leave** in v1; optional v2 via a second knob | they read FiducialUtils; switching it moves the dead-volume / signal-processing walk termination for every consumer (§4.1) |
 | STM `dist_to_anode`, `cathode_guard_reject` | box faces (`inner_bounds`) | **leave** | distances to the physical planes, not a containment test |
 | **FC tag** (`TaggerCheckFC`) | (a) | **must switch** (automatic) | "contained" must keep one meaning for TGM and FC (`sbnd/clus.jsonnet:2513-2516`) |
-| neutrino `match_isFC` (`TaggerCheckNeutrino:4580`) | (a) | **must switch** (automatic, `neutrino_consistent_fv=true`) | the same definition |
-| **cosmic tagger** `cosmic_tagger` flags 1–10 (`NeutrinoTaggerCosmic:504-571`) | (a), `cosmic_consistent_fv=true` | **switches** (automatic); validate | the prototype used its polygon here too (`NeutrinoID_cosmic_tagger.h`); these are BDT inputs (`cosmict_*`) |
+| neutrino `match_isFC` (`clus/src/TaggerCheckNeutrino.cxx:4580`) | (a) | **must switch** (automatic, `neutrino_consistent_fv=true`) | the same definition |
+| **cosmic tagger** `cosmic_tagger` flags 1–10 (`clus/src/NeutrinoTaggerCosmic.cxx:504-571`) | (a), `cosmic_consistent_fv=true` | **switches** (automatic); validate | the prototype used its polygon here too (`NeutrinoID_cosmic_tagger.h`); these are BDT inputs (`cosmict_*`) |
 | **nue / single-photon tagger** `angular_cut`, `shower_to_wall`, `bad_reconstruction_2(_sp)` | (a), `nue_sp_consistent_fv=true` | **switches** (automatic); validate | BDT inputs (`br3_2_other_fid`, the shower-to-wall family) |
 | BDT / kinematics inputs generally | follow the taggers above | **validate**, no separate switch | the BDT weights are MicroBooNE-trained on a polygon-based boundary, so a polygon may be closer to the training. §5 compares the input distributions. |
-| PR in-volume checks: `break_two_end_dqdx` (`NeutrinoPatternBase:3041`), vertex finder (`NeutrinoVertexFinder:1260, 1314, 2188, 4455, 4558, 5348`) | (b) | **leave** | these ask whether a point is in the detector during reconstruction, not cosmic rejection; switching them moves vertexing |
+| PR in-volume checks: `break_two_end_dqdx` (`clus/src/NeutrinoPatternBase.cxx:3041`), vertex finder (`clus/src/NeutrinoVertexFinder.cxx:1260, 1314, 2188, 4455, 4558, 5348`) | (b) | **leave** | these ask whether a point is in the detector during reconstruction, not cosmic rejection; switching them moves vertexing |
 | dead-volume / signal-processing walks (`FiducialUtils::check_*`) | (b) | **leave** in v1 | §4.1 |
 | **neutrino-candidate FV for analysis** (selection cut on the reco vertex) | analysis-side box | **optional**, the analysts' call | the paper defines FV = 3 cm inside the effective boundary (§V.A). Providing `curved_fv_cfg` with a 3 cm cushion as a named volume is cheap; adopting it is an analysis decision. |
-| **Q/L matching**: `inner_bounds` run bounds, `at_x_boundary`, `close_to_PMT`, `cathode_fiducial` (`QLMatching.cxx:1475-1505, 5175-5241`) | box + CPA exclusion | **leave** in v1; v2 candidate | the paper's light-mismatch use (§V.D) needs the **z-dependent** boundary (Fig. 11), i.e. z-binned slabs (§2.1). That is a separate project with its own Q/L validation. |
+| **Q/L matching**: `inner_bounds` run bounds, `at_x_boundary`, `close_to_PMT`, `cathode_fiducial` (`clus/src/QLMatching.cxx:1475-1505, 5175-5241`) | box + CPA exclusion | **leave** in v1; v2 candidate | the paper's light-mismatch use (§V.D) needs the **z-dependent** boundary (Fig. 11), i.e. z-binned slabs (§2.1). That is a separate project with its own Q/L validation. |
 | clustering metadata FV (`select_scope_fv`, `clustering_separate`, `clustering_examine_x_boundary`, `clustering_neutrino`) | (c) | **leave** | box numbers, not an `IFiducial`; changing them needs C++ and moves clustering |
 | **truth containment**: labeler `pf_fiducial` = `fiducial_box()` (`sbnd/clus.jsonnet:3461-3474`) | box | **leave on box** | truth containment defines efficiency denominators and must not depend on the reco-space distortion |
 
@@ -214,7 +216,15 @@ Plus a jsonnet check, a small `jsonnet -e` or `wcsonnet` assertion in the test s
 | **G4** boundary quality | the measured surface vs the box, on held-out data (`beam-off-eval`) | exit-end miss rate (`pdhd/09` §7) lower than the box's, overall **and** in the cathode half (the box's known imbalance); long-track (> 2 m) TGM count not lower |
 | **G5** MC closure | MC surface (if MC has no space charge) | inset ≈ 0 within the bootstrap errors on every wall |
 
-- **Known pitfall:** `pdhd/09` §9.3 found a TGM defect (`TaggerCheckTGM.cxx:1066`, two-group clusters whose ends fall outside). A tighter volume feeds it more short-cluster tags. Check whether it is present in 0.38.0 before reading the G3 TGM counts, and report short-cluster (< 10 cm) TGM tags separately.
+- **Known pitfall, still open in 0.38.x:** `pdhd/09` §9.3 found a TGM defect at `clus/src/TaggerCheckTGM.cxx:1066`, the `out_vec_wcps.size()==2` early return in CASE A. A cluster with exactly two end groups, both outside the FV, is tagged with no interior-support and no length requirement; PDHD saw a 1.6 cm object tagged.
+  - **No existing knob closes it.** In 0.38.x the return comes after three CASE-A guards, all on in the SBND production defaults (`cfg/pgrapher/experiment/sbnd/clus.jsonnet:1218-1221`):
+    - `require_chord_charge` (`tgm_chord_charge`, mode `path`);
+    - `rescue_chord_check` (`tgm_rescue_chord`);
+    - `main_component_pairs` (`tgm_main_pair`, mode `real`).
+  - They reject pairs with no charge path between the ends, rescued-end pairs without straight-chord support, and fragment-only pairs. A short, self-connected object in the main component passes all three.
+  - `length_limit_frac` gates only the in-beam-window `flag_check` branch, and `component_min_length` only filters which components contribute end points.
+  - Closing it needs a new default-off C++ knob (a minimum chord length on that return), with its own A/B. That is outside this plan.
+  - A tighter volume feeds this path more candidates, so report short-cluster (< 10 cm) TGM tags separately in G3.
 
 ## 6. Hand-off for Sne
 
@@ -242,4 +252,4 @@ Plus a jsonnet check, a small `jsonnet -e` or `wcsonnet` assertion in the test s
 4. Per-TPC vs mirrored profiles if one TPC is short of statistics (§2.1).
 5. Should the analysis neutrino FV adopt "3 cm inside the effective boundary" (paper §V.A)? That is the analysts' call (§4).
 6. Is the z-binned boundary for Q/L (paper §V.D) wanted as a v2 project (§4)?
-7. Is the `TaggerCheckTGM.cxx:1066` short-cluster defect (`pdhd/09` §9.3) present in SBND 0.38.0? It should be fixed or measured before G3 is read.
+7. The `clus/src/TaggerCheckTGM.cxx:1066` short-cluster path (`pdhd/09` §9.3) is **open** in 0.38.x: none of the CASE-A guards (chord charge, rescued chord, main pair, all on in SBND) applies a length cut there (§5.2). Fix it first with a default-off minimum-length knob and its own A/B, or read G3's TGM counts with sub-10 cm tags split out?
