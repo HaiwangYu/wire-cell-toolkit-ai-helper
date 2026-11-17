@@ -211,3 +211,74 @@ Submitted 2026-11-16 20:18–20:45 CST, tarball `wcgrid-wcl1116-53a90eb` (`lists
 | run3bnb | 2,204 / 2 / 1,102 / `87513923@jobsub01` | 4 / 4 / `30783252@jobsub05` |
 | opendata | 1,816 / 2 / 908 / `72819620@jobsub03` | 1 / 1 / `94491395@jobsub02` |
 | **total** | 54,215 pairs, 8,362 jobs (546 pilot pairs skipped) | 93 pairs, 93 jobs |
+
+### P5 result (2026-11-17)
+
+All P5 jobs finished by 07:12 CST except one, the beam-off job that holds the timeout pair below. No pair ended FAIL. Pairs not OK on the first try, with the cause and the final state, are in `tables/p5-not-ok-pairs.tsv`.
+
+| | OK | PARTIAL | EMPTY | not finished |
+|---|---|---|---|---|
+| step-2-only (54,215, pilot included) | 54,202 | 12 | — | 1 |
+| from reco1 (93) | 17 | 34 | 42 | — |
+
+After the recovery passes below:
+
+| sample | events | with Wire-Cell output | missing |
+|---|---|---|---|
+| mc-cv | 495,013 | 494,981 | 32 |
+| mc-nuecc | 99,015 | 98,997 | 18 |
+| beam-off | 49,466 | 49,414 | 52 |
+| run3bnb | 108,386 | 108,384 | 2 |
+| opendata | 89,032 | 89,032 | 0 |
+| **P5** | **840,912** | **840,808 (99.988 %)** | **104** |
+
+The P5 estimate counted 840,919 events. Two beam-off pairs (`…-ace50bde-…`, `…-c0f6c867-…`) list 5 and 2 events, but their reco1 files and their CAFs have 0 entries (uproot), so the true total is 840,912.
+
+The 104 missing events by cause:
+
+| cause | pairs | events | what was done |
+|---|---|---|---|
+| step 2 timeout | 2 | 52 | second recovery pass (below), running |
+| step 2 segfault, same event on every try | 5 | 28 | none: a WCT 0.38.0 crash, see below |
+| step 1 `lar` crash on one event, which is skipped | 24 (from reco1) | 24 | none |
+
+#### Recovery at 8 GB (`submit-p5.sh recover|recover-full`, 2026-11-17 07:13–07:40 CST)
+
+16 pairs, step 2 killed at the 4 GB slot limit (rc 137). Clusters: `72821678`, `30785958`, `30785963`, `30785970`, `72822680` (step 2) and `94493772`, `87516538`, `87516540`, `31000751` (from reco1). All 16 jobs finished by 08:35, and all 16 pairs are **OK**: 565/565 events, both validations PASS. Peak RSS was 4.4–8.1 GB; the 8,058 MB peak (opendata `…-bd2335b4-…`) is within the 2 GB auto-release grace. Outputs are in `<sample>-mem8g/<id>/`. The first-try outputs are kept, and the catalog takes the `-mem8g` pair when its `.done` says OK.
+
+#### The 7 step-2 segfault / timeout pairs, rerun locally (`p5diag/`)
+
+Each pair was rerun on sbndbuild03 with the split pass, pinned to one CPU each and without a step limit:
+
+| pair | grid | local | RSS | where |
+|---|---|---|---|---|
+| CV `d8bb-e799-f307-1327` | rc 139, both passes | rc 139 after 3.6 min | 4.2 GB | event 4803/48/18: `find_other_vertex` → `Graphed::descriptor_valid` (PRGraph.cxx:362), from `bad_reconstruction` in `nue_tagger` |
+| CV `d7e5-a516-3477-e682` | rc 139, split pass only | rc 139 after 3.7 min | 4.5 GB | event 8169/41/12: `VertexIndexCmp` on a dead `Vertex` in `std::set::insert`, `id_pi0_with_vertex` (NeutrinoShowerClustering.cxx:8154) |
+| nueCC `2c2d-7fef-91ef-6f3a` | rc 139, both passes | rc 139 after 7.2 min | 4.5 GB | event 230/90/10679: `boost::remove_edge` on a freed edge list, `break_segment_into_two` (PRGraph.cxx:315) ← `break_segments` ← `find_other_segments` |
+| nueCC `2ce6-000e-14f2-234d` | rc 139, both passes | rc 139 after 5.7 min | 4.5 GB | event 206/11/5680: the same stack as `2c2d` |
+| nueCC `b61a-f473-a953-2776` | rc 139, both passes | rc 139 after 6.9 min | 4.5 GB | event 259/49/7138: string copy from a bad pointer in TrackFitting.cxx:8281/10375, `examine_vertices_1` |
+| nueCC `2008-a445-041f-88fc` | rc 124 (step-2 limit 3,000 s), both tries | **rc 0** in 18 min | 2.2 GB | the grid nodes are slower; no crash |
+| beam-off `91943619-ac86-1782-8c5d-135492225a77` | rc 124 then held, every try | **rc 0** in 75 min (50 events) | 4.6 GB | the first event (858 clusters, 112,914 DV2 space points) takes most of it |
+
+- **Segfaults:** all 5 are deterministic. In every grid log (both tries, both passes) and in the local run, the crash comes at the same event (`ident`). All are in the 0.38.0 pattern-recognition graph code (`Clus::PR`). The stacks look like use of a freed vertex/edge after a graph change. The pass stops there, so the rest of the file has no tracking-pr output: 28 events from 5 crashing ones. The old chain (fg1, WCT `4b6853d4`) did reconstruct all 14 events of CV `d8bb`. Logs with the full stacks: `wclocal-nov16/p5diag/<id>/wct.log.gz`. Not rerun: a skip-the-event rerun of step 2 does not exist in the workflow, and these are code bugs for the WCT developers.
+- **Timeouts:** both finish without the limit. Rerun on the grid at 8 GB with a 4 h step-2 limit (`WC_TIMEOUT_STEP2_BASE=14400`; workflow `f452d76` makes `submit.sh` pass it through), into `<sample>-mem8g/`: `submit-p5.sh recover-slow`, clusters `72823730@jobsub03` (nueCC) and `31002649@jobsub05` (beam-off), 2026-11-17 08:55 CST.
+- The original beam-off timeout try (job `72819616.75`, restarted at 6 GB) ended **FAIL step2** at 08:54 CST: 4 tries, each at the limit (the log labels them rc 137 "(timeout)"). It wrote logs and no `.done`; the rerun above replaces it.
+
+#### Copy of the merged CAFs to persistent (2026-11-17)
+
+- **Plan:** `scripts/caf-copy-plan.py` → `wclocal-nov16/lists/caf-copy-plan.tsv`, one CAF per pair. A pair takes `<sample>-mem8g/<id>/` when its `.done` says OK, otherwise `<sample>/<id>/`. The 42 EMPTY pairs have no CAF, and the 2 rerun pairs wait for their jobs. That leaves 54,264 files (16 from `-mem8g`).
+- **Copy:** `scripts/caf-copy.sh copy` (NFS `cp`, 8 at a time, on sbndbuild03 from 09:01 CST) into `/pnfs/sbnd/persistent/users/yuhw/prod-fermigrid/WCLocal2026Nov16/<sample>/<id>/`. The script refuses any other destination.
+- **Verify:** `scripts/caf-copy.sh verify` compares size and dCache's ADLER32 of each copy with its source.
+  - sbndbuild03 crashed during the verify (it hangs on SSH since about 10:40 CST): 41,563 had been checked by then, all OK.
+  - The other 12,702 were checked on sbndgpvm02, all OK.
+  - Combined, deduplicated table: `lists/caf-copy-verify-all.tsv`, **54,264 / 54,264 OK, 720.0 GB**.
+  - The persistent tree holds exactly the planned files: no extra, partial or 0-byte ones.
+- **Lost with sbndbuild03:** only scratch files in its `/tmp`, all of which can be regenerated. The pair tally was already saved as `lists/final-pairs-first-try.tsv`.
+
+#### Catalog (`scripts/make-catalog.py`)
+
+Per sample it writes `pairs-`, `status-`, `events-<s>.tsv.gz`, `<s>.merged-caf.txt`, and `.tracking-pr-scratch.txt` / `.qlpctree-scratch.txt`.
+- A CAF read over dCache NFS takes about 2 s on sbndgpvm02, so not every CAF is read.
+- For an OK pair, run/subrun/event come from the fg1 or run3bnb events list, provided that list has as many events as the pair's CAF. The flat CAF `recTree` is the official one, unchanged.
+- Read from the CAF itself: open data (it has no earlier events list), every non-OK pair, any count mismatch, and 150 random OK pairs as a check.
+- Python 3.14's default `forkserver` start method re-runs the unguarded script in every worker, which hangs the pool. The script uses `fork`.

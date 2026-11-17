@@ -1,0 +1,48 @@
+#sample	id	mode	phase	first_status	events	wc_events_first	final_status	wc_events_final	cause
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-5b63-cb19-93cd-d792	step2	p5	PARTIAL	17	12	OK	17	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-571e-af6d-07bc-4c85	step2	pilot	PARTIAL	14	2	OK	14	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-d8bb-e799-f307-1327	step2	p5	PARTIAL	14	3	PARTIAL	3	step 2 segfault (deterministic, event 4803/48/18)
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-d7e5-a516-3477-e682	step2	p5	PARTIAL	13	4	PARTIAL	4	step 2 segfault (deterministic, event 8169/41/12)
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-67a3-4e42-52e3-19f7	full	p5	PARTIAL	14	13	PARTIAL	13	step 1 lar crash, event skipped
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-0cd6-6118-58a9-152c	full	p5	PARTIAL	12	11	PARTIAL	11	step 1 lar crash, event skipped
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-230d-fa0b-8160-0946	full	p5	PARTIAL	19	18	PARTIAL	18	step 1 lar crash, event skipped
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-fa2e-eb5b-4dda-0159	full	p5	PARTIAL	15	14	PARTIAL	14	step 1 lar crash, event skipped
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-2037-c3ce-ce84-c3db	full	p5	PARTIAL	15	14	PARTIAL	14	step 1 lar crash, event skipped
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-1568-d913-dea3-2664	full	p5	PARTIAL	11	10	PARTIAL	10	step 1 lar crash, event skipped
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-699e-6add-3d7d-265c	full	p5	PARTIAL	18	8	OK	18	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-073a-a641-fa7a-01e5	full	p5	PARTIAL	16	15	PARTIAL	15	step 1 lar crash, event skipped
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-d09f-bfcd-e1d1-3f1f	full	p5	PARTIAL	16	15	PARTIAL	15	step 1 lar crash, event skipped
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-5b25-6882-45c6-c704	full	p5	PARTIAL	13	12	PARTIAL	12	step 1 lar crash, event skipped
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-8660-2744-d39f-7036	full	p5	PARTIAL	9	8	PARTIAL	8	step 1 lar crash, event skipped
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-dd8e-81d2-297f-f71d	full	p5	PARTIAL	9	7	OK	9	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-4133-31db-0db4-85fc	full	p5	PARTIAL	16	15	PARTIAL	15	step 1 lar crash, event skipped
+mc-cv	reco1-detsim-g4-gen-Gen2_2026-7c13-9686-a28b-e0b6	full	p5	PARTIAL	20	19	PARTIAL	19	step 1 lar crash, event skipped
+mc-nuecc	reco1-detsim-g4-filter-gen-8d59-c05f-88ea-0b18_nuecc	step2	p5	PARTIAL	9	5	OK	9	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+mc-nuecc	reco1-detsim-g4-filter-gen-2008-a445-041f-88fc_nuecc	step2	p5	PARTIAL	8	6	PARTIAL	6	step 2 timeout; rerun with 4 h limit at 8 GB (<sample>-mem8g)
+mc-nuecc	reco1-detsim-g4-filter-gen-5acc-e1b0-fe29-0e31_nuecc	full	p5	PARTIAL	9	8	PARTIAL	8	step 1 lar crash, event skipped
+mc-nuecc	reco1-detsim-g4-filter-gen-bcc8-4ad6-2a32-46ff_nuecc	full	p5	PARTIAL	10	9	PARTIAL	9	step 1 lar crash, event skipped
+mc-nuecc	reco1-detsim-g4-filter-gen-2c2d-7fef-91ef-6f3a_nuecc	full	p5	PARTIAL	10	9	PARTIAL	9	step 2 segfault (deterministic, event 230/90/10679)
+mc-nuecc	reco1-detsim-g4-filter-gen-ab62-e781-873f-bba3_nuecc	full	p5	PARTIAL	10	1	OK	10	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+mc-nuecc	reco1-detsim-g4-filter-gen-967c-8a44-b8b5-af19_nuecc	full	p5	PARTIAL	15	14	PARTIAL	14	step 1 lar crash, event skipped
+mc-nuecc	reco1-detsim-g4-filter-gen-3e00-42d9-4cf8-4d6b_nuecc	full	p5	PARTIAL	9	8	PARTIAL	8	step 1 lar crash, event skipped
+mc-nuecc	reco1-detsim-g4-filter-gen-3e58-91d3-662d-fe1d_nuecc	full	p5	PARTIAL	9	8	PARTIAL	8	step 1 lar crash, event skipped
+mc-nuecc	reco1-detsim-g4-filter-gen-b61a-f473-a953-2776_nuecc	full	p5	PARTIAL	8	5	PARTIAL	5	step 2 segfault (deterministic, event 259/49/7138)
+mc-nuecc	reco1-detsim-g4-filter-gen-67cb-e219-ad18-eecb_nuecc	full	p5	PARTIAL	10	9	PARTIAL	9	step 1 lar crash, event skipped
+mc-nuecc	reco1-detsim-g4-filter-gen-2ce6-000e-14f2-234d_nuecc	full	p5	PARTIAL	12	8	PARTIAL	8	step 2 segfault (deterministic, event 206/11/5680)
+mc-nuecc	reco1-detsim-g4-filter-gen-c69c-a2cc-7454-ed51_nuecc	full	p5	PARTIAL	14	13	PARTIAL	13	step 1 lar crash, event skipped
+mc-nuecc	reco1-detsim-g4-filter-gen-2bda-93a4-c3bc-4ed7_nuecc	full	p5	PARTIAL	7	6	PARTIAL	6	step 1 lar crash, event skipped
+beam-off	data_filtered_decoded_reco1-91943619-ac86-1782-8c5d-135492225a77	step2	p5	MISSING	50	0	MISSING	0	step 2 timeout; rerun with 4 h limit at 8 GB (<sample>-mem8g)
+beam-off	data_filtered_decoded_reco1-b2a65dc5-e08e-937d-4aac-74f9c6bab427	step2	p5	PARTIAL	50	7	OK	50	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+beam-off	data_filtered_decoded_reco1-66542293-3835-0079-1445-79d4bcd2b6ac	full	p5	PARTIAL	38	31	OK	38	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+beam-off	data_filtered_decoded_reco1-a64698f2-a541-d0c4-2602-8e1e96862d52	full	p5	PARTIAL	50	6	OK	50	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+beam-off	data_filtered_decoded_reco1-ca477d17-b8cb-2c99-73db-123dcdac3efd	full	p5	PARTIAL	50	49	PARTIAL	49	step 1 lar crash, event skipped
+beam-off	data_filtered_decoded_reco1-0cec6931-8192-5f54-e664-2e4f25c8d2ac	full	p5	PARTIAL	50	49	PARTIAL	49	step 1 lar crash, event skipped
+run3bnb	data_filtered_decoded_reco1-f0774289-37c4-ef93-d2df-98e449678716	step2	p5	PARTIAL	50	24	OK	50	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+run3bnb	data_filtered_decoded_reco1-93980514-0961-b21a-8db4-163f8edb88da	step2	p5	PARTIAL	50	44	OK	50	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+run3bnb	data_filtered_decoded_reco1-70075734-b7b4-a9dd-0a33-b7bfb7d0fd70	full	p5	PARTIAL	50	2	OK	50	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+run3bnb	data_filtered_decoded_reco1-13d07c95-f3d6-3f11-6201-a7007cd69c8e	full	p5	PARTIAL	50	28	OK	50	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+run3bnb	data_filtered_decoded_reco1-aa5d749d-819b-9b7b-8133-bf05c91b82b9	full	p5	PARTIAL	50	49	PARTIAL	49	step 1 lar crash, event skipped
+run3bnb	data_filtered_decoded_reco1-6e1d3a07-672c-7b6a-bae2-d1f78ed5b008	full	p5	PARTIAL	50	49	PARTIAL	49	step 1 lar crash, event skipped
+opendata	data_filtered_decoded_reco1-0d293496-4691-3fa7-3aec-4a92a7d1e422	step2	p5	PARTIAL	50	24	OK	50	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+opendata	data_filtered_decoded_reco1-42f278ab-bbbb-edbe-a089-cfc9cebd927d	step2	p5	PARTIAL	50	17	OK	50	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
+opendata	data_filtered_decoded_reco1-bd2335b4-f076-3d88-adda-d3cae7f29d36	step2	p5	PARTIAL	50	18	OK	50	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
