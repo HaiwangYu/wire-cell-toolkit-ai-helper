@@ -1,0 +1,4 @@
+2026-11-17T01:43:40Z P4 pilot 9096966.aurora-pbs-0001.hostmgmt.cm.aurora.alcf.anl.gov 8x2h capacity WireCell_aurora (908 units, 9214 events)
+2026-11-17T02:30:16Z P5 bnb 9097095.aurora-pbs-0001.hostmgmt.cm.aurora.alcf.anl.gov 8x6h capacity (11888 units, 627205 events)
+2026-11-17T02:31:57Z P5 ncdr 9097098.aurora-pbs-0001.hostmgmt.cm.aurora.alcf.anl.gov 8x3h capacity afterany:9097095 (17604 units, 26745 events)
+2026-11-17T02:43:59Z P5 nuecc 9097132.aurora-pbs-0001.hostmgmt.cm.aurora.alcf.anl.gov 8x10h capacity (61252 units, 268865 events)
