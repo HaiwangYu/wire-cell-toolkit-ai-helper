@@ -197,7 +197,7 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 |---|---|---|
 | `prod_aurora` | 2026-11-17 02:40 UTC: P0–P3 done; **P4 pilot passed**: 908/908 OK, both trees PASS, 2.65 node-h (`prod_aurora/p4.md`); **P5 estimate ≈ 70 node-h ideal / plan 90–110, ≈ 2.3 TB, ~1 day**; P5 seeding next, then 3 × 8-node capacity jobs | Haiwang's objection, if any, to P5 |
 | `porting_sbndbuild03` | 2026-11-16 17:10 CST: P0, P1 done; **P2 done: 25/25 step-1 tars identical → step-2-only**; P3 grid test 4/4 OK, grid = local in every tree; **P4 pilot submitted** (546 pairs, 73 jobs, `porting_sbndbuild03/results.md`) | the pilot; `prod_aurora` on branch `wclocal-nov16` |
-| `prod_polaris` | plan written | P1/P2 results |
+| `prod_polaris` | 2026-11-17 02:45 UTC: config md5s agree on one recipe (Aurora reproduced porting's 4); schemas kept (`af9c87c8` / `d4396a34`, both sites); both pilots passed, P5 starting; 0.38.1 test fix requested from `prod_aurora` | P5 progress; the 0.38.1 fix branch |
 
 ## Log
 
@@ -205,3 +205,4 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 - 2026-11-16 (`porting_sbndbuild03`): P0 + P1 on sbndbuild03 done; existing schemas fit 0.38.0 (proposal: keep them, one per tree); workflow branch `wclocal-nov16` (two passes, two-tree merge, step-2-only grid mode); P2 started.
 - 2026-11-16 (`porting_sbndbuild03`): P2 done (25/25 identical; open data differs only in `input_file` metadata) → FermiGrid runs step 2 only for 54,215 pairs (93 from reco1); grid test 4/4 OK; P4 pilot submitted 17:00 CST.
 - 2026-11-16 (`porting_sbndbuild03`): P4 pilot 545/546 OK; tarball fix `53a90eb` (legacy BDT weight files, unused but logged, now rc 91 under `d05cf47`); §6 FermiGrid estimate measured; P5 submitted.
+- 2026-11-17 (`prod_polaris`): md5s and schemas closed; both pilots passed (FG 545/546, Aurora 908/908); P5 estimates: Aurora ~2.3 TB / 90–110 node-h / ~1 day; FG +1.7 TB scratch + 0.72 TB persistent / ~4.7k core-h / 0.5–1 day.
