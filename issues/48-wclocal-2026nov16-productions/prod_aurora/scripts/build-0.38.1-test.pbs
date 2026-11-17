@@ -1,0 +1,48 @@
+#!/bin/bash
+#PBS -N wct-0381-werror
+#PBS -A neutrinoGPU::WireCell_aurora
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:59:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/logs/build-0.38.1-test.out
+# ai-helper #48 side task: release condition for 0.38.1.  Worktree $W = tag 0.38.0 + the fix commit on a branch
+# whose name starts with a digit (git describe 0.38.0-1-g...), so wcb adds -Werror -Wall -pedantic.  FULL
+# `wcb install` (tests included, no -k) into a scratch prefix $O (never $Y/opt*), then the clus + pytorch doctests.
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+S=$Y/wire-cell-toolkit-ai-helper/issues/29-aurora-production/scripts
+P=$Y/production-prep/WCLocal2026Nov16
+W=$Y/wct-0.38.1-test
+O=$P/p0/rel-0.38.1-test-prefix
+NJ=96
+export Y; unset LD_PRELOAD
+module load apptainer >/dev/null 2>&1; module load fuse-overlayfs >/dev/null 2>&1
+echo "=== START $(/bin/date -u) $(hostname) src $(git -C $W rev-parse --short HEAD) ($(git -C $W describe --tags)) -> $O"
+mkdir -p $O $P/p0/rel-test
+$S/in-aurora-sl7.sh bash -c "
+  export OPT=$O WCT_SRC=$W
+  cd $W
+  $S/configure-wct-aurora.sh > $P/logs/rel-test-configure.log 2>&1; echo CONFIGURE_RC=\$?
+  grep -E 'Configured version|strict compiler flags' $P/logs/rel-test-configure.log
+  grep -q \"PREFIX = '$O'\" build/c4che/_cache.py && echo 'prefix ok' || { echo 'PREFIX MISMATCH'; exit 4; }
+  python3 ./wcb install -j$NJ > $P/logs/rel-test-wcb-install.log 2>&1
+  echo WCB_INSTALL_RC=\$?
+  grep -c -- '-Werror' $P/logs/rel-test-wcb-install.log | sed 's/^/lines_with_-Werror_in_log=/'
+  grep -nE 'error|warning:' $P/logs/rel-test-wcb-install.log | head -20
+  tail -4 $P/logs/rel-test-wcb-install.log
+"
+$S/in-aurora-sl7.sh bash -c "
+  export WC_OPT=$O WC_WCT_SRC=$W
+  source $P/scripts/setup-0.38.0.sh >/dev/null 2>&1
+  cd $W/build
+  for pkg in clus pytorch; do
+    ls -la \$pkg/wcdoctest-\$pkg | cut -c1-200
+    ( \$pkg/wcdoctest-\$pkg ) > $P/p0/rel-test/\$pkg.log 2>&1; echo DOCTEST_\${pkg}_RC=\$?
+    grep -aE '^\[doctest\] (test cases|assertions|Status)' $P/p0/rel-test/\$pkg.log
+  done
+  for tc in 'dv2 space*' ; do clus/wcdoctest-clus -tc=\"\$tc\" 2>&1 | grep -aE '^\[doctest\] (test cases|assertions|Status)'; done
+  pytorch/wcdoctest-pytorch -sf='*fm_direct*' 2>&1 | grep -aE '^\[doctest\] (test cases|assertions|Status)'
+"
+echo "=== END $(/bin/date -u)"

@@ -1,0 +1,28 @@
+=== START Tue Nov 17 02:33:45 AM UTC 2026 x4708c5s2b0n0 src 0c6d24ed (0.38.0-1-g0c6d24ed) -> /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix
+CONFIGURE_RC=0
+Adding strict compiler flags for release: "-Werror -Wall -Werror=return-type -pedantic -Wno-unused-local-typedefs"
+Configured version 0.38.0
+prefix ok
+WCB_INSTALL_RC=0
+lines_with_-Werror_in_log=0
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgrapher/common/tools.jsonnet (from cfg/pgrapher/common/tools.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgrapher/ui/wcls/nodes.jsonnet (from cfg/pgrapher/ui/wcls/nodes.jsonnet)
+Waf: Leaving directory `/lus/flare/projects/neutrinoGPU/yuhw/wct-0.38.1-test/build'
+'install' finished successfully (3m52.188s)
+-rwxr-xr-x 1 yuhw 65534 240889728 Nov 17 02:41 clus/wcdoctest-clus
+DOCTEST_clus_RC=0
+[doctest] test cases:    512 |    512 passed | 0 failed | 1 skipped
+[doctest] assertions: 717354 | 717354 passed | 0 failed |
+[doctest] Status: SUCCESS!
+-rwxr-xr-x 1 yuhw 65534 17589720 Nov 17 02:40 pytorch/wcdoctest-pytorch
+DOCTEST_pytorch_RC=0
+[doctest] test cases:    5 |    5 passed | 0 failed | 0 skipped
+[doctest] assertions: 3029 | 3029 passed | 0 failed |
+[doctest] Status: SUCCESS!
+[doctest] test cases:  5 |  5 passed | 0 failed | 508 skipped
+[doctest] assertions: 27 | 27 passed | 0 failed |
+[doctest] Status: SUCCESS!
+[doctest] test cases:  1 |  1 passed | 0 failed | 4 skipped
+[doctest] assertions: 25 | 25 passed | 0 failed |
+[doctest] Status: SUCCESS!
+=== END Tue Nov 17 02:42:55 AM UTC 2026

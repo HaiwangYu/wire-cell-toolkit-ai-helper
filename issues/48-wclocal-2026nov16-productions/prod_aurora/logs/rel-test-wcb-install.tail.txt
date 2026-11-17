@@ -1,0 +1,30 @@
+../clus/test/doctest_clus_knob_defaults.cxx:94:1: note: in expansion of macro 'TEST_CASE'
+   94 | TEST_CASE("clus knob defaults: TaggerCheckNeutrino switches are all OFF")
+      | ^~~~~~~~~
+
+[903/921] Linking build/clus/wcdoctest-clus
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/bin/wcdoctest-clus (from build/clus/wcdoctest-clus)
+[922/925] Compiling wire-cell-toolkit.pc.in
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/lib/pkgconfig/wire-cell-toolkit.pc (from build/wire-cell-toolkit.pc)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/lib/cmake/WireCellToolkit/WireCellToolkitConfig.cmake (from build/WireCellToolkitConfig.cmake)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/lib/cmake/WireCellToolkit/WireCellToolkitConfigVersion.cmake (from build/WireCellToolkitConfigVersion.cmake)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/ar39.jsonnet (from cfg/ar39.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/fileio.jsonnet (from cfg/fileio.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/multifan.jsonnet (from cfg/multifan.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/omni.jsonnet (from cfg/omni.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgraph.jsonnet (from cfg/pgraph.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/vector.jsonnet (from cfg/vector.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/wirecell.jsonnet (from cfg/wirecell.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/wrap.jsonnet (from cfg/wrap.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgrapher/common/clus.jsonnet (from cfg/pgrapher/common/clus.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgrapher/common/funcs.jsonnet (from cfg/pgrapher/common/funcs.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgrapher/common/io.jsonnet (from cfg/pgrapher/common/io.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgrapher/common/params.jsonnet (from cfg/pgrapher/common/params.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgrapher/common/resamplers.jsonnet (from cfg/pgrapher/common/resamplers.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgrapher/common/sim/ar39nodes.jsonnet (from cfg/pgrapher/common/sim/ar39nodes.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgrapher/common/sim/depos.jsonnet (from cfg/pgrapher/common/sim/depos.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgrapher/common/sim/nodes.jsonnet (from cfg/pgrapher/common/sim/nodes.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgrapher/common/tools.jsonnet (from cfg/pgrapher/common/tools.jsonnet)
++ install /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/p0/rel-0.38.1-test-prefix/share/wirecell/pgrapher/ui/wcls/nodes.jsonnet (from cfg/pgrapher/ui/wcls/nodes.jsonnet)
+Waf: Leaving directory `/lus/flare/projects/neutrinoGPU/yuhw/wct-0.38.1-test/build'
+'install' finished successfully (3m52.188s)
