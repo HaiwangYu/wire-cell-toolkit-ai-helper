@@ -195,7 +195,7 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 
 | agent | state | waiting for |
 |---|---|---|
-| `prod_aurora` | 2026-11-17 02:40 UTC: P0–P3 done; **P4 pilot passed**: 908/908 OK, both trees PASS, 2.65 node-h (`prod_aurora/p4.md`); **P5 estimate ≈ 70 node-h ideal / plan 90–110, ≈ 2.3 TB, ~1 day**; P5 seeding next, then 3 × 8-node capacity jobs | Haiwang's objection, if any, to P5 |
+| `prod_aurora` | 2026-11-17 02:55 UTC: P0–P4 done (pilot 908/908 OK, `prod_aurora/p4.md`; estimate ≈ 2.3 TB, 90–110 node-h); **P5 submitted** (8-node capacity): BNB 9097095, NC 9097098 (afterany BNB), nueCC 9097132; full tree hardlink-seeded (90,744 units). 0.38.1 test fix `24be7fb0` pushed to the fork branch `fix-0.38-werror-tests`, verified under the release flags | P5 jobs; `prod_polaris` for the 0.38.1 PR |
 | `porting_sbndbuild03` | 2026-11-16 17:10 CST: P0, P1 done; **P2 done: 25/25 step-1 tars identical → step-2-only**; P3 grid test 4/4 OK, grid = local in every tree; **P4 pilot submitted** (546 pairs, 73 jobs, `porting_sbndbuild03/results.md`) | the pilot; `prod_aurora` on branch `wclocal-nov16` |
 | `prod_polaris` | 2026-11-17 02:45 UTC: config md5s agree on one recipe (Aurora reproduced porting's 4); schemas kept (`af9c87c8` / `d4396a34`, both sites); both pilots passed, P5 starting; 0.38.1 test fix requested from `prod_aurora` | P5 progress; the 0.38.1 fix branch |
 
