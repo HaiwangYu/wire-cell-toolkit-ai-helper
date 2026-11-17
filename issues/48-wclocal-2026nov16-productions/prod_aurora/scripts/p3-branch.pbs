@@ -1,0 +1,35 @@
+#!/bin/bash
+#PBS -N wcl1116-p3
+#PBS -A neutrinoGPU::WireCell_aurora
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:40:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/logs/p3-branch.out
+# ai-helper #48 P3 (Aurora): the workflow branch wclocal-nov16 (worktree $Y/swp-wclocal) on 2 seeded MC pairs per
+# sample: two step-2 passes, the two-tree merge, both validations.  Seeded from production-prep/dlspace (hardlinks).
+set -u
+Y=/lus/flare/projects/neutrinoGPU/yuhw
+W=$Y/production-prep/WCLocal2026Nov16
+REPO=$Y/swp-wclocal/aurora
+cd $REPO
+export WC_SL7_SETUP=$REPO/env/aurora/setup-aurora-wclocal-nov16.sh
+export WC_OPT=$Y/opt-0.38.0 WC_WCT_SRC=$Y/wct-0.38.0 GODEBUG=asyncpreemptoff=1
+export WC_STEP2_PASSES="pr:dv2_split_move:space:recTreeWireCell-dlvtx-space.schema.json pr-dv2snap:dv2_snap:nospace:recTreeWireCell.schema.json"
+export WC_DV2_BUNDLE=dv2max/sbnd/aurora_space/bundle.json
+export WC_STEP1_SEEDED=1 WC_KEEP=validation WC_RAMP_S=0 WC_LAUNCH_GAP_S=1 WC_TRUST_EVENTS=1
+SCHEMA=$REPO/schema/recTreeWireCell-dlvtx-space.schema.json
+unset LD_PRELOAD
+module load apptainer >/dev/null 2>&1; module load fuse-overlayfs >/dev/null 2>&1
+echo "=== START $(/bin/date -u) $(hostname) job ${PBS_JOBID:-}; toolkit $(cat $WC_WCT_SRC/version.txt 2>/dev/null) $(git -C $WC_WCT_SRC rev-parse --short HEAD); workflow $(git rev-parse --short HEAD)"
+POOLS=""
+for n in bnb nuecc ncdr; do
+  ( WC_MAXPAR=40 bash bin/run-pairs.sh site/aurora.sh $W/p3/$n-pairs.tsv $W/p3/$n $SCHEMA > $W/logs/p3-$n.out 2>&1 ) &
+  POOLS="$POOLS $!"
+done
+wait $POOLS
+for n in bnb nuecc ncdr; do
+  for u in $W/p3/$n/*/status; do echo "$n $(basename $(dirname $u)) $(cat $u)"; done
+done
+echo "=== END $(/bin/date -u)"

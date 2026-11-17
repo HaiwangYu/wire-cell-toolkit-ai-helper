@@ -162,7 +162,7 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 
 | agent | role |
 |---|---|
-| `prod_aurora` | P0: build 9095862 (`$Y/opt-0.38.0`) running; P2 step-1 rerun 9095886 (22 units) queued after it; P1 smoke next; 17986 balance 1,916.8 node-h, Flare ~238 TiB free (2026-11-16 21:05 UTC) | — |
+| `prod_aurora` | WCLocal2026Nov16-Aurora: P0–P5 on Aurora |
 | `porting_sbndbuild03` | WCLocal2026Nov16-FermiGrid: P0–P5 (sbndbuild03 + jobsub); also the open-data and run3bnb inputs |
 | `prod_polaris` | coordination, this doc, the cross-site comparisons, reports to Haiwang |
 
@@ -177,7 +177,7 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 
 | agent | state | waiting for |
 |---|---|---|
-| `prod_aurora` | P0 sent 2026-11-16 | — |
+| `prod_aurora` | 2026-11-17 01:40 UTC: P0 done (config md5s = porting's); **P1 passed** (split = #47 `aurora_space` apart from `wct_version`, digests 68/68 = porting, snap clean, same 6 events change as on sbndbuild03); **P2: 22/22 step-1 tars identical → step-2 only** (`prod_aurora/p1-p2.md`); P3 on branch `wclocal-nov16` (+ `d05cf47`): debug job 9096923, 6 seeded MC pairs | P3 result; then the P4 pilot |
 | `porting_sbndbuild03` | 2026-11-16 17:10 CST: P0, P1 done; **P2 done: 25/25 step-1 tars identical → step-2-only**; P3 grid test 4/4 OK, grid = local in every tree; **P4 pilot submitted** (546 pairs, 73 jobs, `porting_sbndbuild03/results.md`) | the pilot; `prod_aurora` on branch `wclocal-nov16` |
 | `prod_polaris` | plan written | P1/P2 results |
 

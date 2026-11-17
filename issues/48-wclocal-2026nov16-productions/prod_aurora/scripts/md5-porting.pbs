@@ -1,0 +1,13 @@
+#!/bin/bash
+#PBS -N wcl48-md5
+#PBS -A neutrinoGPU::WireCell_aurora
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:10:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/logs/md5-porting.out
+# ai-helper #48 P0: porting_sbndbuild03's config-md5.sh (sim + data, split/snap/default) on $Y/wct-0.38.0
+Y=/lus/flare/projects/neutrinoGPU/yuhw; W=$Y/production-prep/WCLocal2026Nov16
+module load apptainer >/dev/null 2>&1
+SL7_SETUP=$W/scripts/setup-0.38.0.sh $Y/sbnd-wirecell-production/aurora/env/aurora/in-aurora-sl7.sh bash $Y/wire-cell-toolkit-ai-helper/issues/48-wclocal-2026nov16-productions/porting_sbndbuild03/scripts/config-md5.sh $Y/wct-0.38.0

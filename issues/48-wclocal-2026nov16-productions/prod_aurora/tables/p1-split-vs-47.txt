@@ -1,0 +1,5 @@
+files compared 67, identical 0
+  Trun.wct_version: 67 files
+  recTreeWireCell.wc.Trun.wct_version: 67 files
+  recTreeWireCell.wc.Trun.wct_version..length: 67 files
+  recTreeWireCell.wc.Trun.wct_version..totarraysize: 67 files
