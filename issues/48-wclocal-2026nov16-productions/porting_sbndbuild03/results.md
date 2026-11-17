@@ -282,3 +282,29 @@ Per sample it writes `pairs-`, `status-`, `events-<s>.tsv.gz`, `<s>.merged-caf.t
 - For an OK pair, run/subrun/event come from the fg1 or run3bnb events list, provided that list has as many events as the pair's CAF. The flat CAF `recTree` is the official one, unchanged.
 - Read from the CAF itself: open data (it has no earlier events list), every non-OK pair, any count mismatch, and 150 random OK pairs as a check.
 - Python 3.14's default `forkserver` start method re-runs the unguarded script in every worker, which hangs the pool. The script uses `fork`.
+
+### Final (2026-11-17 16:30 CST)
+
+- **Timeout reruns**, both OK, 8 GB, 4 h step-2 limit, workflow `f452d76`:
+  - nueCC `2008-a445-041f-88fc`: 8/8 events.
+  - beam-off `91943619-ac86-1782-8c5d-135492225a77`: 50/50 events; the step-2 passes took 10,651 s and 11,418 s.
+  - The original P5 job `72819616.75` also finished this pair OK, on its second try (16:02). The catalog uses the `-mem8g` copy; the two CAFs differ by 2 bytes, in the stamped input path.
+- **Persistent:** `/pnfs/sbnd/persistent/users/yuhw/prod-fermigrid/WCLocal2026Nov16/`
+  - 54,266 merged CAFs (720.0 GB), all size + ADLER32 equal to their scratch source.
+  - `README.md` and `lists/`: pairs, status, events (with `wc.valid` of both trees), and the merged-CAF / tracking-pr / qlpctree lists per sample, plus `p5-not-ok-pairs.tsv`.
+  - The beam-off split, as fg1: `beam-off-train/` (odd runs: 572 files, 27,076 events) and `beam-off-eval/` (even runs: 486 files, 22,894). Each has relative links, `README.md` and `lists/`, and matches fg1's split file for file. No link is broken, and no list file is empty.
+- **Catalog** (`wclocal-nov16/lists/catalog/`, `scripts/make-catalog.py`, every CAF read):
+
+| sample | pairs | CAF events | split-move | snap | OK / PARTIAL / EMPTY |
+|---|---|---|---|---|---|
+| mc-cv | 37,742 | 500,000 | 499,968 | 499,977 | 37,728 / 14 / 0 |
+| mc-nuecc | 11,445 | 100,003 | 99,987 | 99,987 | 11,430 / 11 / 4 |
+| beam-off | 1,096 | 49,970 | 49,968 | 49,968 | 1,056 / 2 / 38 |
+| run3bnb | 2,208 | 109,487 | 109,485 | 109,485 | 2,206 / 2 / 0 |
+| opendata | 1,817 | 89,946 | 89,946 | 89,946 | 1,817 / 0 / 0 |
+| **total** | **54,308** | **849,406** | **849,354** | **849,363** | 54,237 / 29 / 42 |
+
+- **Events without Wire-Cell output:** 52 in the split-move tree and 43 in the snap tree.
+  - 28 come from the 5 step-2 segfaults (issue 49). Only 19 of them are missing from the snap tree, because CV `d7e5`'s snap pass ran.
+  - 24 come from step-1 `lar` crashes, one event each.
+- **Page:** `sbnd-wirecell-production` `5477875` adds `wcl1116-fg-beamoff-train` and `wcl1116-fg-beamoff-eval`, fills beam-off `events_wc`, and adds the overlap note. All entries stay `running` until the coordinated flip with Aurora.

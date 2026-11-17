@@ -31,7 +31,7 @@ mc-nuecc	reco1-detsim-g4-filter-gen-67cb-e219-ad18-eecb_nuecc	full	p5	PARTIAL	10
 mc-nuecc	reco1-detsim-g4-filter-gen-2ce6-000e-14f2-234d_nuecc	full	p5	PARTIAL	12	8	PARTIAL	8	step 2 segfault (deterministic, event 206/11/5680)
 mc-nuecc	reco1-detsim-g4-filter-gen-c69c-a2cc-7454-ed51_nuecc	full	p5	PARTIAL	14	13	PARTIAL	13	step 1 lar crash, event skipped
 mc-nuecc	reco1-detsim-g4-filter-gen-2bda-93a4-c3bc-4ed7_nuecc	full	p5	PARTIAL	7	6	PARTIAL	6	step 1 lar crash, event skipped
-beam-off	data_filtered_decoded_reco1-91943619-ac86-1782-8c5d-135492225a77	step2	p5	MISSING	50	0	MISSING	0	step 2 timeout; rerun with 4 h limit at 8 GB (<sample>-mem8g)
+beam-off	data_filtered_decoded_reco1-91943619-ac86-1782-8c5d-135492225a77	step2	p5	MISSING	50	0	OK	50	step 2 timeout (the first event alone ran past the limit); rerun OK at 8 GB with a 4 h step limit (<sample>-mem8g, 10,651 s + 11,418 s); the original job 72819616.75 also finished OK on its second try
 beam-off	data_filtered_decoded_reco1-b2a65dc5-e08e-937d-4aac-74f9c6bab427	step2	p5	PARTIAL	50	7	OK	50	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
 beam-off	data_filtered_decoded_reco1-66542293-3835-0079-1445-79d4bcd2b6ac	full	p5	PARTIAL	38	31	OK	38	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
 beam-off	data_filtered_decoded_reco1-a64698f2-a541-d0c4-2602-8e1e96862d52	full	p5	PARTIAL	50	6	OK	50	step 2 memory kill at 4 GB; recovered at 8 GB (<sample>-mem8g)
