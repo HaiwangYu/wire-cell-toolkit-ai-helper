@@ -6,10 +6,11 @@
 #   full     the 93 pairs that run from reco1 (lists/pairs-<s>-full.tsv), one pair per job
 #   recover  lists/recover-<s>.tsv (pairs whose status is not OK, e.g. step 2 killed at the 4 GB limit),
 #            8000 MB, written to <s>-mem8g/ so the first try's outputs stay as they are
+#   recover-full  the same for from-reco1 pairs (lists/recover-full-<s>.tsv), full mode
 # Tarball: wclocal-nov16/tar/wcgrid-wcl1116-53a90eb.tar.gz (workflow wclocal-nov16 53a90eb).
 # Needs KRB5CCNAME pointing at a valid ticket (htgettoken -a htvaultprod.fnal.gov -i sbnd --nooidc).
 set -u
-WHAT=${1:?step2|full|recover}; DRY=${2:-}
+WHAT=${1:?step2|full|recover|recover-full}; DRY=${2:-}
 R=/exp/sbnd/data/users/yuhw/wclocal-nov16
 TARBALL=${TARBALL:-$R/tar/wcgrid-wcl1116-53a90eb.tar.gz}
 cd /exp/sbnd/app/users/yuhw/sbnd-wirecell-production/fermigrid || exit 1
@@ -23,6 +24,8 @@ case $WHAT in
            SPECS=("mc-cv 1" "mc-nuecc 1" "beam-off 1" "run3bnb 1" "opendata 1"); LIST=pairs-%s-full.tsv; SUF= ;;
   recover) export WC_GRID_MODE=${WC_GRID_MODE:-step2} WC_GRID_MEMORY=8000MB WC_GRID_LIFETIME=6h WC_GRID_DISK=10GB
            SPECS=("mc-cv 1" "mc-nuecc 1" "beam-off 1" "run3bnb 1" "opendata 1"); LIST=recover-%s.tsv; SUF=-mem8g ;;
+  recover-full) export WC_GRID_MODE=full WC_GRID_MEMORY=8000MB WC_GRID_LIFETIME=8h WC_GRID_DISK=15GB
+           SPECS=("mc-cv 1" "mc-nuecc 1" "beam-off 1" "run3bnb 1" "opendata 1"); LIST=recover-full-%s.tsv; SUF=-mem8g ;;
   *) echo "unknown $WHAT" >&2; exit 2 ;;
 esac
 for s in "${SPECS[@]}"; do

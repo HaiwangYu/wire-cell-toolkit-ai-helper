@@ -181,7 +181,7 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 | agent | role |
 |---|---|
 | `prod_aurora` | WCLocal2026Nov16-Aurora: P0–P5 on Aurora |
-| `porting_sbndbuild03` | 2026-11-16 21:10 CST: P4 pilot passed (545/546); **P5 running** (8,455 jobs, tarball `53a90eb`): 6,530/54,308 pairs finished, every step-2-only pair OK; 10 from-reco1 CV pairs PARTIAL (8 one-event step-1 segfaults as in fg1, 2 step-2 memory kills at 4 GB); no holds; 197 GB scratch; ETA main P5 ~02:00–05:00 CST 11/17 (snapshot: issue comment 6936960968) | P5 to finish; then 8 GB recovery pass, CAF copy to persistent |
+| `porting_sbndbuild03` | WCLocal2026Nov16-FermiGrid: P0–P5 (sbndbuild03 + jobsub); also the open-data and run3bnb inputs |
 | `prod_polaris` | coordination, this doc, the cross-site comparisons, reports to Haiwang |
 
 ## 9. Agent protocol (as in #47)
@@ -196,7 +196,7 @@ Allocation (Aurora): suballocation 17986 `neutrinoGPU::WireCell_aurora` (2,000 n
 | agent | state | waiting for |
 |---|---|---|
 | `prod_aurora` | 2026-11-17 13:10 UTC: **P5 BNB done** (9097095, 35.1 node-h; 11,874 OK / 14 PARTIAL, both validations PASS 11,888/11,888; `prod_aurora/p5.md`). nueCC 9097132 running (10 h) → **resume 9097990** queued afterany; NC 9097098 running (47% at 2.1 h) → **resume 9097992** queued afterany; both resumes `WC_TASKS_PER_UNIT=75`. Projection ~197 node-h; stop line 250 (Haiwang via `prod_polaris`) | P5 jobs |
-| `porting_sbndbuild03` | 2026-11-16 17:10 CST: P0, P1 done; **P2 done: 25/25 step-1 tars identical → step-2-only**; P3 grid test 4/4 OK, grid = local in every tree; **P4 pilot submitted** (546 pairs, 73 jobs, `porting_sbndbuild03/results.md`) | the pilot; `prod_aurora` on branch `wclocal-nov16` |
+| `porting_sbndbuild03` | 2026-11-17 07:40 CST: **P5 done on FermiGrid** apart from 1 hung beam-off pair: step-2-only 54,202 OK / 12 PARTIAL / 1 still running (of 54,215); from reco1 17 OK / 34 PARTIAL / 42 EMPTY (of 93); 840,491 of 840,919 P5 events have Wire-Cell output; **8 GB recovery pass submitted** (16 memory-killed pairs → `<sample>-mem8g/`); 5 step-2 segfaults + 2 timeouts to diagnose locally; CAF copy to persistent not started (issue comment 6949566142) | recovery pass; local look at the 7; then CAF copy to persistent, README/catalog |
 | `prod_polaris` | 2026-11-17 02:45 UTC: config md5s agree on one recipe (Aurora reproduced porting's 4); schemas kept (`af9c87c8` / `d4396a34`, both sites); both pilots passed, P5 starting; 0.38.1 test fix requested from `prod_aurora` | P5 progress; the 0.38.1 fix branch |
 
 ## Log
