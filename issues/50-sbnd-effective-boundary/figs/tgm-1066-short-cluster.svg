@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 640" width="680" height="640" font-family="Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="680" height="640" fill="#ffffff"/>
+  <defs>
+    <style>
+      .wall { fill: #f3d9a4; stroke: #1b2330; stroke-width: 2; }
+      .fv { fill: #ffffff; stroke: #2f6fb3; stroke-width: 1.8; stroke-dasharray: 6 4; }
+      .trk { stroke: #6b4fb0; stroke-width: 4; stroke-linecap: round; fill: none; }
+      .end { fill: #6b4fb0; }
+      .in { fill: #1f8a5b; }
+      .out { fill: #ffffff; stroke: #c4412f; stroke-width: 2; }
+      .t { fill: #3d4756; font-size: 11px; }
+      .h { fill: #1b2330; font-size: 13px; font-weight: bold; }
+      .v { fill: #1b2330; font-size: 11.5px; }
+      .bad { fill: #c4412f; font-size: 11.5px; font-weight: bold; }
+      .good { fill: #1f8a5b; font-size: 11.5px; font-weight: bold; }
+    </style>
+  </defs>
+
+  <!-- A -->
+  <g transform="translate(10,10)">
+    <text class="h" x="0" y="14">A. Real through-going muon (line 1063)</text>
+    <g transform="translate(0,24)">
+      <rect class="wall" x="0" y="0" width="320" height="200"/>
+      <rect class="fv" x="22" y="22" width="276" height="156"/>
+      <line class="trk" x1="9" y1="40" x2="311" y2="186"/>
+      <circle class="end" cx="9" cy="40" r="5"/><circle class="end" cx="311" cy="186" r="5"/>
+      <circle class="in" cx="84" cy="76" r="5"/><circle class="in" cx="160" cy="113" r="5"/><circle class="in" cx="235" cy="149" r="5"/>
+      <text class="t" x="14" y="34">pe1 (outside FV)</text>
+      <text class="t" x="200" y="196">pe2 (outside FV)</text>
+    </g>
+    <text class="v" x="0" y="242">Ends in the shell; a chord point (1/4, 1/2, 3/4) is inside the FV.</text>
+    <text class="good" x="0" y="258">Tagged TGM: correct.</text>
+  </g>
+
+  <!-- B -->
+  <g transform="translate(350,10)">
+    <text class="h" x="0" y="14">B. Short cluster in the shell (line 1066)</text>
+    <g transform="translate(0,24)">
+      <rect class="wall" x="0" y="0" width="320" height="200"/>
+      <rect class="fv" x="22" y="22" width="276" height="156"/>
+      <line class="trk" x1="140" y1="190" x2="176" y2="186"/>
+      <circle class="end" cx="140" cy="190" r="4.5"/><circle class="end" cx="176" cy="186" r="4.5"/>
+      <circle class="out" cx="149" cy="189" r="3.6"/><circle class="out" cx="158" cy="188" r="3.6"/><circle class="out" cx="167" cy="187" r="3.6"/>
+      <line x1="158" y1="178" x2="158" y2="140" stroke="#5d6878" stroke-width="1"/>
+      <text class="t" x="100" y="132">e.g. 1.6 cm (PDHD, pdhd/09 sec 9.3)</text>
+      <text class="t" x="40" y="80">2 end groups, both outside the FV;</text>
+      <text class="t" x="40" y="95">no chord point inside the FV</text>
+    </g>
+    <text class="v" x="0" y="242">flag_check false and out_vec_wcps.size() == 2:</text>
+    <text class="bad" x="0" y="258">Tagged TGM with no length or interior test.</text>
+  </g>
+
+  <!-- C -->
+  <g transform="translate(10,330)">
+    <text class="h" x="0" y="14">C. Same cluster, 3+ end groups (lines 1068-1093)</text>
+    <g transform="translate(0,24)">
+      <rect class="wall" x="0" y="0" width="320" height="200"/>
+      <rect class="fv" x="22" y="22" width="276" height="156"/>
+      <line class="trk" x1="140" y1="190" x2="176" y2="186"/>
+      <line class="trk" x1="160" y1="188" x2="166" y2="168"/>
+      <circle class="end" cx="140" cy="190" r="4.5"/><circle class="end" cx="176" cy="186" r="4.5"/><circle class="end" cx="166" cy="168" r="4.5"/>
+      <line x1="140" y1="190" x2="166" y2="168" stroke="#5d6878" stroke-width="1" stroke-dasharray="3 3"/>
+      <text class="t" x="174" y="166">3rd group</text>
+      <text class="t" x="40" y="80">extra chords toward the other groups,</text>
+      <text class="t" x="40" y="95">then a length cut relative to the cluster</text>
+    </g>
+    <text class="v" x="0" y="242">Looks for interior support through the other groups;</text>
+    <text class="good" x="0" y="258">more checks than B (the length cut is relative).</text>
+  </g>
+
+  <!-- D -->
+  <g transform="translate(350,330)">
+    <text class="h" x="0" y="14">D. SBND x-y view: curved FV near the cathode</text>
+    <g transform="translate(0,24)">
+      <rect class="wall" x="0" y="0" width="320" height="200"/>
+      <path class="fv" d="M12 12 L110 12 Q160 36 210 12 L308 12 L308 188 L210 188 Q160 164 110 188 L12 188 Z"/>
+      <rect x="12" y="12" width="296" height="176" fill="none" stroke="#5d6878" stroke-width="1" stroke-dasharray="2 4"/>
+      <line x1="160" y1="0" x2="160" y2="200" stroke="#1b2330" stroke-width="2.5"/>
+      <line class="trk" x1="148" y1="17" x2="172" y2="15"/>
+      <line class="trk" x1="146" y1="183" x2="168" y2="186"/>
+      <text class="t" x="20" y="60">dotted: today's box FV</text>
+      <text class="t" x="20" y="75">dashed: curved FV (inset near the</text>
+      <text class="t" x="20" y="90">cathode, zero at the anodes)</text>
+      <text class="t" x="172" y="110">short clusters inside the box</text>
+      <text class="t" x="172" y="125">FV now sit in the shell</text>
+      <text class="t" x="128" y="215">cathode, x = 0</text>
+    </g>
+    <text class="v" x="0" y="256">anodes at x = -201 (left) and +201 cm (right)</text>
+    <text class="bad" x="0" y="272">More short clusters reach line 1066: TGM count rises.</text>
+  </g>
+
+  <!-- legend -->
+  <g transform="translate(10,618)">
+    <rect x="0" y="-9" width="16" height="11" fill="#f3d9a4" stroke="#1b2330"/><text class="t" x="22" y="0">shell (inside detector, outside FV)</text>
+    <line x1="230" y1="-3" x2="250" y2="-3" stroke="#2f6fb3" stroke-width="1.8" stroke-dasharray="6 4"/><text class="t" x="256" y="0">FV boundary</text>
+    <circle class="in" cx="350" cy="-3" r="4.5"/><text class="t" x="360" y="0">chord point inside FV</text>
+    <circle class="out" cx="490" cy="-3" r="4"/><text class="t" x="500" y="0">chord point outside FV (not to scale)</text>
+  </g>
+</svg>

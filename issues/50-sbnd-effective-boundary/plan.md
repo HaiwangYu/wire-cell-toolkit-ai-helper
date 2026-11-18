@@ -62,7 +62,7 @@ This is the method of doc `pdhd/09` §5–7, which ports doc `pdvd/43`. The doc 
   - **The boundary is applied in reconstructed space, after space charge, with no back-correction.** Every downstream algorithm was built on uncorrected positions, so no correction is attempted for now. This matches the reconstruction: SBND runs with `use_sce:false` for data and MC (`sbnd/clus.jsonnet:921-925`).
   - **Data and MC each need their own boundary shape**, because the two differ at the boundary:
     - **MC:** the simulated range is not large enough in this round.
-    - **Data:** there seem to be defective regions near the cathode.
+    - **Data:** there seem to be defective regions near the cathode, the DENT. Whether to exclude it this round is the question for Xin in §7.
   - **Sne has the data and builds both shapes.** The census in §1.1 is the suggested method; Sne decides the method and the samples.
   - So a "flat MC" closure test does not apply. The MC shape is a measurement in its own right.
 - **Expected size:** SBND drifts 2 m at 500 V/cm. MicroBooNE drifted 2.56 m at 273 V/cm with more space charge per cm. Expect a smaller inset than MicroBooNE's 10–40 cm, but measure it.
@@ -221,15 +221,26 @@ Plus a jsonnet check, a small `jsonnet -e` or `wcsonnet` assertion in the test s
 | **G4** boundary quality | the measured surface vs the box, on held-out data (`beam-off-eval`) | exit-end miss rate (`pdhd/09` §7) lower than the box's, overall **and** in the cathode half (the box's known imbalance); long-track (> 2 m) TGM count not lower |
 | **G5** data vs MC | the data shape vs the MC shape, wall by wall | the differences are explained: MC's limited simulated range, data's defective regions near the cathode (§1.2) |
 
-- **Known pitfall, still open in 0.38.x:** `pdhd/09` §9.3 found a TGM defect at `clus/src/TaggerCheckTGM.cxx:1066`, the `out_vec_wcps.size()==2` early return in CASE A. A cluster with exactly two end groups, both outside the FV, is tagged with no interior-support and no length requirement; PDHD saw a 1.6 cm object tagged.
-  - **No existing knob closes it.** In 0.38.x the return comes after three CASE-A guards, all on in the SBND production defaults (`cfg/pgrapher/experiment/sbnd/clus.jsonnet:1218-1221`):
-    - `require_chord_charge` (`tgm_chord_charge`, mode `path`);
-    - `rescue_chord_check` (`tgm_rescue_chord`);
-    - `main_component_pairs` (`tgm_main_pair`, mode `real`).
-  - They reject pairs with no charge path between the ends, rescued-end pairs without straight-chord support, and fragment-only pairs. A short, self-connected object in the main component passes all three.
-  - `length_limit_frac` gates only the in-beam-window `flag_check` branch, and `component_min_length` only filters which components contribute end points.
-  - Closing it needs a new default-off C++ knob (a minimum chord length on that return), with its own A/B. That is outside this plan.
-  - A tighter volume feeds this path more candidates, so report short-cluster (< 10 cm) TGM tags separately in G3.
+### 5.4 TGM: short clusters lying in the cushion are tagged (accepted)
+
+![TGM CASE A: a real through-going muon (A), a short two-group cluster lying in the shell and tagged at line 1066 (B), the same cluster with 3+ groups (C), and the curved FV thickening the shell near the cathode (D)](figs/tgm-1066-short-cluster.svg)
+
+**What the code does.** `TaggerCheckTGM::check_tgm()`, CASE A (`clus/src/TaggerCheckTGM.cxx:1024-1096`):
+- When both end points of a cluster are outside the FV, the tagger tests three points on the chord between them (¼, ½, ¾).
+  - If one is inside the FV, the cluster crosses the detector and is tagged (line 1063, panel A).
+  - If none is, the chord lies entirely in the shell between the FV boundary and the wall. **With exactly two end groups, the cluster is tagged straight away** (line 1066, `if (out_vec_wcps.size() == 2) return true;`, panel B). There is no length cut and no interior-support test.
+  - With three or more groups, the code first looks for interior support through the other groups and applies a length cut relative to the cluster (lines 1068-1093, panel C).
+- The three CASE-A guards that run first are all on in the SBND production defaults (`cfg/pgrapher/experiment/sbnd/clus.jsonnet:1218-1221`). They reject pairs with no charge path between the ends, rescued-end pairs without straight-chord support, and fragment-only pairs. A short, connected cluster in the main component passes all three.
+  - `require_chord_charge` (`tgm_chord_charge`, mode `path`);
+  - `rescue_chord_check` (`tgm_rescue_chord`);
+  - `main_component_pairs` (`tgm_main_pair`, mode `real`).
+- **This is the prototype's behaviour,** copied unchanged (`wcp/pid/src/Cosmic_tagger.h:1438-1441`). PDHD traced it on data (`pdhd/09` §9.3, §11): a 1.6 cm object tagged, and 49 % of PDHD's TGM tags under 10 cm.
+
+**Why the non-box FV matters here (panel D).** The curved FV pulls the boundary in near the cathode, so the shell is thicker there. Short two-group clusters that are inside today's box can fall entirely into the shell and get tagged at line 1066.
+
+**Decision (Haiwang, 2026-11-17): accepted, no code change.** Short clusters lying entirely in the cushion region are tagged TGM and removed, even when they are not really through-going. The extra loss is small and affordable.
+
+For reading G3: the TGM count will rise partly from these short tags, not from more real through-going muons. So report TGM tags under 10 cm separately from longer ones, as PDHD did, to see how much of any change is this path.
 
 ### 5.3 Validation plan: three levels (Haiwang, 2026-11-17)
 
@@ -267,4 +278,27 @@ Plus a jsonnet check, a small `jsonnet -e` or `wcsonnet` assertion in the test s
 4. Per-TPC vs mirrored profiles if one TPC is short of statistics (§2.1).
 5. Should the analysis neutrino FV adopt "3 cm inside the effective boundary" (paper §V.A)? That is the analysts' call (§4).
 6. Is the z-binned boundary for Q/L (paper §V.D) wanted as a v2 project (§4)?
-7. The `clus/src/TaggerCheckTGM.cxx:1066` short-cluster path (`pdhd/09` §9.3) is **open** in 0.38.x: none of the CASE-A guards (chord charge, rescued chord, main pair, all on in SBND) applies a length cut there (§5.2). Fix it first with a default-off minimum-length knob and its own A/B, or read G3's TGM counts with sub-10 cm tags split out?
+7. ~~The `clus/src/TaggerCheckTGM.cxx:1066` short-cluster path: fix it first?~~ **Decided (Haiwang):** no fix. Short clusters lying entirely in the cushion are tagged TGM, and that efficiency loss is acceptable (§5.4). Report sub-10 cm TGM tags separately in G3.
+
+## 7. Item for Xin: the cathode DENT region in data
+
+**Question (Haiwang, 2026-11-17):** real data has a DENT region at the cathode. The current FV does not treat the cathode as outside the FV. **For this round of the non-box FV, should we still ignore that region?**
+
+**How the cathode is treated today:**
+- **Tagger FV:** `sbnd_pr_fv` (`cfg/pgrapher/experiment/sbnd/clus.jsonnet:2494-2509`) is one box spanning both TPCs, so the cathode is inside the FV. A track that ends at, or crosses, the cathode is never an "exiter" there. This is deliberate (the comment at :2494-2499). The tagger margins inset only the two anode faces in x.
+- **The planned curved FV keeps that** (§2.1, as PDHD does). Its x–y and x–z polygons are continuous across x = 0. Near the cathode they pull the y and z walls inward, but they do not exclude any slab around x = 0.
+- **Other cathode handling:**
+  - `FiducialUtils` (`fiducial=dv`) has a 0.45 cm hole at the cathode slab. It is used only by the auxiliary dead-volume and signal-processing walks inside TGM and FC, and those walks stop there.
+  - `sbnd/cathode_fiducial.jsonnet` is a cathode-structure exclusion volume (the OR of 26 `BoxFiducial`s, from engineering drawings, 0.5 cm cushions). It is used only by Q/L matching (`cathode_fiducial` key, `wcls-img-clus-matching-pr-lib.jsonnet:277-291`).
+
+**The two options:**
+
+| | (a) ignore the DENT this round (proposed) | (b) exclude the DENT from the FV |
+|---|---|---|
+| change | none beyond the curved FV | data-only: `CompositeFiducial{and: [curved FV, NOT(dent boxes)]}`, as PDVD's `crp_gap_fiducial.jsonnet` excludes its measured gaps; no C++ needed |
+| tracks ending in the DENT | contained, as today | exiters, so STM would not call a muon that stops there a stopper, and FC would call such an event not contained |
+| tracks crossing it | unchanged | a chord test point in the DENT counts as outside the FV; TGM still tags them if another chord point is inside |
+| needs | nothing | the DENT's measured extent in x, y and z, data only, since MC does not have it |
+| risk | data–MC disagreement near the cathode stays; it shows up in validation level 3 | a new data-only boundary, and a data–MC asymmetry in what counts as contained |
+
+**Suggested way forward:** (a) for this round. Sne's validation level 1 (§5.3) should mark the DENT on the data plots, so its location and size are recorded. Option (b) can then be a later, separate knob, reusing `cathode_fiducial.jsonnet`'s box-list pattern with measured dimensions.
