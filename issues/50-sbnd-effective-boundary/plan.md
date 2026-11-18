@@ -31,7 +31,9 @@ Paths below are relative to the toolkit tree unless absolute.
 
 The paper gives no coordinates (§V.A), and the prototype's numbers are MicroBooNE's: one TPC, cathode at 256 cm, 273 V/cm. **SBND must measure its own.**
 
-### 1.1 The measurement: an exit-end census on SBND cosmics
+**Sne builds the data and MC shapes** (Haiwang, 2026-11-17); Sne has the data and chooses the method. §1.1 describes one proven method, as a suggestion.
+
+### 1.1 A suggested method: an exit-end census on SBND cosmics
 
 This is the method of doc `pdhd/09` §5–7, which ports doc `pdvd/43`. The doc and its `d09_*` scripts are in the private repo `WireCell/wcp-porting-validation` (repo access is Haiwang's call). Readable copies, identical to `origin/main`:
 - **Polaris (ALCF, neutrinoGPU group):** `/lus/eagle/projects/neutrinoGPU/yuhw/wcp-porting-validation/pdhd/docs/09_pdhd-space-charge-fiducial.md` and `…/pdhd/docs/scripts/d09_*.py`.
@@ -52,14 +54,17 @@ This is the method of doc `pdhd/09` §5–7, which ports doc `pdvd/43`. The doc 
 | sample | SBND off-beam ("beam-off", InTime-Run1) data: only cosmics, and a known set | the Gen2 BNB CV MC, which includes CORSIKA cosmics (`prodgenie_corsika_proton…`) |
 | building | **only the training half** `WCLocal2026Nov16/beam-off-train` (odd runs) | any CV subset |
 | grading | `beam-off-eval` (even runs) and/or a Run-3 BNB subset, so the surface is graded on runs it was not built from | a second, disjoint CV subset |
-| what it shows | the real space-charge distortion and imaging edges | whatever the MC simulates |
+| what it shows | the real space-charge distortion and imaging edges, including the suspected defective regions near the cathode | the simulated space charge, limited by this round's simulated range |
 
 - **Inputs:** the WCLocal2026Nov16 outputs (#48) already hold reconstructed clusters for all of these, through the tracking-pr tars and the qlpctree tars (`lists/*-scratch.txt`). For the census, only step 2 (clusters and Q/L) is needed, rerun with debug output.
-- **Space charge on vs off (must be answered first):**
-  - Does the Gen2 MC simulate space charge (larsim SCE in detsim)? Check the Gen2 fhicl.
-  - If yes, MC gets its own surface (the prototype had separate data and MC FV polygons).
-  - If no, the MC surface should come out flat (inset ≈ 0 on every wall). That is a closure test of the instrument, and MC keeps the box (or the flat profile).
-  - The reconstruction side is fixed: SBND reco runs with `use_sce:false` for both data and MC (`sbnd/clus.jsonnet:921-925`). The surface therefore describes reconstructed space, as in the paper.
+- **Space charge (answered by Haiwang, 2026-11-17):**
+  - **The Gen2 MC simulates space charge,** and data is assumed to have a similar distortion.
+  - **The boundary is applied in reconstructed space, after space charge, with no back-correction.** Every downstream algorithm was built on uncorrected positions, so no correction is attempted for now. This matches the reconstruction: SBND runs with `use_sce:false` for data and MC (`sbnd/clus.jsonnet:921-925`).
+  - **Data and MC each need their own boundary shape**, because the two differ at the boundary:
+    - **MC:** the simulated range is not large enough in this round.
+    - **Data:** there seem to be defective regions near the cathode.
+  - **Sne has the data and builds both shapes.** The census in §1.1 is the suggested method; Sne decides the method and the samples.
+  - So a "flat MC" closure test does not apply. The MC shape is a measurement in its own right.
 - **Expected size:** SBND drifts 2 m at 500 V/cm. MicroBooNE drifted 2.56 m at 273 V/cm with more space charge per cm. Expect a smaller inset than MicroBooNE's 10–40 cm, but measure it.
   - `SCEoffsets_SBND_E500_dualmap_CV_voxelTH3.root` (`sbnd/clus.jsonnet:66`) gives a predicted displacement map. Use it as a cross-check of the measured shape, not as the boundary.
 - **Statistics gate:** at least 20 in-window exit ends per (TPC, wall, |x| bin). List any starved bins by name, as `pdhd/09` §6 does. Expect the z walls to be the starved ones, because cosmics run along y.
@@ -80,10 +85,10 @@ This is the method of doc `pdhd/09` §5–7, which ports doc `pdvd/43`. The doc 
 
 | step | who | notes |
 |---|---|---|
-| answer whether Gen2 MC simulates space charge | Sne (or ask porting) | §1.2 |
-| port the census scripts to SBND constants | Sne | §1.3 |
-| run step 2 with debug output on `beam-off-train`, the eval subset and a CV subset | Sne on the grid or Aurora; porting_sbndbuild03 can run it on FNAL (the #48 workflow) on request | inputs from #48 |
-| build and grade the surface; pick the quantile and cushion | Sne; Haiwang decides | `pdhd/09` §7, §9.6 |
+| does the Gen2 MC simulate space charge? | answered: yes (Haiwang) | §1.2 |
+| build the data and the MC boundary shapes (Sne has the data) | **Sne** | §1.1 is a suggested method, e.g. the census scripts ported to SBND constants (§1.3) |
+| run step 2 with debug output on `beam-off-train`, the eval subset and a CV subset, if needed | Sne; porting_sbndbuild03 can run it on FNAL (the #48 workflow) on request | inputs from #48 |
+| pick the quantile and cushion | **Sne decides** | PDHD chose p90 + 3 cm (`pdhd/09` §7, §9.6), for reference only |
 | **interim boundary** | none needed: the knob ships default off, and its `flat` profile reproduces the current box (§2.3). No unmeasured curved boundary is switched on. | |
 
 ## 2. How it fits the PolyFiducial / CompositeFiducial / `curved_fv` path
@@ -214,7 +219,7 @@ Plus a jsonnet check, a small `jsonnet -e` or `wcsonnet` assertion in the test s
 | **G2** plumbing | knob on, `flat` profile vs knob off | identical per-cluster TGM, STM and FC flags and neutrino-tagger flags; identical `recTreeWireCell` apart from documented on-wall points |
 | **G3** physics | knob on, measured profile vs off, on the #43, nueCC-48 and NCπ0-19 samples | a per-event table of TGM, STM and FC tags, the selected neutrino cluster, and the `cosmict_*` / `br*` / shower-to-wall BDT inputs. Every changed event explained (a Bee scan of a sample of them); no crash or new "DL vertex failed"; ν_e / NCπ0 signal efficiency on the MC not lowered beyond a stated tolerance. |
 | **G4** boundary quality | the measured surface vs the box, on held-out data (`beam-off-eval`) | exit-end miss rate (`pdhd/09` §7) lower than the box's, overall **and** in the cathode half (the box's known imbalance); long-track (> 2 m) TGM count not lower |
-| **G5** MC closure | MC surface (if MC has no space charge) | inset ≈ 0 within the bootstrap errors on every wall |
+| **G5** data vs MC | the data shape vs the MC shape, wall by wall | the differences are explained: MC's limited simulated range, data's defective regions near the cathode (§1.2) |
 
 - **Known pitfall, still open in 0.38.x:** `pdhd/09` §9.3 found a TGM defect at `clus/src/TaggerCheckTGM.cxx:1066`, the `out_vec_wcps.size()==2` early return in CASE A. A cluster with exactly two end groups, both outside the FV, is tagged with no interior-support and no length requirement; PDHD saw a 1.6 cm object tagged.
   - **No existing knob closes it.** In 0.38.x the return comes after three CASE-A guards, all on in the SBND production defaults (`cfg/pgrapher/experiment/sbnd/clus.jsonnet:1218-1221`):
@@ -226,6 +231,14 @@ Plus a jsonnet check, a small `jsonnet -e` or `wcsonnet` assertion in the test s
   - Closing it needs a new default-off C++ knob (a minimum chord length on that return), with its own A/B. That is outside this plan.
   - A tighter volume feeds this path more candidates, so report short-cluster (< 10 cm) TGM tags separately in G3.
 
+### 5.3 Validation plan: three levels (Haiwang, 2026-11-17)
+
+| level | what | who | maps to |
+|---|---|---|---|
+| **1** | Check each boundary shape (data and MC) against the data it was built from, visually or with a standalone script. The polygons must follow the observed edge of the track end points, including near the cathode, where the data seem to have defective regions. | Sne | §1, G4, G5 |
+| **2** | Build or find input samples showing that the non-box boundary does change the cosmic taggers (TGM, STM, FC, and the neutrino tagger's cosmic flags), and that the changes are the intended ones. | Sne and porting_sbndbuild03 | G2, G3. porting can provide FNAL samples (the #48 beam-off train/eval and the #43 / nueCC-48 / NCπ0-19 tars) and run the before/after on sbndbuild03 or the grid. |
+| **3** | Ask Prabhjot to rerun his simulation-vs-data comparison, to check the data–MC discrepancy in vertexing, especially near z ≈ 0 (the upstream wall). | Prabhjot (Haiwang asks) | after level 2, with the knob on in both data and MC |
+
 ## 6. Hand-off for Sne
 
 **Implement, in this order** (each step is its own reviewable commit):
@@ -233,11 +246,13 @@ Plus a jsonnet check, a small `jsonnet -e` or `wcsonnet` assertion in the test s
 2. **`sbnd/curved_fiducial.jsonnet`** with SBND constants and per-TPC keys (§1.3, §2.2), and the jsonnet check (§5.1). Nothing imports it yet, so configs are still byte-identical.
 3. **The knob in `sbnd/clus.jsonnet` `pr()`** plus the driver TLAs (§3).
    - **Acceptance:** G1 (byte identity, recorded table) and G2 (knob on + flat = box on the §5.2 samples), and doctest 5.1(3).
-4. **The census port** (`d09_*` → SBND, §1.1, §1.3) and the space-charge-in-MC answer (§1.2).
-   - **Acceptance:** the statistics gate passes or starved bins are listed; the MC closure G5 if it applies.
-5. **The data surface** from `beam-off-train`, graded on `beam-off-eval`. Choose the quantile and cushion by G4; Haiwang decides the operating point.
-   - Write `curved_fiducial_profiles.jsonnet`, with data and MC entries if they differ, and select by `reality` in `pr()`, which `pr()` already sees (`sbnd/clus.jsonnet:896`).
-6. **G3** on the #43, nueCC-48 and NCπ0-19 samples. Every changed event explained.
+4. **Build the data and the MC boundary shapes** with your data and your method; §1.1 (the `pdhd/09` census) is a suggestion.
+   - Data and MC get separate shapes (§1.2). Grade the data shape on runs it was not built from (`beam-off-eval`).
+   - **You choose the quantile and cushion.**
+   - **Acceptance:** validation level 1 (§5.3): each shape matches its data visually or by script. Also G4, and G5 (data vs MC explained).
+5. **Write `curved_fiducial_profiles.jsonnet`** with a data entry and an MC entry, selected by `reality` in `pr()`, which `pr()` already sees (`sbnd/clus.jsonnet:896`).
+6. **Validation level 2 = G3** on samples that exercise the cosmic taggers. porting_sbndbuild03 can provide and run them (§5.3). Every changed event explained.
+   - Then **level 3:** Haiwang asks Prabhjot to rerun the simulation-vs-data vertexing comparison, with attention to z ≈ 0.
 7. Only then: propose turning the knob on in a production driver, as PDHD did in `wct-pr-perevt.jsonnet`. The `pr()` default stays off.
 
 **Files:**
@@ -246,8 +261,8 @@ Plus a jsonnet check, a small `jsonnet -e` or `wcsonnet` assertion in the test s
 - **not touched in v1:** any C++ outside tests; `MakeFiducialUtils`; Q/L; clustering metadata; the truth labeler.
 
 **Open questions (for Haiwang / Sne):**
-1. Does the Gen2 MC simulate space charge? This decides whether MC gets its own surface (§1.2).
-2. Which quantile and cushion? PDHD chose p90 + 3. SBND decides by G4 on its own data.
+1. ~~Does the Gen2 MC simulate space charge?~~ **Answered (Haiwang):** yes. The boundary is applied after space charge, with no back-correction, and data and MC get separate shapes, built by Sne (§1.2).
+2. Which quantile and cushion? **Sne decides.** PDHD chose p90 + 3 cm, for reference.
 3. With the surface in, should the SBND tolerance band (2.5 / 3 / 5 / 3 cm) stay, or shrink? Default: stay (§2.3).
 4. Per-TPC vs mirrored profiles if one TPC is short of statistics (§2.1).
 5. Should the analysis neutrino FV adopt "3 cm inside the effective boundary" (paper §V.A)? That is the analysts' call (§4).
