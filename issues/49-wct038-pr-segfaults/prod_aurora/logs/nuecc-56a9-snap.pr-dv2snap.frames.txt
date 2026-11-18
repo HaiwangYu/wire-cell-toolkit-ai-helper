@@ -1,0 +1,11 @@
+#6  <signal handler called>
+#7  0x00001487db7a9651 in WireCell::Clus::PR::HasCluster<WireCell::Clus::PR::Vertex>::cluster (this=0x0) at ../clus/src/NeutrinoTaggerSinglePhoton.cxx:929
+#8  bad_reconstruction_2_sp (ctx=..., vertex=..., shower=..., ti=...) at ../clus/src/NeutrinoTaggerSinglePhoton.cxx:929
+#9  0x00001487db7b3902 in WireCell::Clus::PR::PatternAlgorithms::singlephoton_tagger (this=this
+#10 0x00001487db935ea2 in TaggerCheckNeutrino::visit (this=<optimized out>, ensemble=...) at ../clus/src/TaggerCheckNeutrino.cxx:4535
+#11 0x00001487db5a36d7 in WireCell::Clus::MultiAlgBlobClustering::operator() (this=<optimized out>, ints=..., outts=...) at ../clus/src/MultiAlgBlobClustering.cxx:4082
+#12 0x000014883981f01d in WireCell::IFunctionNode<WireCell::ITensorSet, WireCell::ITensorSet>::operator() (this=0x6631748, anyin=..., anyout=...) at ../iface/inc/WireCellIface/IFunctionNode.h:43
+#13 0x00001487f1c4848e in WireCell::Pgraph::Function::operator() (this=0x15fc79d0) at ../pgraph/inc/WireCellPgraph/Wrappers.h:173
+#14 0x00001487f1c53638 in WireCell::Pgraph::Graph::call_node (this=this
+#15 0x00001487f1c56fbf in WireCell::Pgraph::Graph::execute (this=this
+#16 0x00001487f1c61504 in WireCell::Pgraph::Pgrapher::execute (this=0x6632610) at ../pgraph/src/Pgrapher.cxx:78

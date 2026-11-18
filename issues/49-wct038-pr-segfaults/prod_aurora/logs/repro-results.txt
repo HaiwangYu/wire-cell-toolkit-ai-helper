@@ -1,0 +1,6 @@
+nuecc-56a9-snap pr rc 0 wall 179 events [pr_evt6702488_18_29 ] frame: none
+nuecc-3619-snap pr rc 0 wall 179 events [pr_evt6711558_11_37 ] frame: none
+nuecc-56a9-snap pr-dv2snap rc 139 wall 182 events [] frame: none
+bnb-eb42-split pr-dv2snap rc 139 wall 188 events [] frame: none
+nuecc-3619-snap pr-dv2snap rc 139 wall 189 events [] frame: none
+bnb-eb42-split pr rc 139 wall 189 events [] frame: none

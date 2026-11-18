@@ -1,0 +1,31 @@
+[04:27:06.305] D [clus.NeutrinoPattern] kine_track_ctx: seg idx=5 cluster=5 pdg=2212 len_cm=21.9 ke_mev=181.0 won_mev=162.0
+[04:27:06.305] D [clus.NeutrinoPattern] kine_track_ctx: seg idx=11 cluster=5 pdg=2212 len_cm=6.4 ke_mev=89.1 won_mev=58.4
+[04:27:06.305] D [clus.NeutrinoPattern] kine_track_ctx: seg idx=33 cluster=5 pdg=2212 len_cm=16.2 ke_mev=151.9 won_mev=70.2
+[04:27:06.305] D [clus.NeutrinoPattern] kine_track_ctx: 4 track context(s) beside 6 shower context(s)
+[04:27:06.305] D [clus.NeutrinoPattern] kine final recompute: shower id=0 pdg=11 nseg=7 kine_charge 388.2 -> 160.7 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:06.305] D [clus.NeutrinoPattern] kine final recompute: shower id=3 pdg=11 nseg=12 kine_charge 598.7 -> 322.2 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:06.305] D [clus.NeutrinoPattern] kine final recompute: shower id=5 pdg=11 nseg=1 kine_charge 35.6 -> 35.6 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:06.305] D [clus.NeutrinoPattern] kine final recompute: shower id=6 pdg=11 nseg=1 kine_charge 1.1 -> 1.1 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:06.305] D [clus.NeutrinoPattern] kine final recompute: shower id=7 pdg=2212 nseg=1 kine_charge 2.8 -> 2.8 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:06.305] D [clus.NeutrinoPattern] kine final recompute: shower id=9 pdg=2212 nseg=1 kine_charge 71.0 -> 15.2 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:06.306] D [clus.NeutrinoPattern] pi0 window reject: 3 pair(s) left, best mass=39.2 MeV delta=-85.8
+After shower clustering with NV: 
+print_segs_info: 4 7.48658 Track  1 2212 938.272 97.5703 1 0
+print_segs_info: 5 21.8664 Track  1 2212 938.272 181.046 1 0
+print_segs_info: 11 6.37574 Track  1 2212 938.272 89.0645 1 0
+print_segs_info: 12 23.6321 Track  1 11 0.510999 77.3693 1 0
+print_segs_info: 16 2.59918 S_traj 1 11 0.510999 13.7526 1 0
+print_segs_info: 17 4.11223 S_traj 1 11 0.510999 8.36562 1 0
+print_segs_info: 19 7.17954 Track  1 11 0.510999 19.6007 1 0
+print_segs_info: 21 7.37987 Track  1 11 0.510999 0 1 0
+print_segs_info: 22 34.3181 S_traj -1 11 0.510999 66.1386 1 0
+print_segs_info: 25 5.84189 Track  1 11 0.510999 15.0084 1 0
+print_segs_info: 26 7.39994 S_topo 1 11 0.510999 0 1 0
+print_segs_info: 27 6.15111 Track  1 11 0.510999 16.0275 1 0
+print_segs_info: 31 11.9796 S_traj 1 13 105.658 28.0797 1 0
+print_segs_info: 32 7.90541 Track  1 13 105.658 41.0772 1 0
+print_segs_info: 33 16.1633 Track  -1 2212 938.272 151.863 1 0
+[04:27:06.308] D [  clus  ] <TaggerCheckNeutrino:pr> TaggerCheckNeutrino timing: shower_clustering_with_nv took 96.355345 ms ../clus/src/TaggerCheckNeutrino.cxx:4242
+[04:27:06.311] D [  clus  ] <TaggerCheckNeutrino:pr> TaggerCheckNeutrino nue_tagger volume: apa=0 face=0 ../clus/src/TaggerCheckNeutrino.cxx:4515
+
+ *** Break *** segmentation violation

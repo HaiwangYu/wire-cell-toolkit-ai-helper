@@ -1,0 +1,15 @@
+NONOK node0 reco1-detsim-g4-filter-gen-cb29-c9b5-a9f8-6a5d FAIL MISSING MISSING good=0 snap=0 wfail=0 attempts=4
+NONOK node0 reco1-detsim-g4-filter-gen-e773-cfc7-11dc-e7bd PARTIAL PASS PASS good=5 snap=5 wfail=0 attempts=0
+NONOK node1 reco1-detsim-g4-filter-gen-58e1-1206-fa12-a388 PARTIAL PASS PASS good=3 snap=3 wfail=0 attempts=4
+NONOK node1 reco1-detsim-g4-filter-gen-88d9-04f1-7548-3ea5 PARTIAL PASS PASS good=3 snap=3 wfail=0 attempts=0
+NONOK node1 reco1-detsim-g4-filter-gen-a3f6-0048-797b-90ab PARTIAL PASS PASS good=2 snap=2 wfail=0 attempts=4
+NONOK node3 reco1-detsim-g4-filter-gen-4a8d-7158-7782-cf99 PARTIAL PASS PASS good=6 snap=6 wfail=0 attempts=4
+NONOK node3 reco1-detsim-g4-filter-gen-60c5-fa53-6be8-860b FAIL MISSING MISSING good=0 snap=0 wfail=0 attempts=8
+NONOK node3 reco1-detsim-g4-filter-gen-9018-5a03-5382-768b PARTIAL PASS PASS good=5 snap=5 wfail=0 attempts=0
+NONOK node4 reco1-detsim-g4-filter-gen-9724-c16d-8ad5-b8eb PARTIAL PASS PASS good=7 snap=7 wfail=0 attempts=0
+NONOK node5 reco1-detsim-g4-filter-gen-07cd-6e3f-0f22-2be0 PARTIAL PASS PASS good=7 snap=7 wfail=0 attempts=0
+NONOK node5 reco1-detsim-g4-filter-gen-22ad-fed7-255e-847c PARTIAL PASS PASS good=4 snap=4 wfail=0 attempts=0
+NONOK node6 reco1-detsim-g4-filter-gen-3619-47a2-429e-4b6c FAIL MISSING MISSING good=6 snap=0 wfail=0 attempts=4
+NONOK node6 reco1-detsim-g4-filter-gen-377b-4e64-a81d-e955 PARTIAL PASS PASS good=1 snap=1 wfail=0 attempts=0
+NONOK node7 reco1-detsim-g4-filter-gen-56a9-5a4b-0436-282e PARTIAL PASS PASS good=8 snap=6 wfail=0 attempts=2
+TOTAL attempt_dirs=30 good=268840 good_snap=268832 st_FAIL=3 st_OK=61238 st_PARTIAL=11 units=61252 units_with_attempts=7 validate-pr-dv2snap.json:MISSING=3 validate-pr-dv2snap.json:PASS=61249 validate.json:MISSING=3 validate.json:PASS=61249 wfail=0

@@ -1,0 +1,11 @@
+#6  <signal handler called>
+#7  0x00001527794fedde in WireCell::Clus::PR::Vertex::get_graph_index (this=0x0) at ../clus/inc/WireCellClus/PRVertex.h:121
+#8  WireCell::Clus::PR::VertexIndexCmp::operator() (this=0x7ffc64ff11d0, b=..., a=...) at ../clus/inc/WireCellClus/PRGraph.h:357
+#9  std::_Rb_tree<std::shared_ptr<WireCell::Clus::PR::Vertex>, std::shared_ptr<WireCell::Clus::PR::Vertex>, std::_Identity<std::shared_ptr<WireCell::Clus::PR::Vertex> >, WireCell::Clus::PR::VertexIndexCmp, std::allocator<std::shared_ptr<WireCell::Clus::PR::Vertex> > >::_M_get_insert_unique_pos (this=this
+#10 0x00001527794feefc in std::_Rb_tree<std::shared_ptr<WireCell::Clus::PR::Vertex>, std::shared_ptr<WireCell::Clus::PR::Vertex>, std::_Identity<std::shared_ptr<WireCell::Clus::PR::Vertex> >, WireCell::Clus::PR::VertexIndexCmp, std::allocator<std::shared_ptr<WireCell::Clus::PR::Vertex> > >::_M_insert_unique<std::shared_ptr<WireCell::Clus::PR::Vertex> const&> (this=0x7ffc64ff11d0, __v=...) at /lus/flare/projects/neutrinoGPU/scisoft/larsoft/gcc/v12_1_0/Linux64bit+3.10-2.17/include/c++/12.1.0/bits/stl_tree.h:2170
+#11 0x0000152779636d46 in std::set<std::shared_ptr<WireCell::Clus::PR::Vertex>, WireCell::Clus::PR::VertexIndexCmp, std::allocator<std::shared_ptr<WireCell::Clus::PR::Vertex> > >::insert (__x=..., this=0x7ffc64ff11d0) at ../clus/src/NeutrinoShowerClustering.cxx:8154
+#12 WireCell::Clus::PR::PatternAlgorithms::id_pi0_with_vertex (this=this
+#13 0x0000152779649dc9 in WireCell::Clus::PR::PatternAlgorithms::shower_clustering_with_nv (this=this
+#14 0x0000152779873542 in TaggerCheckNeutrino::visit (this=<optimized out>, ensemble=...) at ../clus/src/TaggerCheckNeutrino.cxx:4226
+#15 0x00001527794e16d7 in WireCell::Clus::MultiAlgBlobClustering::operator() (this=<optimized out>, ints=..., outts=...) at ../clus/src/MultiAlgBlobClustering.cxx:4082
+#16 0x00001527db69701d in WireCell::IFunctionNode<WireCell::ITensorSet, WireCell::ITensorSet>::operator() (this=0x2ef43ca8, anyin=..., anyout=...) at ../iface/inc/WireCellIface/IFunctionNode.h:43

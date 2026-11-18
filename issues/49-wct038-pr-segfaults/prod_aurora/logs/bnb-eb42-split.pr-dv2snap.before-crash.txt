@@ -1,0 +1,31 @@
+[04:27:02.676] D [clus.TrackFitting] fit_blob_coverage: deweighted foreign live cells u=3 v=0 w=0 (tol=0 w=0.1) at (17.92,-161.51,15.15) vtx_dis=2.68 vtx_deg=1 own_tol2=3 claimants=[100:13.2:436,]
+[04:27:02.685] D [clus.TrackFitting] fit_blob_coverage: deweighted foreign live cells u=1 v=0 w=0 (tol=0 w=0.1) at (19.79,-166.10,5.70) vtx_dis=3.33 vtx_deg=3 own_tol2=1 claimants=[100:16.6:436,]
+[04:27:02.785] D [  clus  ] PR::add_segment: vertex/segment endpoint mismatch (doc pr/30 P8): seg nwcpts=2 front=(6.038,-164.285,37.050) back=(6.351,-163.072,35.550) v1=(6.351,-163.592,34.650) v2=(6.038,-164.285,37.050) tol=0.300 cm
+[04:27:02.785] D [clus.NeutrinoPattern] pr55 do_rough_path: cluster 25 flavor=steiner_graph_gap n_vertices=2185 n_edges=5524 first=(63.5,-1630.7,355.5) last=(76.0,-1633.3,327.0)
+[04:27:02.785] D [  clus  ] PR::add_segment: vertex/segment endpoint mismatch (doc pr/30 P8): seg nwcpts=17 front=(6.351,-163.072,35.550) back=(9.477,-163.073,27.450) v1=(6.351,-163.592,34.650) v2=(9.477,-163.073,27.450) tol=0.300 cm
+[04:27:02.801] D [clus.TrackFitting] fit_blob_coverage: deweighted foreign live cells u=3 v=0 w=0 (tol=0 w=0.1) at (17.92,-161.51,15.15) vtx_dis=2.68 vtx_deg=1 own_tol2=3 claimants=[100:13.2:436,]
+[04:27:02.809] D [clus.TrackFitting] fit_blob_coverage: deweighted foreign live cells u=1 v=0 w=0 (tol=0 w=0.1) at (19.79,-166.10,5.70) vtx_dis=3.33 vtx_deg=3 own_tol2=1 claimants=[100:16.6:436,]
+[04:27:02.913] D [  clus  ] PR::add_segment: vertex/segment endpoint mismatch (doc pr/30 P8): seg nwcpts=2 front=(9.789,-160.215,27.300) back=(10.102,-161.514,27.450) v1=(9.789,-161.687,27.450) v2=(9.789,-160.215,27.300) tol=0.300 cm
+[04:27:02.913] D [clus.NeutrinoPattern] pr55 do_rough_path: cluster 25 flavor=steiner_graph_gap n_vertices=2185 n_edges=5524 first=(101.0,-1615.1,274.5) last=(94.8,-1630.7,274.5)
+[04:27:02.914] D [  clus  ] PR::add_segment: vertex/segment endpoint mismatch (doc pr/30 P8): seg nwcpts=4 front=(10.102,-161.514,27.450) back=(9.477,-163.073,27.450) v1=(9.789,-161.687,27.450) v2=(9.477,-163.073,27.450) tol=0.300 cm
+[04:27:02.914] D [clus.NeutrinoPattern] pr55 do_rough_path: cluster 25 flavor=steiner_graph_gap n_vertices=2185 n_edges=5524 first=(101.0,-1615.1,274.5) last=(79.1,-1633.3,285.0)
+[04:27:02.914] D [  clus  ] PR::add_segment: vertex/segment endpoint mismatch (doc pr/30 P8): seg nwcpts=11 front=(10.102,-161.514,27.450) back=(6.663,-164.112,29.550) v1=(9.789,-161.687,27.450) v2=(6.663,-164.112,29.550) tol=0.300 cm
+[04:27:02.930] D [clus.TrackFitting] fit_blob_coverage: deweighted foreign live cells u=3 v=0 w=0 (tol=0 w=0.1) at (17.92,-161.51,15.15) vtx_dis=2.68 vtx_deg=1 own_tol2=3 claimants=[100:13.2:436,]
+[04:27:02.937] D [clus.TrackFitting] fit_blob_coverage: deweighted foreign live cells u=1 v=0 w=0 (tol=0 w=0.1) at (19.79,-166.10,5.70) vtx_dis=3.33 vtx_deg=3 own_tol2=1 claimants=[100:16.6:436,]
+[04:27:03.044] D [clus.NeutrinoPattern] pr55 do_rough_path: cluster 25 flavor=steiner_graph_gap n_vertices=2185 n_edges=5524 first=(104.1,-1644.6,328.5) last=(101.0,-1642.9,325.5)
+[04:27:03.061] D [clus.TrackFitting] fit_blob_coverage: deweighted foreign live cells u=3 v=0 w=0 (tol=0 w=0.1) at (17.92,-161.51,15.15) vtx_dis=2.68 vtx_deg=1 own_tol2=3 claimants=[100:13.2:436,]
+[04:27:03.066] D [clus.TrackFitting] fit_blob_coverage: deweighted foreign live cells u=1 v=0 w=0 (tol=0 w=0.1) at (19.79,-166.10,5.70) vtx_dis=3.33 vtx_deg=3 own_tol2=1 claimants=[100:16.6:436,]
+[04:27:03.166] D [  clus  ] PR::add_segment: vertex/segment endpoint mismatch (doc pr/30 P8): seg nwcpts=2 front=(9.789,-160.215,27.300) back=(10.414,-161.340,27.150) v1=(10.102,-161.514,27.450) v2=(9.789,-160.215,27.300) tol=0.300 cm
+[04:27:03.166] D [clus.NeutrinoPattern] pr55 do_rough_path: cluster 25 flavor=steiner_graph_gap n_vertices=2185 n_edges=5524 first=(104.1,-1613.4,271.5) last=(94.8,-1630.7,274.5)
+[04:27:03.167] D [  clus  ] PR::add_segment: vertex/segment endpoint mismatch (doc pr/30 P8): seg nwcpts=7 front=(10.414,-161.340,27.150) back=(9.477,-163.073,27.450) v1=(10.102,-161.514,27.450) v2=(9.477,-163.073,27.450) tol=0.300 cm
+[04:27:03.167] D [clus.NeutrinoPattern] pr55 do_rough_path: cluster 25 flavor=steiner_graph_gap n_vertices=2185 n_edges=5524 first=(104.1,-1613.4,271.5) last=(79.1,-1633.3,285.0)
+[04:27:03.167] D [  clus  ] PR::add_segment: vertex/segment endpoint mismatch (doc pr/30 P8): seg nwcpts=11 front=(10.414,-161.340,27.150) back=(6.663,-164.112,29.550) v1=(10.102,-161.514,27.450) v2=(6.663,-164.112,29.550) tol=0.300 cm
+[04:27:03.182] D [clus.TrackFitting] fit_blob_coverage: deweighted foreign live cells u=3 v=0 w=0 (tol=0 w=0.1) at (17.92,-161.51,15.15) vtx_dis=2.68 vtx_deg=1 own_tol2=3 claimants=[100:13.2:436,]
+[04:27:03.187] D [clus.TrackFitting] fit_blob_coverage: deweighted foreign live cells u=1 v=0 w=0 (tol=0 w=0.1) at (19.79,-166.10,5.70) vtx_dis=3.33 vtx_deg=3 own_tol2=1 claimants=[100:16.6:436,]
+[04:27:03.289] D [clus.NeutrinoPattern] pr55 do_rough_path: cluster 25 flavor=steiner_graph_gap n_vertices=2185 n_edges=5524 first=(94.8,-1630.7,274.5) last=(60.4,-1642.8,370.5)
+[04:27:03.304] D [clus.TrackFitting] fit_blob_coverage: deweighted foreign live cells u=3 v=0 w=0 (tol=0 w=0.1) at (17.92,-161.51,15.15) vtx_dis=2.68 vtx_deg=1 own_tol2=3 claimants=[100:13.2:436,]
+[04:27:03.309] D [clus.TrackFitting] fit_blob_coverage: deweighted foreign live cells u=1 v=0 w=0 (tol=0 w=0.1) at (19.79,-166.10,5.70) vtx_dis=3.33 vtx_deg=3 own_tol2=1 claimants=[100:16.6:436,]
+[04:27:03.410] D [clus.NeutrinoPattern] pr55 do_rough_path: cluster 25 flavor=steiner_graph_gap n_vertices=2185 n_edges=5524 first=(94.8,-1630.7,274.5) last=(101.0,-1642.9,325.5)
+[04:27:03.410] W [clus.PRGraph] pr144 remove_vertex: refusing to remove vertex gidx=21 with degree=1 (BGL requires an isolated vertex; see doc sbnd_xin/pr/144 sec 6.4)
+
+ *** Break *** segmentation violation

@@ -4,3 +4,4 @@
 2026-11-17T02:43:59Z P5 nuecc 9097132.aurora-pbs-0001.hostmgmt.cm.aurora.alcf.anl.gov 8x10h capacity (61252 units, 268865 events)
 2026-11-17T13:05:15Z P5 nuecc resume 9097990.aurora-pbs-0001.hostmgmt.cm.aurora.alcf.anl.gov 8x7h capacity afterany:9097132 WC_TASKS_PER_UNIT=75 (approved by Haiwang via prod_polaris; P5 stop line 250 node-h)
 2026-11-17T13:05:43Z P5 ncdr resume 9097992.aurora-pbs-0001.hostmgmt.cm.aurora.alcf.anl.gov 8x3h capacity afterany:9097098 WC_TASKS_PER_UNIT=75 (NC 47% at 2.1 h of 3 h)
+2026-11-18T04:18:47Z i49 repro 9100323.aurora-pbs-0001.hostmgmt.cm.aurora.alcf.anl.gov debug 1x30m (3 one-event tars x 2 passes)

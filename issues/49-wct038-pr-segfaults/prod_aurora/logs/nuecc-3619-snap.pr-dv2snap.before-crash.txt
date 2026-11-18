@@ -1,0 +1,31 @@
+[04:27:11.629] D [clus.NeutrinoPattern] pr74 conn3_unreachable: promote gidx=10 len 13.1cm conn=3 anchor_dis 29.5cm
+[04:27:11.630] D [clus.NeutrinoPattern] pr74 conn3_unreachable: promote gidx=17 len 52.6cm conn=3 anchor_dis 7.3cm
+[04:27:11.712] D [clus.NeutrinoPattern] pr93 detach_track_stem: skip shower_id=9 head_pdg=2212 (walk_ok=false prefix=1)
+[04:27:11.712] D [clus.NeutrinoPattern] pr93 detach_track_stem: skip shower_id=16 head_pdg=2212 (walk_ok=false prefix=1)
+[04:27:11.712] D [clus.NeutrinoPattern] pr99 ghost_member refuse shower_id=0 seg=-1 (leaf-only guard)
+[04:27:11.712] D [clus.NeutrinoPattern] pr99 ghost_member refuse shower_id=0 seg=-1 (leaf-only guard)
+[04:27:11.712] D [clus.NeutrinoPattern] pr99 ghost_member drop shower_id=17 seg=-1 len=14.77cm med_ratio=0.10 fneg=0.35 views=1.00/1.00/0.77 partner seg=-1 ratio=0.87
+[04:27:11.723] D [clus.NeutrinoPattern] pr99 ghost_member: 1 member(s) dropped; maps rebuilt
+[04:27:11.749] D [clus.NeutrinoPattern] pr125 satellite_absorb: 3 satellite shower(s) absorbed; 16 remain
+[04:27:11.790] D [clus.NeutrinoPattern] pr138 shower_split: 1 candidate(s) fired, 1 daughter(s) peeled; 16 shower(s) now (pr139: 0 shared-member refusal(s), 0 impact veto(es), 0 all-shared shed(s), 0 em-retyped daughter(s))
+[04:27:11.892] D [clus.NeutrinoPattern] kine_track_ctx: seg idx=8 cluster=20 pdg=2212 len_cm=24.7 ke_mev=194.5 won_mev=160.2
+[04:27:11.892] D [clus.NeutrinoPattern] kine_track_ctx: 1 track context(s) beside 16 shower context(s)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=0 pdg=11 nseg=51 kine_charge 782.3 -> 764.1 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=1 pdg=11 nseg=2 kine_charge 16.5 -> 16.5 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=2 pdg=11 nseg=1 kine_charge 7.7 -> 7.7 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=4 pdg=11 nseg=2 kine_charge 50.9 -> 14.2 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=5 pdg=11 nseg=1 kine_charge 10.9 -> 10.9 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=6 pdg=11 nseg=1 kine_charge 1.2 -> 1.2 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=9 pdg=2212 nseg=1 kine_charge 4.7 -> 4.7 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=10 pdg=11 nseg=1 kine_charge 4.6 -> 4.6 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=11 pdg=11 nseg=1 kine_charge 3.3 -> 3.3 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=12 pdg=11 nseg=1 kine_charge 0.9 -> 0.9 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=13 pdg=11 nseg=1 kine_charge 0.6 -> 0.6 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=14 pdg=11 nseg=1 kine_charge 2.3 -> 2.3 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=16 pdg=2212 nseg=1 kine_charge 4.5 -> 3.3 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=17 pdg=11 nseg=4 kine_charge 125.4 -> 89.6 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=18 pdg=13 nseg=2 kine_charge 234.3 -> 144.4 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.892] D [clus.NeutrinoPattern] kine final recompute: shower id=19 pdg=11 nseg=1 kine_charge 2.1 -> 2.1 MeV (dedup=true rebuild=true track_ctx=true)
+[04:27:11.897] D [clus.NeutrinoPattern] pi0 window reject: 15 pair(s) left, best mass=13.8 MeV delta=-111.2
+
+ *** Break *** segmentation violation

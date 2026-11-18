@@ -1,0 +1,6 @@
+#6  <signal handler called>
+#7  0x000015310653c0bc in WireCell::Clus::TrackFitting::do_multi_tracking (this=this
+#8  0x0000153106253096 in WireCell::Clus::PR::PatternAlgorithms::examine_vertices_1 (this=this
+#9  0x0000153106253a3a in WireCell::Clus::PR::PatternAlgorithms::examine_vertices (this=this
+#10 0x000015310617c98e in WireCell::Clus::PR::PatternAlgorithms::find_proto_vertex (this=this
+#11 0x000015310643a0a7 in TaggerCheckNeutrino::visit (this=<optimized out>, ensemble=...) at ../clus/src/TaggerCheckNeutrino.cxx:3810

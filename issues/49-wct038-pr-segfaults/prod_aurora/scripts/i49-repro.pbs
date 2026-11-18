@@ -1,0 +1,31 @@
+#!/bin/bash
+#PBS -N wcl48-i49-repro
+#PBS -A neutrinoGPU::WireCell_aurora
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:30:00
+#PBS -l filesystems=flare:home
+#PBS -j oe
+#PBS -o /lus/flare/projects/neutrinoGPU/yuhw/production-prep/WCLocal2026Nov16/logs/i49-repro.out
+# ai-helper #49 (prod_aurora): do Aurora's P5 crashes reproduce on their one-event step-1 tars (issue49/in/,
+# cut by scripts/crash-extract.py)?  Each tar x both passes with the production 0.38.0 setup (as P1):
+# issue49/run/<case>/{pr (dv2_split_move), pr-dv2snap (dv2_snap)}; rc + the frame after the signal handler.
+set -u
+module load apptainer >/dev/null 2>&1
+Y=/lus/flare/projects/neutrinoGPU/yuhw; W=$Y/production-prep/WCLocal2026Nov16; E=$Y/sbnd-wirecell-production/aurora
+export Y W E SL7_SETUP=$W/scripts/setup-0.38.0.sh
+/bin/date -u; hostname
+one() { c=$1; pass=$2
+  case $pass in pr) vm=dv2_split_move sp=true;; pr-dv2snap) vm=dv2_snap sp=false;; esac
+  O=$W/issue49/run/$c; mkdir -p $O; t0=$(/bin/date +%s)
+  PASS_ENV='DLVTX_SPACE WC_EVT_SUBDIR WC_VERTEX_METHOD WC_DV2_BUNDLE' \
+  DLVTX_SPACE=$sp WC_VERTEX_METHOD=$vm WC_DV2_BUNDLE=dv2max/sbnd/aurora_space/bundle.json WC_EVT_SUBDIR='pr_evt{run}_{subrun}_{event}' \
+    $E/env/aurora/in-aurora-sl7.sh /usr/bin/timeout -k 60 1200 \
+    $W/scripts/step2-pass.sh $W/issue49/in/$c.qlpctree.tar.gz $O/$pass sim > $O/$pass.step2.out 2>&1
+  rc=$?
+  fr=$(grep -A1 '<signal handler called>' $O/$pass.step2.out | tail -1 | sed -E 's/\(this=[^)]*\)//' | cut -c1-160)
+  ev=$(ls -d $O/$pass/pr_evt* 2>/dev/null | xargs -n1 basename 2>/dev/null | tr '\n' ' ')
+  echo "$c $pass rc $rc wall $(( $(/bin/date +%s) - t0 )) events [$ev] frame: ${fr:-none}" >> $W/issue49/run/results.txt; }
+export -f one
+for c in nuecc-3619-snap nuecc-56a9-snap bnb-eb42-split; do for p in pr pr-dv2snap; do echo "$c $p"; done; done | xargs -P 6 -L 1 bash -c 'one "$@"' _
+/bin/date -u; cat $W/issue49/run/results.txt
