@@ -7,12 +7,20 @@
 #   recover  lists/recover-<s>.tsv (pairs whose status is not OK, e.g. step 2 killed at the 4 GB limit),
 #            8000 MB, written to <s>-mem8g/ so the first try's outputs stay as they are
 #   recover-full  the same for from-reco1 pairs (lists/recover-full-<s>.tsv), full mode
+#   ncdr-pilot  NC delta-rad (added 2026-11-17, Haiwang): every 100th pair of lists/pairs-mc-ncdr-step2.tsv, 4 per job
+#   ncdr     NC delta-rad: the whole step-2 list (9,150 pairs; pilot pairs are skipped by job.sh), 24 per job,
+#            step-2 limit 3600 s + 300 s/event (1-event pairs otherwise get 900 s), 8 h
+#   ncdr-copyfail  NC delta-rad pairs whose step 2 was OK but whose copy to dCache failed (2026-11-18 04:12-04:44,
+#            21 pairs, lists/copyfail-mc-ncdr-step2.tsv): the ncdr settings, 1 pair per job, the same destination
+#            (job.sh keeps the files that arrived with the right size and writes the rest, then the .done)
+#            CF_LIST=copyfail2-%s-step2.tsv: the 2 pairs whose first-try CAF (a few bytes bigger than the rerun's; the
+#            merge is not byte-reproducible) had to be moved to stale-mc-ncdr/ by hand first
 #   recover-slow  step-2 timeouts (lists/recover-slow-<s>.tsv): 8000 MB, step-2 limit 4 h + 300 s/event
 #            (WC_TIMEOUT_STEP2_BASE=14400; needs workflow submit.sh forwarding it), 12 h, into <s>-mem8g/
 # Tarball: wclocal-nov16/tar/wcgrid-wcl1116-53a90eb.tar.gz (workflow wclocal-nov16 53a90eb).
 # Needs KRB5CCNAME pointing at a valid ticket (htgettoken -a htvaultprod.fnal.gov -i sbnd --nooidc).
 set -u
-WHAT=${1:?step2|full|recover|recover-full|recover-slow}; DRY=${2:-}
+WHAT=${1:?step2|full|recover|recover-full|recover-slow|ncdr-pilot|ncdr|ncdr-copyfail}; DRY=${2:-}
 R=/exp/sbnd/data/users/yuhw/wclocal-nov16
 TARBALL=${TARBALL:-$R/tar/wcgrid-wcl1116-53a90eb.tar.gz}
 cd /exp/sbnd/app/users/yuhw/sbnd-wirecell-production/fermigrid || exit 1
@@ -30,6 +38,12 @@ case $WHAT in
            SPECS=("mc-cv 1" "mc-nuecc 1" "beam-off 1" "run3bnb 1" "opendata 1"); LIST=recover-full-%s.tsv; SUF=-mem8g ;;
   recover-slow) export WC_GRID_MODE=step2 WC_GRID_MEMORY=8000MB WC_GRID_LIFETIME=12h WC_GRID_DISK=10GB WC_TIMEOUT_STEP2_BASE=14400
            SPECS=("mc-cv 1" "mc-nuecc 1" "beam-off 1" "run3bnb 1" "opendata 1"); LIST=recover-slow-%s.tsv; SUF=-mem8g ;;
+  ncdr-pilot) export WC_GRID_MODE=step2 WC_GRID_MEMORY=4000MB WC_GRID_LIFETIME=6h WC_GRID_DISK=10GB
+           SPECS=("mc-ncdr 4"); LIST=pilot-%s-step2.tsv; SUF= ;;
+  ncdr)    export WC_GRID_MODE=step2 WC_GRID_MEMORY=4000MB WC_GRID_LIFETIME=8h WC_GRID_DISK=10GB WC_TIMEOUT_STEP2_BASE=3600
+           SPECS=("mc-ncdr 24"); LIST=pairs-%s-step2.tsv; SUF= ;;
+  ncdr-copyfail) export WC_GRID_MODE=step2 WC_GRID_MEMORY=4000MB WC_GRID_LIFETIME=8h WC_GRID_DISK=10GB WC_TIMEOUT_STEP2_BASE=3600
+           SPECS=("mc-ncdr 1"); LIST=${CF_LIST:-copyfail-%s-step2.tsv}; SUF= ;;
   *) echo "unknown $WHAT" >&2; exit 2 ;;
 esac
 for s in "${SPECS[@]}"; do

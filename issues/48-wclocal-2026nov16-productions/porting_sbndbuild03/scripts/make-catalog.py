@@ -9,7 +9,7 @@ pass, dv2_split_move) and recTreeWireCell_dv2snap (snap pass).  Writes, per samp
   <s>.merged-caf.txt       persistent CAF paths
   <s>.tracking-pr-scratch.txt, <s>.qlpctree-scratch.txt   scratch paths (step-1 tars of step-2-only pairs are the earlier productions')
 Speed: reading a CAF over dCache NFS takes ~2 s, so for an OK pair whose earlier production's events list (fg1,
-run3bnb; the recTree is the official CAF, unchanged) has as many events as the pair's CAF, the run/subrun/event come
+run3bnb, ncdr; the recTree is the official CAF, unchanged) has as many events as the pair's CAF, the run/subrun/event come
 from that list with wc_split = wc_snap = 1 (OK = every CAF event has both trees).  Read from the CAF: every
 non-OK pair, every open-data pair (no earlier events list), count mismatches, and a random check sample of
 OK pairs (WC_CHECK_N, default 150), which must agree with the list."""
@@ -20,7 +20,7 @@ import uproot, numpy as np
 plan, verify, first, notok, out = sys.argv[1:6]; procs = int(sys.argv[6]) if len(sys.argv) > 6 else 8
 L = '/exp/sbnd/data/users/yuhw/wclocal-nov16/lists'
 SCR = '/pnfs/sbnd/scratch/users/yuhw/prod-fermigrid/WCLocal2026Nov16'
-SAMPLES = ['mc-cv', 'mc-nuecc', 'beam-off', 'run3bnb', 'opendata']
+SAMPLES = ['mc-cv', 'mc-nuecc', 'beam-off', 'run3bnb', 'opendata', 'mc-ncdr']   # mc-ncdr added 2026-11-18
 def read(row):
     s, i, src, dst = row[:4]
     try:
@@ -48,7 +48,8 @@ if os.path.exists(CACHE):
 KNOWN = {'mc-cv': '/pnfs/sbnd/persistent/users/yuhw/prod-fermigrid/fg1/lists/events-mc-cv.tsv.gz',
          'mc-nuecc': '/pnfs/sbnd/persistent/users/yuhw/prod-fermigrid/fg1/lists/events-mc-nuecc.tsv.gz',
          'beam-off': '/pnfs/sbnd/persistent/users/yuhw/prod-fermigrid/fg1/lists/events-beam-off.tsv.gz',
-         'run3bnb': '/pnfs/sbnd/persistent/users/yuhw/prod-fermigrid/run3bnb/lists/events-bnb-data.tsv.gz'}
+         'run3bnb': '/pnfs/sbnd/persistent/users/yuhw/prod-fermigrid/run3bnb/lists/events-bnb-data.tsv.gz',
+         'mc-ncdr': '/pnfs/sbnd/persistent/users/yuhw/prod-fermigrid/ncdr/lists/events-mc-ncdr.tsv.gz'}
 known = collections.defaultdict(list)
 for smp, f in KNOWN.items():
     for l in gzip.open(f, 'rt'):

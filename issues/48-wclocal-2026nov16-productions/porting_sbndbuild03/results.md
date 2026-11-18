@@ -308,3 +308,34 @@ Per sample it writes `pairs-`, `status-`, `events-<s>.tsv.gz`, `<s>.merged-caf.t
   - 28 come from the 5 step-2 segfaults (issue 49). Only 19 of them are missing from the snap tree, because CV `d7e5`'s snap pass ran.
   - 24 come from step-1 `lar` crashes, one event each.
 - **Page:** `sbnd-wirecell-production` `5477875` adds `wcl1116-fg-beamoff-train` and `wcl1116-fg-beamoff-eval`, fills beam-off `events_wc`, and adds the overlap note. All entries stay `running` until the coordinated flip with Aurora.
+
+## NC Δ-radiative (`mc-ncdr`, 2026-11-17 to 18; requested by Haiwang 2026-11-17)
+
+Every pair of the ncdr SAM sample, as the fg1-config `ncdr` production (sbnd-wirecell-production #6): 15,776 pairs.
+- 9,150 pairs have events and ran step 2 only, from the kept ncdr step-1 tars. Before the run, 5 of 5 ncdr tars were rebuilt with 0.38.0 and were identical.
+- The 6,626 pairs whose reco1 has no events were not rerun (`EMPTY`).
+- Lists: `scripts/make-lists.py` (`mc-ncdr`); final table `scripts/make-ncdr-final.py`.
+
+| | cluster | what |
+|---|---|---|
+| pilot | `30790915@jobsub04` | 92 pairs, 4 per job: 88 OK. One job hung on a bad node (0.64 s user time per 15 min) and was removed; its stale logs tar was moved to `stale-mc-ncdr/`. |
+| full | `87520318@jobsub01` | 382 jobs × 24 pairs, 4000 MB, 8 h, step-2 limit 3600 s + 300 s/event (`submit-p5.sh ncdr`). Submitted 2026-11-17 22:04 CST; the last job ended 2026-11-18 07:01. |
+| copy reruns | `31014519@jobsub05`, `94497174@jobsub02` | `submit-p5.sh ncdr-copyfail` (below) |
+
+- **Step 2 was OK for all 9,150 pairs.** No crash, memory kill or timeout. The two pairs left over from the hung pilot job finished in the full run.
+- **dCache write outage:** 21 pairs, in 20 jobs, computed OK, but their copy to scratch failed on all 3 tries.
+  - The failures fell between 2026-11-18 04:12 and 04:44 CST (`put try 3 ... destination 0`). With a file missing, `job.sh` wrote no `.done`.
+  - No zero-size file was left behind.
+  - The 21 pairs were rerun into the same folders (`31014519`, 1 pair per job). `job.sh` keeps a file that arrived with the right size and writes the missing ones. 19 finished OK.
+- **2 pairs needed a hand step** (`2c3f-d1d9-065c-a9c5`, `fde9-0451-897f-6381`).
+  - Their first-try merged CAF had arrived complete, but the rerun's differs by a few bytes (134 and 2 bytes); the merge is not byte-reproducible.
+  - A grid job cannot remove a dCache file, so the put failed again.
+  - I moved the two first-try CAFs to `stale-mc-ncdr/<caf>.copyfail-first-try.root` and reran the pairs (`94497174`, `CF_LIST=copyfail2-%s-step2.tsv`). Both OK.
+- **Result:** 9,150 / 9,150 OK, 13,772 / 13,772 events with Wire-Cell output in both trees (split-move and snap).
+- **Persistent:** `WCLocal2026Nov16/mc-ncdr/`, 9,150 merged CAFs (36.3 GB), all size- and ADLER32-equal to scratch (`caf-copy-plan-mc-ncdr.tsv`, `caf-copy-verify-mc-ncdr.tsv`). The tracking-pr tars on scratch total 23.1 GB.
+- **Catalog:** rebuilt with `mc-ncdr` (`make-catalog.py`: `mc-ncdr` in SAMPLES, the ncdr events list in KNOWN).
+  - The 150 CAFs read as a check all agree with the ncdr events list.
+  - The other five samples' lists are byte-identical to before. The previous catalog is kept as `lists/catalog-pre-ncdr/`.
+  - The 6 `mc-ncdr` list files were added to persistent `lists/`, and `README.md` was replaced (NC Δ-rad row; totals 70,084 pairs, 863,178 CAF events, 863,126 / 863,135 with Wire-Cell output, 63,416 merged CAFs, 756.3 GB).
+- **Disk check** 2026-11-18 08:26 CST: 9,150 merged CAFs, none empty.
+- **Page:** sbnd-wirecell-production `b4b9bba`, `wcl1116-fg-ncdr` set to available.

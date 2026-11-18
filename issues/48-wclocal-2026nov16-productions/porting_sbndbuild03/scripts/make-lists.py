@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 """Issue 48: the WCLocal2026Nov16-FermiGrid pair lists, from the kept productions' lists (read only).
-   make-lists.py <outdir> [pilot_every=100]
+   make-lists.py <outdir> [pilot_every=100] [sample ...]   (no sample: all; mc-ncdr was added 2026-11-17)
 Per sample:
   pairs-<sample>-step2.tsv  status OK in the earlier production AND one unsliced kept qlpctree: id reality reco1 caf events kept_qlpctree
   pairs-<sample>-full.tsv   every other pair (PARTIAL / sliced / EMPTY): id reality reco1 caf events (run from reco1)
   pilot-<sample>-step2.tsv  every <pilot_every>-th line of the step2 list (the ~1 % pilot, P4); P5 submits the
                             whole list and the jobs skip the pairs already finished (job.sh: <id>.done)"""
 import collections, os, sys
-out = sys.argv[1]; every = int(sys.argv[2]) if len(sys.argv) > 2 else 100
+out = sys.argv[1]; every = int(sys.argv[2]) if len(sys.argv) > 2 else 100; only = set(sys.argv[3:])
 P = '/pnfs/sbnd/persistent/users/yuhw'
 A = '/exp/sbnd/data/users/yuhw/wire-cell-toolkit-ai-helper/issues/40-sbnd-opendata-fixeddev-caf-merge/lists'
 S = {'mc-cv': ('fg1/lists/pairs-mc-cv.tsv', 'fg1/lists/status-mc-cv.tsv', 'fg1/lists/mc-cv.qlpctree-scratch.txt'),
      'mc-nuecc': ('fg1/lists/pairs-mc-nuecc.tsv', 'fg1/lists/status-mc-nuecc.tsv', 'fg1/lists/mc-nuecc.qlpctree-scratch.txt'),
      'beam-off': ('fg1/lists/pairs-beam-off.tsv', 'fg1/lists/status-beam-off.tsv', 'fg1/lists/beam-off.qlpctree-scratch.txt'),
      'run3bnb': ('run3bnb/lists/pairs-bnb-data.tsv', 'run3bnb/lists/status-bnb-data.tsv', 'run3bnb/lists/bnb-data.qlpctree-scratch.txt'),
-     'opendata': (A + '/pairs.tsv', A + '/status.tsv', P + '/prod-sbndbuild03/opendata-fixeddev/lists/qlpctree.txt')}
+     'opendata': (A + '/pairs.tsv', A + '/status.tsv', P + '/prod-sbndbuild03/opendata-fixeddev/lists/qlpctree.txt'),
+     'mc-ncdr': ('ncdr/lists/pairs-mc-ncdr.tsv', 'ncdr/lists/status-mc-ncdr.tsv', 'ncdr/lists/mc-ncdr.qlpctree-scratch.txt')}
 os.makedirs(out, exist_ok=True)
 H = '#id\treality\treco1\tcaf\treco1_events\tkept_qlpctree\n'
 for name, files in S.items():
+    if only and name not in only: continue
     pl, sl, ql = [f if f.startswith('/') else P + '/prod-fermigrid/' + f for f in files]
     pairs = [l.rstrip('\n').split('\t') for l in open(pl) if l.strip() and not l.startswith('#')]
     st = {l.split('\t')[0]: l.split('\t')[1].strip().split()[0] for l in open(sl) if l.strip() and not l.startswith('#')}
