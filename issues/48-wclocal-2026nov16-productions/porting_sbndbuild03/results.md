@@ -339,3 +339,28 @@ Every pair of the ncdr SAM sample, as the fg1-config `ncdr` production (sbnd-wir
   - The 6 `mc-ncdr` list files were added to persistent `lists/`, and `README.md` was replaced (NC Δ-rad row; totals 70,084 pairs, 863,178 CAF events, 863,126 / 863,135 with Wire-Cell output, 63,416 merged CAFs, 756.3 GB).
 - **Disk check** 2026-11-18 08:26 CST: 9,150 merged CAFs, none empty.
 - **Page:** sbnd-wirecell-production `b4b9bba`, `wcl1116-fg-ncdr` set to available.
+
+## Cost (FermiGrid, all phases; measured 2026-11-19)
+
+From `condor_history` on the five jobsub schedds: every job of the 30 clusters in `lists/*submit*.log` (8,974 jobs, all present; 8,973 completed, 1 removed). Script `scripts/grid-cost.sh`; per-job rows in `wclocal-nov16/lists/grid-history.tsv`. Every job requested 1 CPU.
+- **CPU** = RemoteUserCpu + RemoteSysCpu.
+- **Wall** = RemoteWallClockTime, which sums every start of a job, so auto-released restarts are included.
+- **Elapsed** = first submission to last completion, in CST.
+
+| phase | jobs | CPU-h | wall slot-h | CPU / wall | elapsed (CST) |
+|---|---|---|---|---|---|
+| P4 pilot | 73 | 51.9 | 59.5 | 0.87 | 11-16 17:00 → 19:35 (2.6 h) |
+| P5, the five samples (step 2 + 93 from reco1) | 8,455 | 4,574.1 | 4,996.8 | 0.92 | 11-16 20:21 → 11-17 16:02 (19.7 h) |
+| 8 GB recovery + 2 timeout reruns | 18 | 14.3 | 14.7 | 0.97 | 11-17 07:16 → 15:40 |
+| NC Δ-rad (pilot, full run, copy reruns) | 428 | 256.4 | 304.2 | 0.84 | 11-17 20:42 → 11-18 08:04 (11.4 h) |
+| **total** | **8,974** | **4,896.6** | **5,375.2** | **0.91** | **11-16 17:00 → 11-18 08:04 (39.1 h)** |
+
+- **Elapsed time:**
+  - The five samples took about 23 h, pilot to the last timeout rerun. Most of P5 ran in about 11 h overnight, ending 07:12.
+  - NC Δ-rad was a separate request: about 9 h of running and about 2 h of dCache re-copies.
+  - The 39.1 h total includes the gap between the two campaigns (11-17 16:02 → 20:42).
+- **Per CAF event** (863,178): about 20 CPU-s and 22 slot-s.
+- **Restarts and removals:** 23 jobs were restarted at least once, mostly 4 GB memory kills that FIFE auto-released. The removed job is the NC Δ-rad pilot job that hung on a bad node.
+- **Not included:** step 1 was reused from the fg1 / run3bnb / ncdr / open-data tars, so its cost belongs to those productions. Only the 93 from-reco1 pairs ran step 1 here.
+- **CumulativeSlotTime** sums to 10,541 h, about 2 × the wall. It is presumably a slot-weighted accounting figure and is not used above.
+- **For comparison:** prod_aurora reports 210.9 node-h for WCLocal2026Nov16-Aurora.
