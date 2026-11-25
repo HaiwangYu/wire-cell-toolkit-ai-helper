@@ -1,0 +1,20 @@
+# SBND standard detsim (sbndcode v10_14_02_03 standard_detsim_sbnd.fcl: TPC +
+# optical + CRT) with a toggle for the per-plane YZ charge scaling in the
+# Wire-Cell TPC simulation (ai-helper issue 46).
+#
+# The toggle is ONE parameter, physics.producers.simtpc2d.wcls_main.params.yz_scaling:
+#   "off": the Wire-Cell configuration is identical to stock sbndcode's
+#   "on":  DepoTransform -> DepoTransformYZ + YZMap (the map is yz_map, found
+#          in WIRECELL_PATH)
+# Use the wrappers detsim_sbnd_yz_off.fcl / detsim_sbnd_yz_on.fcl.
+# Needs the kit environment (setup-yz-env.sh): the kit cfg on WIRECELL_PATH and
+# the WCT libraries of branch sbnd-yz-depo-scaling.
+#
+# Everything else (products, labels, NF/SP, DNN ROI, the optical and CRT sim)
+# is the standard detsim.
+
+#include "standard_detsim_sbnd.fcl"
+
+physics.producers.simtpc2d.wcls_main.configs: ["pgrapher/experiment/sbnd/wcls-sim-drift-depoflux-nf-sp-yz.jsonnet"]
+physics.producers.simtpc2d.wcls_main.params.yz_scaling: "off"
+physics.producers.simtpc2d.wcls_main.params.yz_map: "sbnd/sbnd-yzmap-run2-gen2-bnblight-v1.json.bz2"

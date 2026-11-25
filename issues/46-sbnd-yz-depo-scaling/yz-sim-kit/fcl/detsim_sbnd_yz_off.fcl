@@ -1,0 +1,3 @@
+# Standard SBND detsim, Wire-Cell YZ scaling OFF (configuration = stock sbndcode).
+#include "detsim_sbnd_yz.fcl"
+physics.producers.simtpc2d.wcls_main.params.yz_scaling: "off"

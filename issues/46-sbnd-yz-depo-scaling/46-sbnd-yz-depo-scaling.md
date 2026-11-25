@@ -144,6 +144,29 @@ WCT branch `sbnd-yz-depo-scaling` from master 7710c43b, worktree `/exp/sbnd/app/
   - The per-channel comparison (`compare_detsim.tsv`) is byte-identical to the 2026-11-13 one, so the table above holds unchanged.
   - Figures: `figs/detsim_scaling_rebase.{png,json}`.
 
+## 4. Hand-off kit for the map author (2026-11-24/25)
+
+`yz-sim-kit/` (README = the step-by-step guide): the YZ scaling inside **sbndcode v10_14_02_03's standard detsim** (`standard_detsim_sbnd.fcl`, `simtpc2d` with DNN ROI), with one toggle `yz_scaling` off/on (`fcl/detsim_sbnd_yz_{off,on}.fcl`, `run-yz-detsim.sh --yz off|on [--reco1]`). Owner's choice: sbndcode config, not the older toolkit jsonnet.
+
+- **Overlay:** `cfg/.../wcls-sim-drift-depoflux-nf-sp-yz.jsonnet` and `sim-yz.jsonnet`, copies of sbndcode's with the changes marked `YZ-KIT`. `sim-yz.jsonnet` carries its own `make_depotransform_yz`, because sbndcode's `pgrapher/common/sim/nodes.jsonnet` shadows the toolkit's.
+- **Off = stock:** the compiled Wire-Cell config of off and of stock sbndcode is byte-identical (660,931 bytes; `scripts/check-config-identity.sh`). On differs only by `DepoTransform` → `DepoTransformYZ` (plus `yzmap`) and the `YZMap` service.
+- **Environment:** sbndcode v10_14_02_03 + our larwirecell (`opt`) + the branch WCT (`opt-yz`), preloaded by **bare name** through `LD_LIBRARY_PATH`. The WCT libraries have no SONAME, so a full-path `LD_PRELOAD` (the old `scripts/run-detsim.sh`) still let RPATH pull `opt/lib/libWireCellApps.so` and second copies of Util/Iface/Aux/Mcs/Clus from `wct-yz/build`. The kit loads every WCT library once from `opt-yz`.
+  - The kit does not use `setup-local-opt.sh`, whose local sbndcode cfg is not v10_14_02_03's.
+  - Our install is world-readable (route A). Route B (build from the fork) was tested: 12 min, bit-identical output.
+- **Long-muon validation** (the same 10 muons; `kit-validation/`): with DNN ROI the induction planes follow the map 2–3× more tightly than the toolkit config's traditional ROI.
+
+| dnnsp | East U | East V | East Y | West U | West V | West Y |
+|---|---|---|---|---|---|---|
+| median measured/predicted − 1 | −0.00 % | −0.02 % | +0.00 % | −0.02 % | +0.01 % | −0.01 % |
+| rms | 1.14 % | 1.17 % | 0.66 % | 1.13 % | 1.23 % | 0.68 % |
+| correlation | 0.95 | 0.96 | 0.94 | 0.89 | 0.96 | 0.93 |
+
+  `gauss`: Y the same (0.66–0.68 %); induction 1.9–3.9 % rms.
+- **Cost:** `simtpc2d` takes 122.7 s per event both off and on (93 % of the event), and both use 6.4 GB max RSS. The scaling costs nothing measurable. That is 4.7× the toolkit config's 26 s, because of DNN ROI and both ROI methods.
+- **Not bit-reproducible:** repeated runs of the same event split into two noise realizations, each bit-identical within itself. The signal agrees to 1e-4. A likely cause, not proven, is the two anode pipelines sharing one `Random` service in parallel. On/off comparisons have to use distributions, not single channels.
+- **Test sample for the map author:** `/exp/sbnd/data/users/yuhw/YZ-non-uniformity/bnb-cv-10/g4.root`, 24 BNB CV-like events (GENIE BNB + CORSIKA, rockbox, sbndcode v10_14_02_03; README there).
+- **Deck:** `docs/46-yz-sim-workflow.pdf` (workflow; results pending).
+
 ## Existing WCT pieces (master 7710c43b)
 
 - `IYZMap` / `YZMap` (gen): service. JSON `{anode_name: {plane: [[z][y]]}}`, uniform binning (`bin_width` z, `bin_height` y, offsets, nbins). Its out-of-range clamp goes to `nbins` instead of `nbins − 1`, so an edge depo reads one past the end.
@@ -158,3 +181,4 @@ WCT branch `sbnd-yz-depo-scaling` from master 7710c43b, worktree `/exp/sbnd/app/
 - 2026-11-24: rebased on master f604f815, no conflicts, patches unchanged; rebuild, doctests 5/5 and 28/28, ABI check vs opt larwirecell clean, long-muon comparison byte-identical to 2026-11-13. Summary deck of the map file: `docs/46-yz-map-file-summary.pdf` (section 1); corrections: the high-C edge pixels are not low-hit, V stripes also at constant z, `dqdxHist` index is not the TPC.
 - 2026-11-24: map committed to WireCell/wire-cell-data master (acbe8e5, owner's go); regenerated from the ROOT file, JSON identical.
 - 2026-11-24: the other two toolkit SBND jsonnets with 5632 fixed on the branch (6fdb9371, pushed to the fork); wcsonnet: chsel0 0–5637, chsel1 5638–11275.
+- 2026-11-24/25: hand-off kit `yz-sim-kit/` on the sbndcode v10_14_02_03 detsim with a toggle (off = stock, byte-identical config); long-muon check with DNN ROI; BNB CV-like 24-event G4 sample; draft workflow deck. Found: the old run-detsim.sh preload mixed WCT library copies; detsim is not bit-reproducible run to run.
