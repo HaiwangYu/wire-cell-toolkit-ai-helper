@@ -221,7 +221,7 @@ West Y & 7.93\,M & 1012 & 0 & 0 \\
 \item Empty pixels get 1 (no YZ effect). Dead channels are the channel-status database's job.
 \item Keys: \code{AnodePlane:apa0} = East, \code{apa1} = West.
 \item YZMap: nbinsz 100, nbinsy 80, 5\,cm $\times$ 5\,cm, zoffset 0, yoffset 200\,cm.
-\item Output, 80\,kB, not yet in wire-cell-data:\\ {\footnotesize\code{sbnd-yzmap-run2-gen2-bnblight-v1.json.bz2}}
+\item Output, 80\,kB, in wire-cell-data (acbe8e5):\\ {\footnotesize\code{sbnd-yzmap-run2-gen2-bnblight-v1.json.bz2}}
 \end{itemize}
 \end{column}
 \begin{column}{0.48\textwidth}
@@ -486,7 +486,7 @@ West Y & 1135 & 1.8\,\% & +0.01\,\% & 0.49\,\% & 0.96 & 0.9983 / 0.9985 \\
 \vspace{2mm}
 \textbf{Next steps on our side}
 \begin{itemize}
-\item Commit the map file to wire-cell-data (not done yet).
+\item Map file committed to wire-cell-data master (acbe8e5, 2026-11-24).
 \item Possibly a YZ-map variant of the sbndcode jsonnet (with DNN ROI); the current one starts from the older toolkit copy.
 \item Data/MC overall scale once the MC histograms exist.
 \end{itemize}
