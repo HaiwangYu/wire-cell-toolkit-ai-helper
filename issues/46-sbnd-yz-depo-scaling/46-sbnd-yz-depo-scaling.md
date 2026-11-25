@@ -3,7 +3,7 @@
 Goal (owner, 2026-11-12): a WCT component that scales simulated depos (`IDepo`) by an external YZ map, a jsonnet based on `cfg/pgrapher/experiment/sbnd/wcls-sim-drift-depoflux-nf-sp.jsonnet` that uses it, a doctest, and a long single-muon fcl test. The work goes on a new WCT branch from master.
 
 Input map (from its author): `/exp/sbnd/data/users/yuhw/YZ-non-uniformity/run_2_gen_2_BNBLight_data_v10_14_02_02_200usEast80usWest.root`
-- `zy_<plane>_<tpc>`: raw dQ/dx per YZ pixel; `CzyHist_<plane>_<tpc>`: correction factor that makes `zy` uniform; `zynhits_<plane>_<tpc>`: hits per pixel; `zydqdx`: ignore; `dqdxHist`: 1D dQ/dx per plane.
+- `zy_<plane>_<tpc>`: median dQ/dx per YZ pixel; `CzyHist_<plane>_<tpc>`: correction factor that makes `zy` uniform; `zynhits_<plane>_<tpc>`: hits per pixel; `zydqdx`: ignore; `dqdxHist`: 1D dQ/dx per plane, in ADC/cm (axis title). Note (2026-11-24): `dqdxHist_<p>_0` and `_<p>_1` each hold East + West hits of the plane (entries = sum of both `zynhits`), so their index is not the TPC; `_1` is 0.5 % lower in median. A question for the map's author.
 - plane 0 = U, 1 = V, 2 = Y (collection); tpc 0 = East, 1 = West.
 - Every 2D map: 100 z bins × 80 y bins of 5 cm, z 0–500 cm, y −200–200 cm.
 - Empty (C = 0) pixels: East V 52, East Y 80; none on the West.
@@ -29,13 +29,21 @@ Input map (from its author): `/exp/sbnd/data/users/yuhw/YZ-non-uniformity/run_2_
 
 Reading:
 - **The planes differ as much as each plane varies.** Plane-to-plane differences (3–4.5 % rms) are as large as each plane's own non-uniformity (2.4–4.4 %), and the correlation between planes is weak (0.2–0.4).
-- **The structure follows each plane's wires:** stripes along the U wire direction on U, along the V wire direction on V, and at constant z (vertical) on Y. That is channel- or wire-level response, different on each plane by construction. The large-scale (45 cm smoothed) parts are also only weakly correlated (0.25–0.5).
+- **The structure follows each plane's wires:** stripes along the U wire direction on U, at constant z (vertical) on Y, and on V both along the V wire direction and at constant z (variance fractions 0.16–0.17 vs 0.20–0.23; deck slide 10). That is channel- or wire-level response, different on each plane by construction. The large-scale (45 cm smoothed) parts are also only weakly correlated (0.25–0.5).
 - **Shared features:** the z ≈ 250 cm line (the middle of the wire planes) and the corners and edges.
 - **Y map for all planes:** it does nothing for U and V. Their residual rms gets slightly worse (East U 3.8 → 3.9 %, V 4.3 → 4.5 %).
 - **Plane-average map for all planes:** it removes about a third of each plane's non-uniformity and gives Y about 2 % rms of non-uniformity it does not have.
 - **Conclusion:** one factor per depo cannot reproduce the per-plane maps. Doing it right needs the factor per (plane, depo).
 
 Implementation note: `DepoTransform` (`gen/src/DepoTransform.cxx:212`) already calls a virtual `modify_depo(WirePlaneId, depo)` for every plane before the depo enters that plane's `BinnedDiffusion` (the default returns the depo unchanged). A subclass that scales the charge by the plane's map gives per-plane scaling with no extra simulation cost. The ICARUS approach (master: `YZMap` + `Scaler` + `DepoSetScaler`, 360 per-plane pipelines) copies the depos for each plane instead.
+
+### Summary deck of the map file (2026-11-24)
+
+`docs/46-yz-map-file-summary.pdf` (18 slides; source `.tex`; figures and numbers from `scripts/make_deck_figs.py <map.root> docs/deck-figs`, numbers in `docs/deck-figs/deck_numbers.json`): the file and its variables, coverage, how the map is used, the non-uniformity maps, numbers, profiles, stripes, edges, plane-to-plane, the overall data dQ/dx scale, the validation and the questions for the author.
+
+- **Overall data scale (data only; the file has no MC):** pixel-median dQ/dx East/West U 1160/1175, V 1164/1156, Y 1121/1121 ADC/cm. Y is 3–4.6 % below U and V; West vs East +1.4 % (U), −0.7 % (V), 0.0 % (Y). The 1D peak of Y is 4.9–5.3 % below U and V.
+- **Data vs MC:** open. It needs an MC version of the same histograms (owner's choice: data side only for now).
+- **Questions for the author:** the unit of the 2D maps, the meaning of "200usEast80usWest", what the `_0`/`_1` index of `dqdxHist` is, an MC version, the outer-10 cm pixels, the event selection and run range, and `zydqdx`.
 
 ## 2. Implementation (owner's choice 2026-11-13: per plane, inside DepoTransform)
 
@@ -63,7 +71,7 @@ WCT branch `sbnd-yz-depo-scaling` from master 7710c43b, worktree `/exp/sbnd/app/
   - Range 0.42–1.68.
 - **Note on map pixels (owner's choice: empty → 1, keep the rest):**
   - Pixels without data (C = 0: East V 52, East Y 80; mostly a V dead-channel diagonal and a Y dead-wire column) get factor 1, i.e. no YZ effect there. Dead channels themselves are the channel-status database's job, not the map's.
-  - All other pixels are used as measured, including edge and corner pixels with few hits, where C reaches 1.9–2.4 (factor 0.42–0.5 before normalization). Low-hit pixels (< 100 hits): East U 9, V 64, Y 6; West none.
+  - All other pixels are used as measured, including the edge and corner pixels where C reaches 1.7–2.4 (factor 0.42–0.6 before normalization). These are not low-statistics pixels: the 11–15 pixels per plane with C > 1.3 all lie in the outer 10 cm and have a median of 870–1,210 hits (correction 2026-11-24, deck slide 11). Low-hit pixels (< 100 hits: East U 9, V 64, Y 6; West none) have C 0.60–1.40; 53 of the 64 on East V touch the empty V diagonal.
   - If those edges look wrong in the sim, the converter is the place to cap or fill them.
 - **jsonnet:**
   - `common/sim/nodes.jsonnet`: new `make_depotransform_yz`.
@@ -124,6 +132,17 @@ WCT branch `sbnd-yz-depo-scaling` from master 7710c43b, worktree `/exp/sbnd/app/
 - **Induction:** 2–3.5 % rms, with a tail of outliers. Each run adds its own noise, and for a single muon the induction SP charge per channel is small and sensitive to ROI decisions. The 5–95 % band is still within ±2.6 %.
 - **Lower correlation on West U** (0.65): the map varies little there (2.3 % rms), so the noise matters more.
 
+### Rebase on master f604f815 (2026-11-24)
+
+- `sbnd-yz-depo-scaling` rebased from 7710c43b onto `origin/master` f604f815 (26 commits). No conflicts: upstream touched none of our files, and `git range-diff` shows the 3 patches unchanged.
+  - New SHAs: 52062c35 (gen), da7e57f1 (yzmap jsonnet), 31bc3e79 (5638 channels). The old tip is kept as local branch `sbnd-yz-depo-scaling-pre-rebase` (ca017a4d). The fork branch was force-pushed to 31bc3e79 (owner, 2026-11-24).
+- **Build:** incremental install to `opt-yz`, no warnings. `WIRECELL_VERSION` in `opt-yz` still says 7710c43b, because it is stamped at configure time.
+- **Doctests:** YZ 5/5 cases, 412 assertions. Whole `wcdoctest-gen`: 28/28 cases, 1,237 assertions.
+- **ABI against opt's larwirecell:** every WireCell symbol that `libWireCellLarsoft`, the WCLS tool and module, AIML and QLMatch leave undefined is defined in `opt-yz` (0 missing; `logs/rebase-abi-check.log`).
+- **Long muons:** the same `g4.root`, outputs in `mu-test/rebase-20261124/`. Nominal 4:55 and yzmap 4:56 wall, 1.9 GB peak RSS.
+  - The per-channel comparison (`compare_detsim.tsv`) is byte-identical to the 2026-11-13 one, so the table above holds unchanged.
+  - Figures: `figs/detsim_scaling_rebase.{png,json}`.
+
 ## Existing WCT pieces (master 7710c43b)
 
 - `IYZMap` / `YZMap` (gen): service. JSON `{anode_name: {plane: [[z][y]]}}`, uniform binning (`bin_width` z, `bin_height` y, offsets, nbins). Its out-of-range clamp goes to `nbins` instead of `nbins − 1`, so an edge depo reads one past the end.
@@ -135,3 +154,4 @@ WCT branch `sbnd-yz-depo-scaling` from master 7710c43b, worktree `/exp/sbnd/app/
 
 - 2026-11-12: issue opened; the map read and the planes compared (section 1).
 - 2026-11-13: per plane in DepoTransform (owner); DepoTransformYZ, YZMap fix, doctest (fails before the fix, passes after), converter, jsonnet; app area at its 60 GiB quota stopped the build, so `wct-pr543/build` and `opt-pr543` were deleted (owner); muon sample made; detsim nominal vs yzmap on the opt-yz libraries (LD_PRELOAD): the per-channel SP charge ratio follows each plane's map (median ≤ 0.13 %, Y rms ≤ 0.75 %, induction 2–3.5 %).
+- 2026-11-24: rebased on master f604f815, no conflicts, patches unchanged; rebuild, doctests 5/5 and 28/28, ABI check vs opt larwirecell clean, long-muon comparison byte-identical to 2026-11-13. Summary deck of the map file: `docs/46-yz-map-file-summary.pdf` (section 1); corrections: the high-C edge pixels are not low-hit, V stripes also at constant z, `dqdxHist` index is not the TPC.
