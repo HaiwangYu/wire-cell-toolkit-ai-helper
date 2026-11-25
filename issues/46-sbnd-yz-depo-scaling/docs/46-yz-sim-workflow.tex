@@ -1,17 +1,18 @@
 % ai-helper issue #46: the per-plane YZ-scaling simulation workflow for SBND
-% (hand-off to the SBND calibration / YZ-map author).  FIRST-STAGE DRAFT: the
-% workflow only; the 10-event BNB CV-like results are placeholders.
-% Sources: ../yz-sim-kit/README.md (mtime 2026-11-24 23:34:09 -0600; sections 8
-%   and 10 still had placeholders), the kit scripts/fcl/jsonnet,
-%   ../46-sbnd-yz-depo-scaling.md (sections 1-3), WCT branch
-%   sbnd-yz-depo-scaling (gen/src/DepoTransformYZ.cxx), and the kit-validation
-%   outputs in /exp/sbnd/data/users/yuhw/YZ-non-uniformity/kit-validation.
+% (hand-off to the SBND calibration / YZ-map author): workflow + first results.
+% Sources: ../yz-sim-kit/README.md (mtime 2026-11-25 00:22:12 -0600), the kit
+%   scripts/fcl/jsonnet, ../46-sbnd-yz-depo-scaling.md (sections 1-4), WCT branch
+%   sbnd-yz-depo-scaling (gen/src/DepoTransformYZ.cxx), and the outputs in
+%   /exp/sbnd/data/users/yuhw/YZ-non-uniformity/: kit-validation/ (long muons:
+%   config-check, check/, analysis/) and bnb-cv-10-test/ (resources.json, check/,
+%   analysis/dqdx_summary.json and figs/).
+% Figures in workflow-figs/ are copies of those figs (yzcheck cropped to dnnsp).
 % Style: same preamble as 46-yz-map-file-summary.tex.
 % Build (twice): pdflatex 46-yz-sim-workflow.tex
 \documentclass[aspectratio=169,10pt]{beamer}
 \usetheme{default}
 \setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{footline}{\hfill\scriptsize\color{gray}ai-helper \#46 \quad DRAFT \quad \insertframenumber/\inserttotalframenumber\hspace*{4mm}\vspace*{2mm}}
+\setbeamertemplate{footline}{\hfill\scriptsize\color{gray}ai-helper \#46 \quad \insertframenumber/\inserttotalframenumber\hspace*{4mm}\vspace*{2mm}}
 \setbeamertemplate{itemize items}{\textbullet}
 \setbeamertemplate{itemize subitem}{--}
 \setbeamerfont{frametitle}{size=\large,series=\bfseries}
@@ -26,7 +27,7 @@
 \usepackage{listings}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric}
-\graphicspath{{deck-figs/}{../figs/}{workflow-figs/}}
+\graphicspath{{workflow-figs/}{deck-figs/}{../figs/}}
 \definecolor{open}{HTML}{B5470B}
 \definecolor{yz}{HTML}{C0392B}
 \definecolor{boxbg}{HTML}{F2F2F2}
@@ -50,13 +51,8 @@
 \lstdefinestyle{diff}{moredelim=**[is][\color{yz}]{@+}{+@},
   moredelim=**[is][\color{gray}]{@-}{-@}}
 
-% placeholder box
-\newcommand{\placeholder}[1]{%
-  \begin{center}\fcolorbox{open}{todo}{\parbox{0.92\textwidth}{\centering\vspace{2mm}%
-  \open{To be filled after the 10-event run.}\\[1mm]\small #1\vspace{2mm}}}\end{center}}
-
 \title{Per-plane YZ scaling in the SBND Wire-Cell simulation:\\workflow and how to run it}
-\subtitle{DRAFT, first stage: the workflow. Results to follow.}
+\subtitle{With first results: 10 long muons and 10 BNB CV-like events}
 \author{ai-helper issue \#46}
 \date{2026-11-25}
 
@@ -90,7 +86,7 @@ WCT branch \code{sbnd-yz-depo-scaling}. Companion deck on the map file:
 \textbf{What does not change}
 \begin{itemize}
 \item SimChannels (true electrons): written before the scaling, the same in both modes.
-\item Simulation cost: the same depo goes to all planes, only its charge changes. No extra cost expected (long-muon test: 4:55 vs 4:56 wall).
+\item Simulation cost: the same depo goes to all planes, only its charge changes. Measured: \code{simtpc2d} 129.3 vs 129.6\,s per BNB event (off vs on).
 \end{itemize}
 \end{column}
 \begin{column}{0.48\textwidth}
@@ -239,10 +235,10 @@ Wrappers \code{detsim\_sbnd\_yz\_off.fcl} and \code{detsim\_sbnd\_yz\_on.fcl} in
 \end{itemize}
 \end{column}
 \begin{column}{0.5\textwidth}
-\textbf{Kit validation run, 2026-11-24} (\code{kit-validation/config-check})
+\textbf{Result} (README section 10, \code{kit-validation/config-check})
 \begin{itemize}
-\item stock and off: 660,931 bytes each, same sha256 (\code{b3ba9294dc9d43c5...}).
-\item on: 661,293 bytes. The diff is 54 lines: the \code{YZMap} block, \code{yzmap: "YZMap:sbnd-yz"} and \code{yzmap\_key: ""} in \code{depotransformyz-apa0/apa1}, and the graph node names.
+\item stock and off: byte-identical JSON, 660,931 bytes (sha256 \code{b3ba9294dc9d43c5...}).
+\item on: the two \code{DepoTransform} become \code{DepoTransformYZ} with the same data plus \code{yzmap}, \code{yzmap\_key: ""} (= the anode name); a new \code{YZMap:sbnd-yz}; graph edges renamed. Nothing else changes.
 \end{itemize}
 \end{column}
 \end{columns}
@@ -362,8 +358,8 @@ The two modes can run at the same time, but in different directories: two art jo
 \toprule
 sample & file & how it was made \\
 \midrule
-BNB CV-like (10+ events) & \code{/exp/sbnd/data/users/yuhw/}\newline\code{YZ-non-uniformity/bnb-cv-10/g4.root}\newline\open{in production; not there yet on 2026-11-25} &
-GENIE BNB $\nu$ + CORSIKA cosmics, rockbox: {\scriptsize\code{prodgenie\_corsika\_proton\_rockbox0p1\_sbnd.fcl}}, 70 generated (the rockbox filter keeps $\sim$20\,\%), then \code{standard\_g4\_rockbox\_sbnd.fcl}. The detsim tests use the first 10. \\
+BNB CV-like (24 events, 1.6\,GB) & \code{/exp/sbnd/data/users/yuhw/}\newline\code{YZ-non-uniformity/bnb-cv-10/g4.root}\newline(recipe: \code{make-g4.sh}, \code{README.md} there) &
+GENIE BNB $\nu$ + CORSIKA cosmics, rockbox: {\scriptsize\code{prodgenie\_corsika\_proton\_rockbox0p1\_sbnd.fcl}}, 70 generated, 24 kept by the rockbox filter, then \code{standard\_g4\_rockbox\_sbnd.fcl}. The detsim tests use the first 10. \\
 \addlinespace
 long muons (10 events) & \code{/exp/sbnd/data/users/yuhw/}\newline\code{YZ-non-uniformity/mu-test/g4.root} &
 5\,GeV $\mu^-$, start at z = $-$5\,cm, x over $\pm$180\,cm, y over $\pm$120\,cm, along +z ($\pm$20$^\circ$ in YZ, $\pm$3$^\circ$ in XZ), then \code{standard\_g4\_sbnd.fcl}. \\
@@ -373,7 +369,7 @@ long muons (10 events) & \code{/exp/sbnd/data/users/yuhw/}\newline\code{YZ-non-u
 \vspace{2mm}
 \begin{itemize}
 \item Long muons: cross many YZ pixels on all planes, good for the per-channel check.
-\item BNB CV-like: the planned dQ/dx and resource test (placeholders at the end).
+\item BNB CV-like: the dQ/dx and cost test (slides 13--18), on the first 10 events.
 \end{itemize}
 \end{frame}
 
@@ -425,115 +421,265 @@ label & type & what \\
 
 % ---------------------------------------------------------------- 11
 \begin{frame}{Check that it worked: \code{check\_yz\_scaling.py}}
-\small
+\footnotesize
 \begin{columns}[T]
-\begin{column}{0.52\textwidth}
+\begin{column}{0.48\textwidth}
 Inputs: the off and on detsim files of the \emph{same} g4 events, and the map. About 1 minute for 10 events; PyROOT; no \code{LD\_PRELOAD}.
 \vspace{1mm}
 
 Per channel with $\ge$20,000 SimChannel electrons and SP charge in both files:
 \begin{itemize}
 \item \textbf{predicted} = map value of the channel's plane and TPC at its SimChannel deposits (y, z), weighted by electrons;
-\item \textbf{measured} = channel's SP charge (all ROIs), on / off.
+\item \textbf{measured} = the channel's SP charge (all ROIs), on / off.
 \end{itemize}
-Per plane and TPC, for \code{dnnsp} and \code{gauss}: channels, rms of predicted, median and rms of measured/predicted $-$ 1, its 5--95\,\% range, correlation, plane totals.
+Per plane and TPC, for \code{dnnsp} and \code{gauss}: channels, rms of predicted, median, rms and \textbf{robust rms} (1.4826 $\times$ MAD) of measured/predicted $-$ 1, channels off by $>$5\,\%, 5--95\,\% range, correlation (also without the $>$5\,\% channels), plane totals.
 Output: table on stdout, \code{yzcheck.json}, \code{yzcheck.png}, \code{yzcheck\_<product>.tsv}.
 \end{column}
-\begin{column}{0.45\textwidth}
-\textbf{What to expect} (README, long muons)
+\begin{column}{0.5\textwidth}
+\textbf{What to expect} (README section 7; this kit, 10 long muons)
 \begin{itemize}
-\item Median of measured/predicted $-$ 1 within about $\pm$0.3\,\% on every plane.
-\item Collection: rms $\sim$0.5--1\,\%, correlation $>$0.9.
-\item Induction: noisier per channel (a few \% rms), but follows the map on average.
+\item \code{dnnsp}: median within $\pm$0.02\,\%; rms 0.7\,\% on Y, 1.1--1.2\,\% on U and V; correlation 0.89--0.96; plane totals agree to $\le$0.06\,\%.
+\item \code{gauss}: Y as \code{dnnsp}; U and V noisier (rms 1.9--3.9\,\%, correlation 0.66--0.78).
 \item ``on = off'' (ratio 1 everywhere, correlation $\sim$0): the scaling did not run.
 \end{itemize}
-\vspace{2mm}
-\textbf{Script cross-check} (kit validation, 2026-11-24): on the earlier toolkit-config long-muon files (next slide) it reproduces the doc-section-3 numbers (18,489 channels; East U median $-$0.01\,\%, corr 0.83; East Y corr 0.93).
+\vspace{1mm}
+\textbf{New note (README section 7): neutrino events with cosmics}
+\begin{itemize}
+\item A few channels near threshold get a different ROI in the on and off runs; their ratio is off by tens of \%.
+\item They dominate the plain rms and correlation (BNB test, Y: rms 7--14\,\%, corr 0.1--0.3). Use the robust rms and the correlation without the $>$5\,\% channels.
+\item Your numbers will not be exactly these: the noise realization differs between on and off.
+\end{itemize}
 \end{column}
 \end{columns}
 \end{frame}
 
 % ---------------------------------------------------------------- 12
-\begin{frame}{Validation so far}
+\begin{frame}{Validation: 10 long muons through the kit (README section 10)}
 \footnotesize
-\textbf{Earlier test, toolkit configuration} (doc section 3, 2026-11-13, rebase check 2026-11-24): 10 long muons, detsim nominal vs yzmap, same opt-yz build, TPC only, traditional ROI (the toolkit jsonnet has no DNN ROI). Measured = SP \code{gauss} charge ratio; 18,489 channel-events used.
+Standard sbndcode detsim with DNN ROI, \code{mu-test/g4.root}; 18,504 channel-events used ($\ge$20,000 electrons, charge in both).
 \vspace{1mm}
 \begin{columns}[T]
-\begin{column}{0.53\textwidth}
-\centering\setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}lrrrrr@{}}
+\begin{column}{0.5\textwidth}
+\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\textbf{\code{simtpc2d:dnnsp}}, measured/predicted $-$ 1\\[0.5mm]
+\begin{tabular}{@{}lrrrrrr@{}}
 \toprule
- & chan. & pred. rms & meas/pred $-$1 & rms & corr \\
- & & & median & & \\
+ & chan. & pred.\ rms & median & rms & corr & total \\
+ & & & & & & meas/pred \\
 \midrule
-East U & 4150 & 3.5\,\% & $-$0.01\,\% & 2.2\,\% & 0.83 \\
-East V & 6298 & 3.8\,\% & $-$0.13\,\% & 3.0\,\% & 0.74 \\
-East Y & 2404 & 1.9\,\% & +0.00\,\% & 0.75\,\% & 0.93 \\
-West U & 2228 & 2.3\,\% & $-$0.01\,\% & 2.6\,\% & 0.65 \\
-West V & 2274 & 4.4\,\% & $-$0.10\,\% & 3.5\,\% & 0.73 \\
-West Y & 1135 & 1.8\,\% & +0.01\,\% & 0.49\,\% & 0.96 \\
+East U & 4150 & 3.5\,\% & $-$0.00\,\% & 1.14\,\% & 0.95 & 0.9999 \\
+East V & 6313 & 3.8\,\% & $-$0.02\,\% & 1.17\,\% & 0.96 & 0.9999 \\
+East Y & 2404 & 1.9\,\% & +0.00\,\% & 0.66\,\% & 0.94 & 1.0000 \\
+West U & 2228 & 2.3\,\% & $-$0.02\,\% & 1.13\,\% & 0.89 & 0.9994 \\
+West V & 2274 & 4.4\,\% & +0.01\,\% & 1.23\,\% & 0.96 & 0.9999 \\
+West Y & 1135 & 1.8\,\% & $-$0.01\,\% & 0.68\,\% & 0.93 & 0.9997 \\
 \bottomrule
 \end{tabular}
-\raggedright
+\raggedright\footnotesize
 \begin{itemize}
-\item Each plane follows its own map: median $\le$0.13\,\%; plane totals within 0.3\,\%.
-\item Doctest: 5/5 cases, 412 assertions (per-plane ratios equal within $10^{-4}$; unit map = \code{DepoTransform}).
+\item \code{gauss}: Y the same (DNN ROI is not used on Y); U, V rms 1.9--3.9\,\%, corr 0.66--0.78.
+\item U, V with DNN ROI: 2--3$\times$ tighter than the older toolkit-config test (\code{gauss} 2.2--3.5\,\%, corr 0.65--0.83): DNN ROI gives the same ROIs in on and off more often.
+\item Also checked: config identity (slide 5), every Wire-Cell library loaded once from the branch, route B, \code{-{}-map}.
 \end{itemize}
 \end{column}
-\begin{column}{0.45\textwidth}
+\begin{column}{0.48\textwidth}
 \centering
-\includegraphics[width=\textwidth]{detsim_scaling_rebase.png}\\[1mm]
-\raggedright
-\textbf{Kit test, sbndcode configuration} (DNN ROI, full detsim):
-\begin{itemize}
-\item config identity: done (slide 5).
-\item 10 long muons, on vs off, \code{check\_yz\_scaling.py}: \open{running; README section 10 not filled yet.}
-\end{itemize}
+\includegraphics[width=\textwidth]{mu_yzcheck_dnnsp.png}\\
+\scriptsize Per channel: measured on/off vs the map at the SimChannel deposits (top); measured/predicted $-$ 1 (bottom).
 \end{column}
 \end{columns}
 \end{frame}
 
 % ---------------------------------------------------------------- 13
-\begin{frame}{Placeholder: deconvolved dQ/dx, 10-event BNB CV-like test}
-\placeholder{Truth-track SP dQ/dx per plane (U, V, Y) and TPC, on vs off; ratio vs the map.}
-\small
-\textbf{Planned method}
+\begin{frame}{BNB CV-like test: per-channel check}
+\footnotesize
+First 10 events of \code{bnb-cv-10/g4.root} (GENIE BNB + CORSIKA), detsim + reco1, off and on. 55,780 of 74,147 channel-events used (\code{dnnsp}).
+\vspace{1mm}
+\begin{columns}[T]
+\begin{column}{0.53\textwidth}
+\centering\scriptsize\setlength{\tabcolsep}{2pt}
+\textbf{\code{simtpc2d:dnnsp}}, measured/predicted $-$ 1\\[0.5mm]
+\begin{tabular}{@{}lrrrrrrr@{}}
+\toprule
+ & chan. & median & rms & robust & $>$5\,\% & corr & corr w/o \\
+ & & & & rms & & & $>$5\,\% \\
+\midrule
+East U & 9184 & $-$0.00\,\% & 2.65\,\% & 0.70\,\% & 216 & 0.79 & 0.96 \\
+East V & 9521 & +0.00\,\% & 2.62\,\% & 0.81\,\% & 229 & 0.82 & 0.95 \\
+East Y & 7593 & +0.00\,\% & 7.44\,\% & 0.15\,\% & 17 & 0.31 & 0.99 \\
+West U & 10218 & +0.00\,\% & 2.20\,\% & 0.59\,\% & 190 & 0.66 & 0.90 \\
+West V & 10936 & $-$0.01\,\% & 2.52\,\% & 0.82\,\% & 228 & 0.82 & 0.96 \\
+West Y & 8328 & +0.00\,\% & 13.79\,\% & 0.15\,\% & 7 & 0.13 & 0.98 \\
+\bottomrule
+\end{tabular}
+\raggedright\footnotesize
 \begin{itemize}
-\item Input: \code{bnb-cv-10/g4.root}, first 10 events, detsim on and off (same g4, same libraries).
-\item Truth-track SP dQ/dx, per wire and per plane: SP charge (\code{simtpc2d:dnnsp}) in a window around the true track on that wire, divided by the track's 3D length seen by that wire. As in the dQ/dx data/MC note of \code{Ningclover/sbnd-wirecell-bdt} (\code{docs/dqdx\_data\_mc.md}).
-\item Because both modes start from the same depos and SimChannels, on/off per wire isolates the YZ scaling.
-\item To show: on/off ratio vs y and z per plane, and vs the map's $g$ at the track position; the 1D dQ/dx per plane, on and off.
+\item Median $\le$0.01\,\%; plane totals agree with the prediction to $\le$0.05\,\%.
+\item Robust rms: Y 0.15\,\%, U and V 0.6--0.8\,\%; correlation 0.90--0.99 without the $>$5\,\% channels.
+\item The plain Y rms of 7--14\,\% comes from 24 near-threshold channel-events (17 East, 7 West) whose ROI changes between the two noise realizations.
+\item \code{gauss}: the same on Y; U, V robust rms 0.6--0.9\,\%.
 \end{itemize}
+\end{column}
+\begin{column}{0.45\textwidth}
+\centering
+\includegraphics[width=\textwidth]{bnb_yzcheck_dnnsp.png}\\
+\scriptsize \code{dnnsp}: measured on/off vs predicted (top), measured/predicted $-$ 1 (bottom). The outliers are the near-threshold channels.
+\end{column}
+\end{columns}
 \end{frame}
 
 % ---------------------------------------------------------------- 14
-\begin{frame}{Placeholder: fitted dQ/dx after the full Wire-Cell reconstruction}
-\placeholder{Fitted dQ/dx from Wire-Cell TrackFitting, on vs off, same 10 events.}
-\small
-\textbf{Planned method}
+\begin{frame}{Truth-track SP dQ/dx: method and per-track result}
+\footnotesize
+\begin{columns}[T]
+\begin{column}{0.45\textwidth}
+\textbf{Method} (BNB test, \code{dnnsp}; \code{gauss} the same within 0.05\,\%)
 \begin{itemize}
-\item Run the standard Wire-Cell reco on both detsim outputs: step 1 (imaging, clustering, Q/L matching), step 2 (pattern recognition and track fitting).
-\item Take the fitted dQ/dx per track point from Wire-Cell \code{TrackFitting}; compare on vs off for matched tracks, vs y and z.
-\item Question this answers: how much of the per-plane YZ structure survives in the fitted dQ/dx that analyses use.
+\item True trajectories, shifted by the space charge, in 0.5\,mm steps, projected to wire and tick per plane. Fitted offset $-$1.90 to $-$1.95 ticks, half-68 0.2--0.6 ticks. Finding: the G4 SCE x shift is $x + H_x$ in both TPCs.
+\item Per wire: SP charge in $\pm$10 ticks around the track (holds 99.6--100\,\% of the charge), divided by the 3D length on that wire.
+\item Cuts as in Ningclover's \code{docs/dqdx\_data\_mc.md}, plus purity $\ge$0.8, $\ge$20 wires, muons $\ge$30\,cm.
+\item Expected = the map $g$ applied to the off wires.
 \end{itemize}
+\end{column}
+\begin{column}{0.53\textwidth}
+\centering
+\includegraphics[width=\textwidth]{truth_sp_track_ratio_dnnsp.png}\\
+\scriptsize Per track: on/off vs expected. The V and Y panels include 2 protons; the table below is muons only.
+\end{column}
+\end{columns}
+\vspace{2mm}
+\centering\scriptsize
+\textbf{Muon tracks}, per-track median dQ/dx, on / off\\[0.5mm]
+\begin{tabular}{@{}lrccccc@{}}
+\toprule
+plane & tracks & measured on/off (half-68) & expected (half-68) & measured/expected: median, rms & corr & per-wire half-68 \\
+\midrule
+U & 101 & 1.0010 (1.5\,\%) & 1.0009 (1.6\,\%) & 1.0000, 0.53\,\% & 0.97 & 0.84\,\% \\
+V & 101 & 1.0015 (2.8\,\%) & 1.0037 (2.7\,\%) & 1.0007, 0.48\,\% & 0.99 & 1.13\,\% \\
+Y & 90 & 1.0008 (0.9\,\%) & 1.0017 (1.0\,\%) & 1.0000, 0.14\,\% & 0.99 & 0.18\,\% \\
+\bottomrule
+\end{tabular}
 \end{frame}
 
 % ---------------------------------------------------------------- 15
-\begin{frame}{Placeholder: computing resources}
-\placeholder{detsim wall time, \code{simtpc2d} module time per event (art TimeTracker), max RSS; on vs off; 10 BNB CV-like events.}
-\small
-\textbf{How}: \code{run-yz-detsim.sh} writes \code{detsim.time} (\code{/usr/bin/time -v}), \code{summary.txt}, \code{timing.db} and \code{memory.db} for each mode.
-\vspace{1mm}
-
-\textbf{Known so far} (not the BNB test)
+\begin{frame}{Truth-track SP dQ/dx per wire: the key result}
+\begin{columns}[T]
+\begin{column}{0.64\textwidth}
+\centering
+\includegraphics[width=\textwidth]{truth_sp_wire_vs_map_dnnsp.png}
+\end{column}
+\begin{column}{0.34\textwidth}
+\footnotesize
 \begin{itemize}
-\item Toolkit configuration, 10 long muons, TPC only: nominal 4:55, yzmap 4:56 wall; 1.9\,GB peak RSS (doc section 3). The scaling costs no measurable time.
-\item Kit (full sbndcode detsim with DNN ROI), 1 long muon incl. start-up: 2:23 wall, 6.1\,GB max RSS (kit smoke test, 2026-11-24).
-\item README: \code{simtpc2d} (Wire-Cell sim + NF + SP + DNN ROI on CPU) is most of the time; one job is single-threaded at the art level; give it $\sim$7\,GB of memory.
+\item Top: per wire, on/off vs the map $g$ at the wire; the medians lie on the diagonal on all three planes.
+\item Middle, bottom: medians along z and y, measured (blue) and map (orange) on the same wires. They follow each other bin by bin.
+\item Per wire, on/off / $g$ $-$ 1: median 0.00\,\% on every plane; half-68 0.84\,\% (U), 1.13\,\% (V), 0.18\,\% (Y).
+\item Long muons: measured/expected rms per track 0.22 / 0.20 / 0.07\,\% (U / V / Y).
+\item Whole-event SP charge on/off per TPC and plane (BNB): 0.9972--1.0043 vs 0.9968--1.0051 expected, within 0.14\,\%.
 \end{itemize}
+\end{column}
+\end{columns}
 \end{frame}
 
 % ---------------------------------------------------------------- 16
+\begin{frame}{Truth-track SP dQ/dx along the tracks, in (z, y)}
+\centering
+\includegraphics[width=0.495\textwidth]{truth_sp_yz_East.png}\hfill
+\includegraphics[width=0.495\textwidth]{truth_sp_yz_West.png}\\[2mm]
+\footnotesize\raggedright East (left) and West (right) TPC. In each: first row measured on/off (running median of 15 wires), second row the map $g$ at the same wires; grey background the plane's map. The measured pattern reproduces the map plane by plane, including the stripes along each plane's wires.
+\end{frame}
+
+% ---------------------------------------------------------------- 16
+\begin{frame}{Fitted dQ/dx after the full Wire-Cell reconstruction}
+\footnotesize
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Method}: Wire-Cell reco (WCLocal2026Nov16 production pass, WCT 0.38.0) on both detsim outputs. \code{TrackFitting} \code{T\_rec\_charge} ($q = 0.1\cdot dQ - 1000$, $nq = dx$), truth-matched tracks. Expectation: the mean of the three planes' $g$.
+\vspace{1mm}
+
+\centering\scriptsize\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+ & BNB, & BNB, & long $\mu$, \\
+ & prod.\ gate & no gate & no gate \\
+\midrule
+tracks compared & 13 (6 $\mu$) & 10 (7 $\mu$) & 5 $\mu$ \\
+$\mu$: on/off, median & 1.0015 & 0.9965 & 1.0085 \\
+$\mu$: expected, median & 0.9995 & 1.0018 & 1.0045 \\
+$\mu$: meas/exp rms & 2.4\,\% & 2.7\,\% & 1.4\,\% \\
+10-cm bins: ratio/$g$, half-68 & 2.5\,\% & 3.5\,\% & 3.9\,\% \\
+\quad map's own half-68 & 1.5\,\% & 1.5\,\% & 1.8\,\% \\
+\quad corr(ratio, $g$) & 0.22 & 0.17 & 0.05 \\
+\bottomrule
+\end{tabular}\\[0.5mm]
+\raggedright BNB, production gate, all 13 tracks: meas/exp rms 4.2\,\%.
+\end{column}
+\begin{column}{0.5\textwidth}
+\centering
+\includegraphics[width=\textwidth]{fit_dqdx.png}\\
+\scriptsize BNB, production pass: per track (top), 10-cm bins and track dQ/dx (bottom).
+\end{column}
+\end{columns}
+\vspace{2mm}
+\textbf{What it means}
+\begin{itemize}
+\item SP follows the map exactly (slides 13--16). At the fit level, with 10 events, the map effect (1.5\,\% rms) is hidden: the reco differs between the on and off runs (segmentation, noise), and that scatter (2.5--3.9\,\% per 10-cm bin) is larger than the effect.
+\item To see it at the fit level: $\sim$100+ events, or on and off with the same noise realization.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 17
+\begin{frame}{Computing cost: 10 BNB CV-like events, off / on}
+\small
+\centering\footnotesize\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}lrrrl@{}}
+\toprule
+job (10 events) & wall & per event & max RSS & slowest modules, s per event \\
+\midrule
+detsim & 23.8 / 23.8\,min & 138.9 / 138.8\,s & 6.80 / 6.82\,GB & \code{simtpc2d} 129.3 / 129.6, \code{opdaq} 9.3 / 8.8 \\
+reco1 & 4.0 / 4.0\,min & 22.8 / 22.8\,s & 4.56 / 4.63\,GB & \code{supera} 10.4, \code{opdecopmt} 3.7, \code{cluster3d} 3.0 \\
+Wire-Cell step 1 & 3:42 / 3:40 & 22 / 22\,s & 1.67 / 1.68\,GB & imaging, clustering, Q/L matching \\
+Wire-Cell step 2 & 0:43 / 0:41 & 4.3 / 4.1\,s & 1.69 / 1.75\,GB & PR + track fit (production gate) \\
+\bottomrule
+\end{tabular}
+\raggedright\small
+\vspace{3mm}
+\begin{itemize}
+\item The YZ scaling changes no cost: \code{simtpc2d} 129.3 vs 129.6\,s per event (BNB), 122.7 vs 122.7\,s (long muons).
+\item \code{simtpc2d} (Wire-Cell sim + NF + SP with both ROI methods, DNN on CPU) is 93\,\% of the detsim time. A job uses about one core; plan $\sim$7\,GB of memory per detsim job.
+\item Long muons (README section 8): detsim 22:18 wall, 131.6 / 132.1\,s per event, 6.39\,GB. Start-up is $\sim$15\,s.
+\item Per-event wall of step 1 and 2 = job wall / 10 (includes start-up). Detsim and reco1 per event: art TimeTracker.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 18
+\begin{frame}{Summary and what to do next (for the map author)}
+\small
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
+\textbf{Summary}
+\begin{itemize}
+\item One toggle in the standard sbndcode v10\_14\_02\_03 detsim; ``off'' is the stock Wire-Cell configuration (byte-identical JSON).
+\item ``on'' scales each depo per plane by that plane's map before diffusion and response. SimChannels unscaled.
+\item SP charge follows the map on every plane: per channel (median $\le$0.02\,\%), per truth track (meas/exp rms 0.14--0.53\,\% on BNB), per event (within 0.14\,\%).
+\item Fitted dQ/dx: not resolved with 10 events (reco differences between runs are larger than 1.5\,\%).
+\item No extra cost: detsim $\sim$139\,s per BNB event, 6.8\,GB.
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{What to do}
+\begin{enumerate}
+\item Run the kit on your own g4 (or ours): \code{run-yz-detsim.sh -{}-yz off} and \code{-{}-yz on}, one directory each (slide 8).
+\item Check it: \code{check\_yz\_scaling.py}; use the robust rms on neutrino events (slide 11).
+\item Feed both outputs to your calibration chain and compare your YZ map from MC on vs off with the data map.
+\item For a new or capped map: \code{convert-yzmap-sbnd.py}, then \code{-{}-map} (slide 6).
+\item Answer the open questions on the map (next slide).
+\end{enumerate}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- 19
 \begin{frame}{Caveats, open questions, contacts}
 \footnotesize
 \begin{columns}[T]
@@ -541,8 +687,9 @@ West Y & 1135 & 1.8\,\% & +0.01\,\% & 0.49\,\% & 0.96 \\
 \textbf{Caveats}
 \begin{itemize}
 \item ``off'' = stock sbndcode configuration on newer Wire-Cell libraries. Compare on vs off from the kit, not on vs a CVMFS sbndcode detsim.
+\item \textbf{Not bit-reproducible:} rerunning an event can give another noise realization (7 runs of one event: two groups, each bit-identical; signal agrees to $10^{-4}$). Likely cause, not proven: the two anode pipelines share one random-number service. Compare distributions, not single channels.
 \item SimChannels are not scaled. Anything that uses SimChannel charge as ``expected reco charge'' sees the map as a reco/true difference.
-\item The map is from data (Run 2, gen2, BNB Light) and keeps all it measured, incl. dead-channel stripes and edge pixels with large corrections (11--15 pixels per plane with $C>1.3$, all in the outer 10\,cm, 870--1,210 hits median). Dead channels in the sim come from the channel status, not the map.
+\item The map is from data (Run 2, gen2, BNB Light) and keeps all it measured, incl.\ dead-channel stripes and edge pixels with large corrections (outer 10\,cm). Dead channels in the sim come from the channel status.
 \item The kit depends on our read-only install (route A); route B makes you independent.
 \end{itemize}
 \end{column}
