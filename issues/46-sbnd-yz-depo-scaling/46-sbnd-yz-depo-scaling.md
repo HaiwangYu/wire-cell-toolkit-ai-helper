@@ -54,6 +54,7 @@ WCT branch `sbnd-yz-depo-scaling` from master 7710c43b, worktree `/exp/sbnd/app/
 | 26590c9e | `gen: DepoTransformYZ` + `YZMap` edge-clamp fix + doctest + converter |
 | 6450d7ed | `cfg sbnd: wcls-sim-drift-depoflux-nf-sp-yzmap.jsonnet` |
 | ca017a4d | `cfg sbnd: wcls-sim-drift-depoflux-nf-sp` ChannelSelector 5632 → 5638 |
+| 6fdb9371 | `cfg sbnd: wcls-nf-sp` and `wcls-sim-drift-simchannel-nf-sp` ChannelSelector 5632 → 5638 (after the rebase; the three above are now 52062c35, da7e57f1, 31bc3e79) |
 
 - **`Gen::DepoTransformYZ`** (`gen/{inc,src}/…DepoTransformYZ…`): a `DepoTransform` that overrides `modify_depo(WirePlaneId, depo)`. The hook runs for every depo and every plane before the depo enters that plane's `BinnedDiffusion`, so each plane gets its own factor at no extra cost.
   - Config: the `DepoTransform` keys plus `yzmap` (an `IYZMap` type:name, required) and `yzmap_key` (default: the `anode` type:name, the YZMap file convention).
@@ -79,7 +80,7 @@ WCT branch `sbnd-yz-depo-scaling` from master 7710c43b, worktree `/exp/sbnd/app/
   - New top-level `sbnd/wcls-sim-drift-depoflux-nf-sp-yzmap.jsonnet`: the toolkit's `wcls-sim-drift-depoflux-nf-sp.jsonnet` plus the YZMap service.
 - **Two things about the toolkit copy of that jsonnet:**
   - It is older than sbndcode's (`sbndcode/WireCell/cfg`): it has no DNN ROI, no `tick0_time` SimChannel window, and a different `reference_time`. The test fcls therefore use the traditional-ROI `sbnd_wcls_simsp` with the outputers `postdrift`, `simdigits` and `spsaver`.
-  - Its ChannelSelector used 5632 channels per anode, but the v0206 wires have 5638. The last 6 East collection channels went to the West NF/SP, and the last 12 West ones went nowhere. This is fixed in both files (sbndcode already uses 5638). `wcls-nf-sp.jsonnet` and `wcls-sim-drift-simchannel-nf-sp.jsonnet` still have 5632.
+  - Its ChannelSelector used 5632 channels per anode, but the v0206 wires have 5638. The last 6 East collection channels went to the West NF/SP, and the last 12 West ones went nowhere. This is fixed in both files (sbndcode already uses 5638). `wcls-nf-sp.jsonnet` and `wcls-sim-drift-simchannel-nf-sp.jsonnet` are fixed too (6fdb9371, 2026-11-24); no SBND cfg in the toolkit uses 5632 now. sbndcode uses 5638 everywhere except the unused selector in `wcls-sim-drift-depoflux-nf-sp-samples_tru.jsonnet` (dead code). The Nov16 production ran none of the 5632 configs: step 1 (`img.jsonnet`) uses 5638 since toolkit 32852232 (2026-04-25).
 
 ## 3. Validation
 
@@ -156,3 +157,4 @@ WCT branch `sbnd-yz-depo-scaling` from master 7710c43b, worktree `/exp/sbnd/app/
 - 2026-11-13: per plane in DepoTransform (owner); DepoTransformYZ, YZMap fix, doctest (fails before the fix, passes after), converter, jsonnet; app area at its 60 GiB quota stopped the build, so `wct-pr543/build` and `opt-pr543` were deleted (owner); muon sample made; detsim nominal vs yzmap on the opt-yz libraries (LD_PRELOAD): the per-channel SP charge ratio follows each plane's map (median ≤ 0.13 %, Y rms ≤ 0.75 %, induction 2–3.5 %).
 - 2026-11-24: rebased on master f604f815, no conflicts, patches unchanged; rebuild, doctests 5/5 and 28/28, ABI check vs opt larwirecell clean, long-muon comparison byte-identical to 2026-11-13. Summary deck of the map file: `docs/46-yz-map-file-summary.pdf` (section 1); corrections: the high-C edge pixels are not low-hit, V stripes also at constant z, `dqdxHist` index is not the TPC.
 - 2026-11-24: map committed to WireCell/wire-cell-data master (acbe8e5, owner's go); regenerated from the ROOT file, JSON identical.
+- 2026-11-24: the other two toolkit SBND jsonnets with 5632 fixed on the branch (6fdb9371, pushed to the fork); wcsonnet: chsel0 0–5637, chsel1 5638–11275.
