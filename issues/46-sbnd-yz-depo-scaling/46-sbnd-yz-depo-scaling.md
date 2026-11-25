@@ -66,7 +66,7 @@ WCT branch `sbnd-yz-depo-scaling` from master 7710c43b, worktree `/exp/sbnd/app/
   - factor 1/C. `inv-norm` (the default) scales it to mean 1 over the pixels with data, per plane and TPC; `inv` leaves it as is.
   - Output keys: `AnodePlane:apa0` = TPC 0 = East (x < 0), `AnodePlane:apa1` = West.
   - It prints the matching `YZMap` binning.
-- **Map file:** `wire-cell-data/sbnd/sbnd-yzmap-run2-gen2-bnblight-v1.json.bz2` (80 KB, `inv-norm`, not committed to wire-cell-data yet). YZMap binning: nbinsz 100, nbinsy 80, 5 cm × 5 cm, zoffset 0, yoffset 200 cm.
+- **Map file:** `wire-cell-data/sbnd/sbnd-yzmap-run2-gen2-bnblight-v1.json.bz2` (80 KB, `inv-norm`; committed to WireCell/wire-cell-data master acbe8e5, 2026-11-24; it reproduces byte-identically from the ROOT file with the converter). YZMap binning: nbinsz 100, nbinsy 80, 5 cm × 5 cm, zoffset 0, yoffset 200 cm.
   - Factor rms per plane: East U 3.8 %, V 4.6 %, Y 2.7 %; West 2.6 %, 4.4 %, 2.4 %.
   - Range 0.42–1.68.
 - **Note on map pixels (owner's choice: empty → 1, keep the rest):**
@@ -155,3 +155,4 @@ WCT branch `sbnd-yz-depo-scaling` from master 7710c43b, worktree `/exp/sbnd/app/
 - 2026-11-12: issue opened; the map read and the planes compared (section 1).
 - 2026-11-13: per plane in DepoTransform (owner); DepoTransformYZ, YZMap fix, doctest (fails before the fix, passes after), converter, jsonnet; app area at its 60 GiB quota stopped the build, so `wct-pr543/build` and `opt-pr543` were deleted (owner); muon sample made; detsim nominal vs yzmap on the opt-yz libraries (LD_PRELOAD): the per-channel SP charge ratio follows each plane's map (median ≤ 0.13 %, Y rms ≤ 0.75 %, induction 2–3.5 %).
 - 2026-11-24: rebased on master f604f815, no conflicts, patches unchanged; rebuild, doctests 5/5 and 28/28, ABI check vs opt larwirecell clean, long-muon comparison byte-identical to 2026-11-13. Summary deck of the map file: `docs/46-yz-map-file-summary.pdf` (section 1); corrections: the high-C edge pixels are not low-hit, V stripes also at constant z, `dqdxHist` index is not the TPC.
+- 2026-11-24: map committed to WireCell/wire-cell-data master (acbe8e5, owner's go); regenerated from the ROOT file, JSON identical.
