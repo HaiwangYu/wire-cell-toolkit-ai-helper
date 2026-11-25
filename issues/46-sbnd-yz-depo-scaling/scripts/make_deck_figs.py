@@ -257,24 +257,27 @@ fig.colorbar(im, ax=ax, label="hits per pixel", shrink=0.9)
 save(fig, "fig_nhits.png")
 plt.rcParams.update(SMALL)
 
-# 2) the three variables, one example (East Y)
-t, p = 0, 2
-fig, ax = plt.subplots(1, 3, figsize=(14, 4.6), sharey=True, constrained_layout=True)
-zz_ = np.where(C[t, p] > 0, Z[t, p], np.nan)
-im = ax[0].imshow(zz_.T, origin="lower", extent=EXT, aspect="auto", cmap=SEQ, vmin=1000, vmax=1250)
-fig.colorbar(im, ax=ax[0], label="median dQ/dx [ADC/cm]", location="bottom", shrink=0.9)
-ax[0].set_title("zy_2_0: median dQ/dx")
-im = ax[1].imshow(np.where(C[t, p] > 0, C[t, p], np.nan).T, origin="lower", extent=EXT, aspect="auto",
-                  cmap=DIV, vmin=0.85, vmax=1.15)
-fig.colorbar(im, ax=ax[1], label="C", location="bottom", shrink=0.9)
-ax[1].set_title("CzyHist_2_0: C")
-im = ax[2].imshow(np.where(C[t, p] > 0, N[t, p], np.nan).T, origin="lower", extent=EXT, aspect="auto",
-                  cmap=SEQ, vmin=0, vmax=2000)
-fig.colorbar(im, ax=ax[2], label="hits", location="bottom", shrink=0.9)
-ax[2].set_title("zynhits_2_0: hits")
-for i, a in enumerate(ax):
-    zylabels(a, i == 0)
-save(fig, "fig_vars_EastY.png")
+# 2) the three variables, for every plane and TPC (fig_vars_<TPC><plane>.png)
+for t in (0, 1):
+    for p in range(3):
+        M = out["per"][f"{TPC[t]} {PL[p]}"]["zy_pixel_median"]
+        fig, ax = plt.subplots(1, 3, figsize=(14, 4.6), sharey=True, constrained_layout=True)
+        zz_ = np.where(C[t, p] > 0, Z[t, p], np.nan)
+        im = ax[0].imshow(zz_.T, origin="lower", extent=EXT, aspect="auto", cmap=SEQ,
+                          vmin=10 * round(0.89 * M / 10), vmax=10 * round(1.115 * M / 10))
+        fig.colorbar(im, ax=ax[0], label="median dQ/dx [ADC/cm]", location="bottom", shrink=0.9)
+        ax[0].set_title(f"zy_{p}_{t}: median dQ/dx")
+        im = ax[1].imshow(np.where(C[t, p] > 0, C[t, p], np.nan).T, origin="lower", extent=EXT, aspect="auto",
+                          cmap=DIV, vmin=0.85, vmax=1.15)
+        fig.colorbar(im, ax=ax[1], label="C", location="bottom", shrink=0.9)
+        ax[1].set_title(f"CzyHist_{p}_{t}: C")
+        im = ax[2].imshow(np.where(C[t, p] > 0, N[t, p], np.nan).T, origin="lower", extent=EXT, aspect="auto",
+                          cmap=SEQ, vmin=0, vmax=2000)
+        fig.colorbar(im, ax=ax[2], label="hits", location="bottom", shrink=0.9)
+        ax[2].set_title(f"zynhits_{p}_{t}: hits")
+        for i, a in enumerate(ax):
+            zylabels(a, i == 0)
+        save(fig, f"fig_vars_{TPC[t]}{PL[p]}.png")
 
 # 3) g_norm maps, 6
 plt.rcParams.update(BIG)

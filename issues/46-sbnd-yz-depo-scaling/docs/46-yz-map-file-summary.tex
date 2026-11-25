@@ -137,15 +137,75 @@ West Y & 7.93\,M & 1012 & 0 & 0 \\
 \end{columns}
 \end{frame}
 
-% ---------------------------------------------------------------- 5
-\begin{frame}{The variables, example East Y}
+% ---------------------------------------------------------------- 5a
+\begin{frame}{The variables, East U (plane 0, TPC 0)}
+\centering
+\includegraphics[width=0.96\textwidth]{fig_vars_EastU.png}
+\raggedright
+\begin{itemize}
+\item For every pixel with data, $\mathtt{zy}\times C = M$, the median of \code{zy} over the pixels of that plane and TPC (checked on all six: equal within $1.2\times10^{-7}$, relative). So $g = 1/C = \mathtt{zy}/M$, the pixel's response relative to the plane median. $C = 0$ (gray) where there is no data.
+\item $M$ = 1160\,ADC/cm. $C$ from 0.85 to 1.92; $g$ (normalized) rms 3.8\,\%.
+\item Hits per pixel: min 20, median 1132, max 1842. Empty pixels: none; pixels with $<$100 hits: 9.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 5b
+\begin{frame}{The variables, East V (plane 1, TPC 0)}
+\centering
+\includegraphics[width=0.96\textwidth]{fig_vars_EastV.png}
+\raggedright
+\begin{itemize}
+\item Same variables as the first of these slides: $\mathtt{zy}\times C = M$, $g = 1/C = \mathtt{zy}/M$; gray = no data ($C=0$).
+\item $M$ = 1164\,ADC/cm. $C$ from 0.60 to 1.84; $g$ (normalized) rms 4.6\,\%.
+\item Hits per pixel: min 2, median 1130, max 2064. Empty pixels: 52; pixels with $<$100 hits: 64.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 5c
+\begin{frame}{The variables, East Y (plane 2, TPC 0)}
 \centering
 \includegraphics[width=0.96\textwidth]{fig_vars_EastY.png}
 \raggedright
 \begin{itemize}
-\item For every pixel with data, $\mathtt{zy}\times C = M$, the median of \code{zy} over the pixels of that plane and TPC. Checked: equal within $1.2\times10^{-7}$ (relative).
-\item So $C = M/\mathtt{zy}$, and $g = 1/C = \mathtt{zy}/M$ is the pixel's response relative to the plane median. $C = 0$ where there is no data.
-\item Here $M$ = 1121\,ADC/cm. Stripes at constant z show in all three panels.
+\item Same variables as the first of these slides: $\mathtt{zy}\times C = M$, $g = 1/C = \mathtt{zy}/M$; gray = no data ($C=0$).
+\item $M$ = 1121\,ADC/cm. $C$ from 0.79 to 2.21; $g$ (normalized) rms 2.7\,\%.
+\item Hits per pixel: min 45, median 979, max 2122. Empty pixels: 80; pixels with $<$100 hits: 6.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 5d
+\begin{frame}{The variables, West U (plane 0, TPC 1)}
+\centering
+\includegraphics[width=0.96\textwidth]{fig_vars_WestU.png}
+\raggedright
+\begin{itemize}
+\item Same variables as the first of these slides: $\mathtt{zy}\times C = M$, $g = 1/C = \mathtt{zy}/M$; gray = no data ($C=0$).
+\item $M$ = 1175\,ADC/cm. $C$ from 0.84 to 1.99; $g$ (normalized) rms 2.6\,\%.
+\item Hits per pixel: min 229, median 1171, max 2309. Empty pixels: none; pixels with $<$100 hits: 0.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 5e
+\begin{frame}{The variables, West V (plane 1, TPC 1)}
+\centering
+\includegraphics[width=0.96\textwidth]{fig_vars_WestV.png}
+\raggedright
+\begin{itemize}
+\item Same variables as the first of these slides: $\mathtt{zy}\times C = M$, $g = 1/C = \mathtt{zy}/M$; gray = no data ($C=0$).
+\item $M$ = 1156\,ADC/cm. $C$ from 0.89 to 1.69; $g$ (normalized) rms 4.4\,\%.
+\item Hits per pixel: min 163, median 1130, max 1935. Empty pixels: none; pixels with $<$100 hits: 0.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 5f
+\begin{frame}{The variables, West Y (plane 2, TPC 1)}
+\centering
+\includegraphics[width=0.96\textwidth]{fig_vars_WestY.png}
+\raggedright
+\begin{itemize}
+\item Same variables as the first of these slides: $\mathtt{zy}\times C = M$, $g = 1/C = \mathtt{zy}/M$; gray = no data ($C=0$).
+\item $M$ = 1121\,ADC/cm. $C$ from 0.86 to 2.38; $g$ (normalized) rms 2.4\,\%.
+\item Hits per pixel: min 252, median 1012, max 1793. Empty pixels: none; pixels with $<$100 hits: 0.
 \end{itemize}
 \end{frame}
 

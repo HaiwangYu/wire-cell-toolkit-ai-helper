@@ -29,7 +29,7 @@ Input map (from its author): `/exp/sbnd/data/users/yuhw/YZ-non-uniformity/run_2_
 
 Reading:
 - **The planes differ as much as each plane varies.** Plane-to-plane differences (3–4.5 % rms) are as large as each plane's own non-uniformity (2.4–4.4 %), and the correlation between planes is weak (0.2–0.4).
-- **The structure follows each plane's wires:** stripes along the U wire direction on U, at constant z (vertical) on Y, and on V both along the V wire direction and at constant z (variance fractions 0.16–0.17 vs 0.20–0.23; deck slide 10). That is channel- or wire-level response, different on each plane by construction. The large-scale (45 cm smoothed) parts are also only weakly correlated (0.25–0.5).
+- **The structure follows each plane's wires:** stripes along the U wire direction on U, at constant z (vertical) on Y, and on V both along the V wire direction and at constant z (variance fractions 0.16–0.17 vs 0.20–0.23; deck slide 15). That is channel- or wire-level response, different on each plane by construction. The large-scale (45 cm smoothed) parts are also only weakly correlated (0.25–0.5).
 - **Shared features:** the z ≈ 250 cm line (the middle of the wire planes) and the corners and edges.
 - **Y map for all planes:** it does nothing for U and V. Their residual rms gets slightly worse (East U 3.8 → 3.9 %, V 4.3 → 4.5 %).
 - **Plane-average map for all planes:** it removes about a third of each plane's non-uniformity and gives Y about 2 % rms of non-uniformity it does not have.
@@ -39,7 +39,7 @@ Implementation note: `DepoTransform` (`gen/src/DepoTransform.cxx:212`) already c
 
 ### Summary deck of the map file (2026-11-24)
 
-`docs/46-yz-map-file-summary.pdf` (18 slides; source `.tex`; figures and numbers from `scripts/make_deck_figs.py <map.root> docs/deck-figs`, numbers in `docs/deck-figs/deck_numbers.json`): the file and its variables, coverage, how the map is used, the non-uniformity maps, numbers, profiles, stripes, edges, plane-to-plane, the overall data dQ/dx scale, the validation and the questions for the author.
+`docs/46-yz-map-file-summary.pdf` (23 slides; source `.tex`; figures and numbers from `scripts/make_deck_figs.py <map.root> docs/deck-figs`, numbers in `docs/deck-figs/deck_numbers.json`): the file and its variables (one slide per plane and TPC), coverage, how the map is used, the non-uniformity maps, numbers, profiles, stripes, edges, plane-to-plane, the overall data dQ/dx scale, the validation and the questions for the author.
 
 - **Overall data scale (data only; the file has no MC):** pixel-median dQ/dx East/West U 1160/1175, V 1164/1156, Y 1121/1121 ADC/cm. Y is 3–4.6 % below U and V; West vs East +1.4 % (U), −0.7 % (V), 0.0 % (Y). The 1D peak of Y is 4.9–5.3 % below U and V.
 - **Data vs MC:** open. It needs an MC version of the same histograms (owner's choice: data side only for now).
@@ -71,7 +71,7 @@ WCT branch `sbnd-yz-depo-scaling` from master 7710c43b, worktree `/exp/sbnd/app/
   - Range 0.42–1.68.
 - **Note on map pixels (owner's choice: empty → 1, keep the rest):**
   - Pixels without data (C = 0: East V 52, East Y 80; mostly a V dead-channel diagonal and a Y dead-wire column) get factor 1, i.e. no YZ effect there. Dead channels themselves are the channel-status database's job, not the map's.
-  - All other pixels are used as measured, including the edge and corner pixels where C reaches 1.7–2.4 (factor 0.42–0.6 before normalization). These are not low-statistics pixels: the 11–15 pixels per plane with C > 1.3 all lie in the outer 10 cm and have a median of 870–1,210 hits (correction 2026-11-24, deck slide 11). Low-hit pixels (< 100 hits: East U 9, V 64, Y 6; West none) have C 0.60–1.40; 53 of the 64 on East V touch the empty V diagonal.
+  - All other pixels are used as measured, including the edge and corner pixels where C reaches 1.7–2.4 (factor 0.42–0.6 before normalization). These are not low-statistics pixels: the 11–15 pixels per plane with C > 1.3 all lie in the outer 10 cm and have a median of 870–1,210 hits (correction 2026-11-24, deck slide 16). Low-hit pixels (< 100 hits: East U 9, V 64, Y 6; West none) have C 0.60–1.40; 53 of the 64 on East V touch the empty V diagonal.
   - If those edges look wrong in the sim, the converter is the place to cap or fill them.
 - **jsonnet:**
   - `common/sim/nodes.jsonnet`: new `make_depotransform_yz`.
