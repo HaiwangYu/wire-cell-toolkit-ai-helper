@@ -11,8 +11,10 @@ SimChannel charge:
   measured  = sum of the channel's recob::Wire charge (all ROIs), on / off.
 Channels with fewer than --min-ne SimChannel electrons, or no charge in either
 file, are left out.  Per plane and TPC it prints: channels, rms of the
-predicted factor, median and rms of measured/predicted - 1, its 5-95 % range,
-corr(measured, predicted), and the plane totals (sum on / sum off vs the
+predicted factor, median, rms and robust rms (1.4826 x median absolute
+deviation) of measured/predicted - 1, the number of channels with
+|measured/predicted - 1| > 5 %, its 5-95 % range, corr(measured, predicted)
+(all channels, and without the > 5 % ones), and the plane totals (sum on / sum off vs the
 charge-weighted predicted factor).
 
 Usage (sbndcode environment; PyROOT; NO LD_PRELOAD needed):
@@ -138,8 +140,8 @@ for il, lab in enumerate(labels):
     sel = (ne >= a.min_ne) & (q0 > 0) & (q1 > 0)
     R = res[inst] = {"channels_with_simch": int(len(d)), "channels_used": int(sel.sum())}
     print(f"\n{lab}: {int(sel.sum())} of {len(d)} channel-events used (>= {a.min_ne:g} electrons, charge in both)")
-    print("| | channels | predicted rms | meas/pred-1 median | rms | 5-95 % | corr | total meas / pred |")
-    print("|---|---|---|---|---|---|---|---|")
+    print("| | channels | predicted rms | meas/pred-1 median | rms | robust rms | > 5 % | 5-95 % | corr | corr w/o > 5 % | total meas / pred |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|")
     for t in range(2):
         for p in range(3):
             m = sel & (d[:, 3] == p) & (d[:, 2] == t)
@@ -151,13 +153,17 @@ for il, lab in enumerate(labels):
             tm = q1[m].sum() / q0[m].sum()
             tp = (pr[m] * q0[m]).sum() / q0[m].sum()
             corr = float(np.corrcoef(meas, pr[m])[0, 1])
+            rrms = float(1.4826 * np.median(np.abs(dev - np.median(dev))))
+            out = np.abs(dev) > 0.05
+            corr_in = float(np.corrcoef(meas[~out], pr[m][~out])[0, 1])
             R[f"{TPC[t]} {PL[p]}"] = {
                 "channels": int(m.sum()), "predicted_rms": float(pr[m].std()),
                 "dev_median": float(np.median(dev)), "dev_rms": float(dev.std()),
+                "dev_robust_rms": rrms, "n_dev_gt_5pc": int(out.sum()), "corr_without_gt_5pc": corr_in,
                 "dev_5_95": [float(lo), float(hi)], "corr": corr,
                 "total_measured": float(tm), "total_predicted": float(tp)}
             print(f"| {TPC[t]} {PL[p]} | {m.sum()} | {pr[m].std()*100:.1f} % | {np.median(dev)*100:+.2f} % "
-                  f"| {dev.std()*100:.2f} % | {lo*100:+.1f} … {hi*100:+.1f} % | {corr:.2f} | {tm:.4f} / {tp:.4f} |")
+                  f"| {dev.std()*100:.2f} % | {rrms*100:.2f} % | {out.sum()} | {lo*100:+.1f} … {hi*100:+.1f} % | {corr:.2f} | {corr_in:.2f} | {tm:.4f} / {tp:.4f} |")
             a0, a1 = ax[2 * il, p], ax[2 * il + 1, p]
             a0.scatter(pr[m], meas, s=3, alpha=0.5, label=f"{TPC[t]} (corr {corr:.2f})")
             a1.hist(dev, bins=np.linspace(-0.15, 0.15, 61), histtype="step", label=TPC[t])

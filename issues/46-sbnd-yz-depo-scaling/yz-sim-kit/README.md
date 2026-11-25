@@ -227,6 +227,14 @@ For comparison, the older test with the toolkit configuration (traditional
 ROI only, no DNN ROI; issue doc section 3): `gauss` median within −0.13 %, rms
 0.5 to 0.75 % on Y and 2.2 to 3.5 % on U and V.
 
+On neutrino events with cosmics, a few channels near threshold get a
+different ROI in the on and off runs, and their ratio is far off (tens of %).
+They dominate the plain rms and correlation (BNB test: Y rms 7 to 14 %, corr
+0.1 to 0.3). So the table also gives a robust rms (1.4826 × median absolute
+deviation), the number of channels off by more than 5 %, and the correlation
+without them (BNB test, `dnnsp`: robust rms 0.15 % on Y and 0.6 to 0.8 % on U
+and V, corr 0.90 to 0.99 without the > 5 % channels).
+
 "On = off" (ratio 1 everywhere, correlation ~0) means the scaling did not run.
 Your numbers will not be exactly these: the noise realization differs between
 the on and off runs, and other samples have other charge per channel.
