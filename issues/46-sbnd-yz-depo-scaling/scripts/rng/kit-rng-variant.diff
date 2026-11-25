@@ -1,0 +1,133 @@
+diff -ru -x __pycache__ yz-sim-kit/cfg/pgrapher/experiment/sbnd/sim-yz.jsonnet kit-copy/cfg/pgrapher/experiment/sbnd/sim-yz.jsonnet
+--- yz-sim-kit/cfg/pgrapher/experiment/sbnd/sim-yz.jsonnet	2026-11-24 23:09:52.839367875 -0600
++++ kit-copy/cfg/pgrapher/experiment/sbnd/sim-yz.jsonnet	2026-11-25 01:02:28.391794692 -0600
+@@ -11,8 +11,14 @@
+ // given, the depo-to-signal transforms are DepoTransformYZ (WCT branch
+ // sbnd-yz-depo-scaling), which scale each plane's depo charge by that plane's
+ // map value at the depo (y, z).  The map keys are the anode type:names.
+-function(params, tools, yzmap=null) {
++// RNG-STUDY (issue 46, rng-reproducibility): optional rngs argument
++//   null (default): every consumer uses tools.random (stock, ONE shared Random)
++//   {drift: R, dt: [R per anode], noise: [R per anode]}: one IRandom per consumer
++function(params, tools, yzmap=null, rngs=null) {
+     local sim = sim_maker(params, tools),
++    local rng_dt = function(n) if rngs == null then tools.random else rngs.dt[n],
++    local rng_noise = function(n) if rngs == null then tools.random else rngs.noise[n],
++    local sim_with_rng = function(rng) sim_maker(params, tools { random: rng }),
+ 
+     local nanodes = std.length(tools.anodes),
+ 
+@@ -26,11 +32,11 @@
+     // pgrapher/common/sim/nodes.jsonnet function, copied here verbatim because
+     // sbndcode ships its own pgrapher/common/sim/nodes.jsonnet, which shadows
+     // the toolkit's and does not have it.
+-    local make_depotransform_yz = function(name, anode, pirs, yzmap, yzmap_key="") g.pnode({
++    local make_depotransform_yz = function(name, anode, pirs, yzmap, rng, yzmap_key="") g.pnode({
+         type:'DepoTransformYZ',
+         name:name,
+         data: {
+-            rng: wc.tn(tools.random),
++            rng: wc.tn(rng),
+             dft: wc.tn(tools.dft),
+             anode: wc.tn(anode),
+             pirs: std.map(function(pir) wc.tn(pir), pirs),
+@@ -44,11 +50,11 @@
+             yzmap: wc.tn(yzmap),
+             yzmap_key: yzmap_key,
+         },
+-    }, nin=1, nout=1, uses=[anode, tools.random, tools.dft, yzmap] + pirs),
++    }, nin=1, nout=1, uses=[anode, rng, tools.dft, yzmap] + pirs),
+     local transforms = [
+         if yzmap == null
+-        then sim.make_depotransform("depotransform-"+tools.anodes[n].name, tools.anodes[n], tools.pirs[0])
+-        else make_depotransform_yz("depotransformyz-"+tools.anodes[n].name, tools.anodes[n], tools.pirs[0], yzmap)
++        then sim_with_rng(rng_dt(n)).make_depotransform("depotransform-"+tools.anodes[n].name, tools.anodes[n], tools.pirs[0])
++        else make_depotransform_yz("depotransformyz-"+tools.anodes[n].name, tools.anodes[n], tools.pirs[0], yzmap, rng_dt(n))
+         for n in std.range(0, nanodes-1)],
+     // YZ-KIT end
+     local depos2traces = transforms,
+@@ -91,18 +97,18 @@
+     local noise_models = [make_noise_model(anode) for anode in tools.anodes],
+ 
+ 
+-    local add_noise = function(model) g.pnode({
++    local add_noise = function(model, rng) g.pnode({
+         type: "AddNoise",
+         name: "addnoise-" + model.name,
+         data: {
+-            rng: wc.tn(tools.random),
++            rng: wc.tn(rng),
+             dft: wc.tn(tools.dft),
+             model: wc.tn(model),
+ 	    nsamples: params.daq.nticks,
+             replacement_percentage: 0.02, // random optimization
+-        }}, nin=1, nout=1, uses=[tools.random, tools.dft, model]),
++        }}, nin=1, nout=1, uses=[rng, tools.dft, model]),
+ 
+-    local noises = [add_noise(model) for model in noise_models],
++    local noises = [add_noise(noise_models[n], rng_noise(n)) for n in std.range(0, nanodes-1)],
+     
+     local outtags = ["orig%d"%n for n in std.range(0, nanodes-1)],
+ 
+@@ -117,5 +123,6 @@
+         signal: f.fanpipe('DepoSetFanout', self.signal_pipelines, 'FrameFanin', "simsignalgraph", outtags),
+         splusn: f.fanpipe('DepoSetFanout', self.splusn_pipelines, 'FrameFanin', "simsplusngraph", outtags),
+ 
+-    } + sim,                    // tack on base for user sugar.
++    } + sim                     // tack on base for user sugar.
++      + (if rngs == null then {} else { drifter: sim_with_rng(rngs.drift).drifter }),  // RNG-STUDY
+ }.ret
+diff -ru -x __pycache__ yz-sim-kit/cfg/pgrapher/experiment/sbnd/wcls-sim-drift-depoflux-nf-sp-yz.jsonnet kit-copy/cfg/pgrapher/experiment/sbnd/wcls-sim-drift-depoflux-nf-sp-yz.jsonnet
+--- yz-sim-kit/cfg/pgrapher/experiment/sbnd/wcls-sim-drift-depoflux-nf-sp-yz.jsonnet	2026-11-24 23:10:55.077147771 -0600
++++ kit-copy/cfg/pgrapher/experiment/sbnd/wcls-sim-drift-depoflux-nf-sp-yz.jsonnet	2026-11-25 01:02:39.836109039 -0600
+@@ -75,8 +75,29 @@
+   },
+ } else null;
+ local sim_maker = import 'pgrapher/experiment/sbnd/sim-yz.jsonnet';  // was 'pgrapher/experiment/sbnd/sim.jsonnet'
+-local sim = sim_maker(params, tools, yzmap);  // was sim_maker(params, tools)
+ // YZ-KIT end
++// RNG-STUDY begin (issue 46 rng-reproducibility; study copy, not the kit)
++//   wct_app:     "TbbFlow" (stock) | "Pgrapher" (serial); the fcl "apps" must match
++//   rng_streams: "shared" (stock: one Random for Drifter, both DepoTransforms, both AddNoise)
++//                | "separate" (one Random per consumer, seeds [0,1,2,3,4, rng_seed, stream id])
++//   rng_seed:    integer string, only used with "separate"
++local wct_app = std.extVar('wct_app');
++local rng_streams = std.extVar('rng_streams');
++local rng_seed = std.parseInt(std.extVar('rng_seed'));
++assert wct_app == 'TbbFlow' || wct_app == 'Pgrapher' : "wct_app must be TbbFlow or Pgrapher";
++assert rng_streams == 'shared' || rng_streams == 'separate' : "rng_streams must be shared or separate";
++local mkrng = function(name, stream) {
++  type: 'Random',
++  name: name,
++  data: { generator: 'default', seeds: [0, 1, 2, 3, 4, rng_seed, stream] },
++};
++local rngs = if rng_streams == 'shared' then null else {
++  drift: mkrng('rng-drift', 1),
++  dt: [mkrng('rng-depotransform-' + tools.anodes[n].name, 10 + n) for n in std.range(0, std.length(tools.anodes) - 1)],
++  noise: [mkrng('rng-addnoise-' + tools.anodes[n].name, 20 + n) for n in std.range(0, std.length(tools.anodes) - 1)],
++};
++local sim = sim_maker(params, tools, yzmap, rngs);  // was sim_maker(params, tools)
++// RNG-STUDY end
+ local nanodes = std.length(tools.anodes);
+ local anode_iota = std.range(0, nanodes - 1);
+ 
+@@ -620,7 +641,7 @@
+ else graph2_trad;
+ 
+ local app = {
+-  type: 'TbbFlow',
++  type: wct_app,  // RNG-STUDY: was 'TbbFlow'
+   data: {
+     edges: g.edges(graph),
+   },
+diff -ru -x __pycache__ yz-sim-kit/fcl/detsim_sbnd_yz.fcl kit-copy/fcl/detsim_sbnd_yz.fcl
+--- yz-sim-kit/fcl/detsim_sbnd_yz.fcl	2026-11-24 23:12:13.129314037 -0600
++++ kit-copy/fcl/detsim_sbnd_yz.fcl	2026-11-25 01:02:55.145529551 -0600
+@@ -18,3 +18,7 @@
+ physics.producers.simtpc2d.wcls_main.configs: ["pgrapher/experiment/sbnd/wcls-sim-drift-depoflux-nf-sp-yz.jsonnet"]
+ physics.producers.simtpc2d.wcls_main.params.yz_scaling: "off"
+ physics.producers.simtpc2d.wcls_main.params.yz_map: "sbnd/sbnd-yzmap-run2-gen2-bnblight-v1.json.bz2"
++# RNG-STUDY (study copy only): defaults = stock behaviour
++physics.producers.simtpc2d.wcls_main.params.wct_app: "TbbFlow"
++physics.producers.simtpc2d.wcls_main.params.rng_streams: "shared"
++physics.producers.simtpc2d.wcls_main.params.rng_seed: "0"

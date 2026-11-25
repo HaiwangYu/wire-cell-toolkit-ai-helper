@@ -236,8 +236,8 @@ without them (BNB test, `dnnsp`: robust rms 0.15 % on Y and 0.6 to 0.8 % on U
 and V, corr 0.90 to 0.99 without the > 5 % channels).
 
 "On = off" (ratio 1 everywhere, correlation ~0) means the scaling did not run.
-Your numbers will not be exactly these: the noise realization differs between
-the on and off runs, and other samples have other charge per channel.
+Your numbers will not be exactly these: the on and off runs can get different
+noise realizations (section 10), and other samples have other charge per channel.
 
 To check that "off" is exactly stock sbndcode (no lar job; ~1 min):
 
@@ -359,14 +359,9 @@ again with the same libraries and configuration, comes out with one of (at
 least) two noise realizations. Seven runs of the first muon event fell into two groups, each
 bit-identical within itself (`dnnsp`, `gauss`, `wiener` on all 11,276
 channels); three of them were started at the same moment and still split 2 : 1.
-The likely cause is that the two anode pipelines run in parallel and draw from
-one shared random-number service, so the order of draws can change. The signal
-is not affected: on channels with ≥ 20,000 electrons the summed `dnnsp` charge
-of the two groups agrees to 1e-4. The kit does not touch the random-number
-service or the graph, so stock sbndcode probably behaves the same (not
-tested). For the on/off comparison it does not matter, because the
-noise differs between on and off anyway (the scaling changes the charge
-fluctuations, which shifts the random sequence).
+The cause (confirmed 2026-11-25, `../rng-reproducibility.md`): the two anodes' `AddNoise` share one random-number service (sbndcode's `tools.jsonnet`, fixed seeds `[0,1,2,3,4]`), and the order in which the two run changes from job to job (it follows the memory layout; with `setarch -R` all runs agree). SBND sets `fluctuate: false`, so `AddNoise` is the only consumer that draws. The signal is not affected: on channels with ≥ 20,000 electrons the summed `dnnsp` charge of the two groups agrees to 1e-4. Stock sbndcode behaves the same. On vs off get the same noise when the two jobs land in the same order group (the 10-muon validation pair did) and different noise when they do not. The scaling itself does not change the noise. Giving each consumer its own `Random` makes runs bit-reproducible and gives identical noise for on and off; that is a proposed kit option, not yet applied (`../rng-reproducibility.md`).
+
+**Same noise in every job (stock sbndcode, also outside this kit).** The Wire-Cell seeds are fixed and nothing reseeds them per job or event, so the k-th event of every job gets one of the same two noise realizations, whatever the physics. Events within one job do get different noise.
 
 **Route B.** `scripts/build-wct-yz.sh` (fresh clone of the branch at
 6fdb9371, same flags) built in 12 min with 12 jobs, and `DepoTransformYZ` is in
