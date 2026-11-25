@@ -182,3 +182,4 @@ WCT branch `sbnd-yz-depo-scaling` from master 7710c43b, worktree `/exp/sbnd/app/
 - 2026-11-24: map committed to WireCell/wire-cell-data master (acbe8e5, owner's go); regenerated from the ROOT file, JSON identical.
 - 2026-11-24: the other two toolkit SBND jsonnets with 5632 fixed on the branch (6fdb9371, pushed to the fork); wcsonnet: chsel0 0–5637, chsel1 5638–11275.
 - 2026-11-24/25: hand-off kit `yz-sim-kit/` on the sbndcode v10_14_02_03 detsim with a toggle (off = stock, byte-identical config); long-muon check with DNN ROI; BNB CV-like 24-event G4 sample; draft workflow deck. Found: the old run-detsim.sh preload mixed WCT library copies; detsim is not bit-reproducible run to run.
+- 2026-11-25: draft PR to WCT master: WireCell/wire-cell-toolkit#552 (branch sbnd-yz-depo-scaling, 4 commits on f604f815). Opened with a placeholder for the owner's preamble, per CONTRIBUTING.md; the model summary is in <details>. The workflow deck now references it.

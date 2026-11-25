@@ -66,7 +66,7 @@
 For the SBND calibration group (author of the YZ map).\\
 Sources: the kit \code{yz-sim-kit/README.md} and its scripts; issue doc
 \code{46-sbnd-yz-depo-scaling.md} sections 1--3;\\
-WCT branch \code{sbnd-yz-depo-scaling}. Companion deck on the map file:
+WCT branch \code{sbnd-yz-depo-scaling}, draft PR \href{https://github.com/WireCell/wire-cell-toolkit/pull/552}{WireCell/wire-cell-toolkit\#552}. Companion deck on the map file:
 \code{46-yz-map-file-summary.pdf}.
 \end{center}
 \end{frame}
@@ -286,7 +286,7 @@ Converter: \code{gen/test/convert-yzmap-sbnd.py} in the branch. It prints the ma
 \textbf{Needed}
 \begin{itemize}
 \item sbndcode v10\_14\_02\_03 (e26:prof) from CVMFS: fcl, services, cfg, data. SL7 container \code{fnal-dev-sl7}.
-\item Wire-Cell libraries of branch \code{sbnd-yz-depo-scaling}: only it has \code{DepoTransformYZ}.
+\item Wire-Cell libraries of branch \code{sbnd-yz-depo-scaling} (draft PR \href{https://github.com/WireCell/wire-cell-toolkit/pull/552}{\#552} to WCT master, not merged yet): only it has \code{DepoTransformYZ}.
 \item larwirecell v10\_01\_28 built against that newer Wire-Cell (branch \code{sbnd-wc-flatcaf}). The CVMFS larwirecell is built against Wire-Cell 0.32.1.
 \end{itemize}
 \textbf{Why \code{LD\_PRELOAD}}
@@ -664,6 +664,7 @@ Wire-Cell step 2 & 0:43 / 0:41 & 4.3 / 4.1\,s & 1.69 / 1.75\,GB & PR + track fit
 \item SP charge follows the map on every plane: per channel (median $\le$0.02\,\%), per truth track (meas/exp rms 0.14--0.53\,\% on BNB), per event (within 0.14\,\%).
 \item Fitted dQ/dx: not resolved with 10 events (reco differences between runs are larger than 1.5\,\%).
 \item No extra cost: detsim $\sim$139\,s per BNB event, 6.8\,GB.
+\item Code: draft PR \href{https://github.com/WireCell/wire-cell-toolkit/pull/552}{WireCell/wire-cell-toolkit\#552} to WCT master.
 \end{itemize}
 \end{column}
 \begin{column}{0.48\textwidth}
@@ -708,6 +709,7 @@ Wire-Cell step 2 & 0:43 / 0:41 & 4.3 / 4.1\,s & 1.69 / 1.75\,GB & PR + track fit
 \begin{itemize}
 \item Wire-Cell simulation, the kit, the converter: Haiwang Yu (BNL).
 \item The YZ map: its author, SBND calibration.
+\item Code review: draft PR \href{https://github.com/WireCell/wire-cell-toolkit/pull/552}{WireCell/wire-cell-toolkit\#552}.
 \item Issue log: \code{46-sbnd-yz-depo-scaling.md}.
 \end{itemize}
 \end{column}
